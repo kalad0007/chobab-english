@@ -102,13 +102,23 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
       }).eq('id', sub?.id ?? '')
     }
 
-    // 학생 speaking 영역 실력 통계 업데이트
+    // 학생 speaking 영역 실력 통계 업데이트 (실제 배점 기준 퍼센트)
     const studentId = sub?.student_id
     if (studentId) {
+      // 이 스피킹 문제의 배점 조회
+      const { data: speakingEQ } = await supabase
+        .from('exam_questions')
+        .select('points')
+        .eq('exam_id', sub?.exam_id ?? '')
+        .eq('question_id', q?.id ?? '')
+        .single()
+      const speakingMaxPoints = speakingEQ?.points ?? 100
+      const percentage = Math.round((numScore / speakingMaxPoints) * 100)
+
       fetch('/api/stats/update-speaking', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentId, isCorrect: numScore > 0 }),
+        body: JSON.stringify({ studentId, percentage }),
       }).catch(() => {})
     }
 
