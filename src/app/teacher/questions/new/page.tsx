@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORY_LABELS } from '@/lib/utils'
-import { Volume2, Mic } from 'lucide-react'
+import { Volume2, Mic, Loader2 } from 'lucide-react'
 import UnderlineTextarea from '@/components/ui/UnderlineTextarea'
 
 export default function NewQuestionPage() {
@@ -26,8 +26,9 @@ export default function NewQuestionPage() {
 
   // 리스닝 필드
   const [audioScript, setAudioScript] = useState('')
+  const [audioUrl, setAudioUrl] = useState('')
   const [audioPlayLimit, setAudioPlayLimit] = useState(3)
-  const [previewing, setPreviewing] = useState(false)
+  const [generatingAudio, setGeneratingAudio] = useState(false)
 
   // 스피킹 필드
   const [speakingPrompt, setSpeakingPrompt] = useState('')
@@ -38,44 +39,29 @@ export default function NewQuestionPage() {
   const isListening = category === 'listening'
   const isSpeaking = category === 'speaking'
 
-  function previewAudio() {
+  async function generateAudio() {
     if (!audioScript.trim()) {
-      setError('먼저 스크립트를 입력하세요.')
+      setError('음성으로 변환할 스크립트를 먼저 입력하세요.')
       return
     }
-    // 재생 중이면 중지
-    window.speechSynthesis.cancel()
-    if (previewing) {
-      setPreviewing(false)
-      return
-    }
+    setGeneratingAudio(true)
     setError('')
+    setAudioUrl('')
 
-    const utterance = new SpeechSynthesisUtterance(audioScript)
-    utterance.lang = 'en-US'
-    utterance.rate = 0.85
-    utterance.onend = () => setPreviewing(false)
-    utterance.onerror = () => setPreviewing(false)
+    const res = await fetch('/api/ai/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ script: audioScript, questionId: `temp_${Date.now()}` }),
+    })
 
-    // 목소리 비동기 로딩 대응
-    const speak = () => {
-      const voices = window.speechSynthesis.getVoices()
-      const engVoice = voices.find(v => v.lang === 'en-US')
-        ?? voices.find(v => v.lang.startsWith('en'))
-      if (engVoice) utterance.voice = engVoice
-      setPreviewing(true)
-      window.speechSynthesis.speak(utterance)
-    }
-
-    if (window.speechSynthesis.getVoices().length > 0) {
-      speak()
+    if (res.ok) {
+      const data = await res.json()
+      setAudioUrl(data.audioUrl)
     } else {
-      window.speechSynthesis.addEventListener('voiceschanged', speak, { once: true })
-      // 500ms 후에도 voices 안 오면 그냥 재생
-      setTimeout(() => {
-        if (!window.speechSynthesis.speaking) speak()
-      }, 500)
+      const err = await res.json().catch(() => ({}))
+      setError(`음성 생성 실패: ${err.detail ?? err.error ?? '알 수 없는 오류'}`)
     }
+    setGeneratingAudio(false)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -99,7 +85,7 @@ export default function NewQuestionPage() {
       explanation: explanation || null,
       source: 'teacher',
       // 리스닝/스피킹 필드
-      audio_url: null,
+      audio_url: audioUrl || null,
       audio_script: audioScript || null,
       audio_play_limit: isListening ? audioPlayLimit : null,
       speaking_prompt: speakingPrompt || null,
@@ -186,21 +172,24 @@ export default function NewQuestionPage() {
               />
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <button
                 type="button"
-                onClick={previewAudio}
-                disabled={!audioScript.trim()}
-                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50 ${
-                  previewing
-                    ? 'bg-red-500 hover:bg-red-600 text-white'
-                    : 'bg-blue-600 hover:bg-blue-700 text-white'
-                }`}
+                onClick={generateAudio}
+                disabled={generatingAudio || !audioScript.trim()}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-xl text-sm font-bold transition"
               >
-                <Volume2 size={15} />
-                {previewing ? '■ 중지' : '🔊 미리 듣기'}
+                {generatingAudio
+                  ? <><Loader2 size={15} className="animate-spin" /> 생성 중...</>
+                  : <><Volume2 size={15} /> AI 음성 생성</>
+                }
               </button>
-              <p className="text-xs text-gray-500">브라우저 음성으로 미리 확인할 수 있어요.<br />학생 시험에서도 동일하게 재생됩니다.</p>
+              {audioUrl && (
+                <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                  <span className="text-xs font-bold text-emerald-700">✓ 생성 완료</span>
+                  <audio controls src={audioUrl} className="h-8 max-w-xs" />
+                </div>
+              )}
             </div>
 
             <div>
