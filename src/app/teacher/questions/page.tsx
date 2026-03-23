@@ -61,7 +61,7 @@ export default async function QuestionsPage({
   return (
     <div className="p-4 md:p-7">
       {/* 헤더 */}
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-6 gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900">📚 문제은행</h1>
           <p className="text-gray-500 text-sm mt-1">총 {(questions ?? []).length}개 문제</p>
@@ -82,13 +82,15 @@ export default async function QuestionsPage({
         </div>
       </div>
 
-      <div className="flex gap-5">
-        {/* 좌측 카테고리 필터 */}
-        <div className="w-44 flex-shrink-0 space-y-1">
+      <div className="flex flex-col md:flex-row gap-5">
+        {/* 카테고리 필터 - 모바일: 가로 스크롤, 데스크탑: 세로 목록 */}
+        <div className="md:w-44 flex-shrink-0">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest px-2 mb-2 hidden md:block">카테고리</p>
+          <div className="flex md:flex-col gap-1 overflow-x-auto pb-1 md:pb-0 md:space-y-1">
           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest px-2 mb-2">카테고리</p>
           <Link
             href="/teacher/questions"
-            className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition ${!category ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap ${!category ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
           >
             <span>전체</span>
             <span className="text-xs text-gray-400">{Object.values(countByCategory).reduce((a, b) => a + b, 0)}</span>
@@ -97,25 +99,26 @@ export default async function QuestionsPage({
             <Link
               key={key}
               href={`/teacher/questions?category=${key}`}
-              className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition ${category === key ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap ${category === key ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
             >
               <span>{label}</span>
               <span className="text-xs text-gray-400">{countByCategory[key] ?? 0}</span>
             </Link>
           ))}
+          </div>
         </div>
 
         {/* 문제 목록 */}
         <div className="flex-1">
           {/* 검색/필터 바 */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4 flex gap-3 items-center">
-            <form className="flex-1 flex gap-3" method="GET">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4">
+            <form className="flex flex-wrap gap-2" method="GET">
               {category && <input type="hidden" name="category" value={category} />}
               <input
                 name="q"
                 defaultValue={q}
                 placeholder="문제 내용 검색..."
-                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 min-w-0 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <select name="type" defaultValue={type ?? ''} className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none">
                 <option value="">모든 유형</option>
