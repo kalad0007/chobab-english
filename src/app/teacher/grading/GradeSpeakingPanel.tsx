@@ -39,22 +39,12 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
     setEvaluating(true)
 
     try {
-      // 오디오 URL → fetch → base64
-      const audioRes = await fetch(audioUrl)
-      const arrayBuffer = await audioRes.arrayBuffer()
-      const uint8 = new Uint8Array(arrayBuffer)
-      let binary = ''
-      for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i])
-      const base64 = btoa(binary)
-
-      const mimeType = audioUrl.endsWith('.mp4') ? 'audio/mp4' : 'audio/webm'
-
+      // 서버에서 오디오 fetch + 평가 (URL만 전송)
       const res = await fetch('/api/ai/speaking-eval', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          audioBase64: base64,
-          mimeType,
+          audioUrl,
           prompt: q?.content ?? '',
         }),
       })

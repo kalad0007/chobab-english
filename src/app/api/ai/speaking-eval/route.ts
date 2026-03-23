@@ -2,14 +2,35 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromCookie } from '@/lib/supabase/server'
 
 // Gemini 스피킹 평가 API
-// audioBase64: base64로 인코딩된 오디오
+// audioUrl: Supabase Storage 공개 URL (서버에서 fetch)
 // prompt: 문제/평가 기준
 export async function POST(req: NextRequest) {
   const user = await getUserFromCookie()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { audioBase64, mimeType, prompt } = await req.json()
-  if (!audioBase64) return NextResponse.json({ error: 'audioBase64 required' }, { status: 400 })
+  const { audioUrl, audioBase64: directBase64, mimeType, prompt } = await req.json()
+
+  let audioBase64: string
+  let resolvedMimeType = mimeType ?? 'audio/webm'
+
+  if (audioUrl) {
+    // 서버에서 오디오 파일 fetch → base64 변환
+    const audioRes = await fetch(audioUrl)
+    if (!audioRes.ok) {
+      return NextResponse.json({ error: 'Failed to fetch audio file' }, { status: 500 })
+    }
+    const arrayBuffer = await audioRes.arrayBuffer()
+    audioBase64 = Buffer.from(arrayBuffer).toString('base64')
+    // URL에서 mime type 추정
+    if (audioUrl.endsWith('.mp4')) resolvedMimeType = 'audio/mp4'
+    else if (audioUrl.endsWith('.webm')) resolvedMimeType = 'audio/webm'
+  } else if (directBase64) {
+    audioBase64 = directBase64
+  } else {
+    return NextResponse.json({ error: 'audioUrl or audioBase64 required' }, { status: 400 })
+  }
+
+  if (!audioBase64) return NextResponse.json({ error: 'No audio data' }, { status: 400 })
 
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return NextResponse.json({ error: 'Gemini API key not configured' }, { status: 500 })
