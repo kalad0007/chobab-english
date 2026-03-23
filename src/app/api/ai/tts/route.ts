@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient, getUserFromCookie } from '@/lib/supabase/server'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { getUserFromCookie } from '@/lib/supabase/server'
 
 // Gemini TTS API - audio_script → audio file → Supabase Storage
 export async function POST(req: NextRequest) {
@@ -49,8 +50,11 @@ export async function POST(req: NextRequest) {
   // base64 → Buffer
   const audioBuffer = Buffer.from(audioBase64, 'base64')
 
-  // Supabase Storage에 업로드
-  const supabase = await createClient()
+  // Supabase Storage에 업로드 (service role 키로 RLS 우회)
+  const supabase = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
   const fileName = `listening/${questionId ?? Date.now()}_${Date.now()}.wav`
 
   const { error: uploadError } = await supabase.storage
