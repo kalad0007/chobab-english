@@ -59,12 +59,12 @@ export default async function StudentDashboard() {
     ? await pendingExamsQuery
     : { data: [] }
 
-  // 최근 시험 성적
+  // 최근 시험 성적 (graded + submitted 모두 포함)
   const { data: recentSubmissions } = await supabase
     .from('submissions')
-    .select('id, score, total_points, percentage, submitted_at, exams(title)')
+    .select('id, score, total_points, percentage, submitted_at, status, exams(title)')
     .eq('student_id', user.id)
-    .eq('status', 'graded')
+    .in('status', ['graded', 'submitted'])
     .order('submitted_at', { ascending: false })
     .limit(3)
 
@@ -242,12 +242,16 @@ export default async function StudentDashboard() {
                 (recentSubmissions ?? []).map((sub: any) => (
                   <div key={sub.id} className="flex items-center justify-between px-5 py-3.5">
                     <p className="text-sm font-semibold text-gray-800">{sub.exams?.title}</p>
-                    <span className={`text-sm font-black ${
-                      sub.percentage >= 80 ? 'text-emerald-600' :
-                      sub.percentage >= 60 ? 'text-blue-600' : 'text-amber-600'
-                    }`}>
-                      {sub.score}/{sub.total_points}점
-                    </span>
+                    {sub.status === 'graded' ? (
+                      <span className={`text-sm font-black ${
+                        sub.percentage >= 80 ? 'text-emerald-600' :
+                        sub.percentage >= 60 ? 'text-blue-600' : 'text-amber-600'
+                      }`}>
+                        {sub.score}/{sub.total_points}점
+                      </span>
+                    ) : (
+                      <span className="text-xs bg-amber-100 text-amber-700 font-bold px-2 py-1 rounded-full">채점 중</span>
+                    )}
                   </div>
                 ))
               )}

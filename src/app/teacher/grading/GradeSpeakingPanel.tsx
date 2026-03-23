@@ -55,7 +55,7 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
         return
       }
       setEvalResult(data)
-      setScore(String(data.totalScore))
+      // AI 점수는 참고용(0-100)이므로 자동 입력 안 함 - 교사가 실제 배점 기준으로 직접 입력
     } catch (e) {
       setEvalError(String(e))
     } finally {
@@ -73,12 +73,12 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
       : ''
 
     await supabase.from('submission_answers').update({
-      is_correct: numScore >= 60,
+      is_correct: numScore > 0,
       score: numScore,
       teacher_feedback: feedback || null,
     }).eq('id', answer.id)
 
-    // submission 전체 점수 재계산
+    // submission 전체 점수 재계산 (항상 업데이트)
     const { data: allAnswers } = await supabase
       .from('submission_answers')
       .select('score, is_correct')
@@ -87,17 +87,19 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
     if (allAnswers) {
       const totalScore = allAnswers.reduce((acc, a) => acc + (a.score ?? 0), 0)
       const gradedCount = allAnswers.filter(a => a.is_correct !== null).length
-      if (gradedCount === allAnswers.length) {
-        const { data: examQ } = await supabase
-          .from('exam_questions').select('points').eq('exam_id', sub?.exam_id ?? '')
-        const totalPoints = (examQ ?? []).reduce((acc, q) => acc + q.points, 0)
-        await supabase.from('submissions').update({
-          score: totalScore,
-          total_points: totalPoints,
-          percentage: totalPoints > 0 ? Math.round((totalScore / totalPoints) * 100) : 0,
-          status: 'graded',
-        }).eq('id', sub?.id ?? '')
-      }
+      const allGraded = gradedCount === allAnswers.length
+
+      const { data: examQ } = await supabase
+        .from('exam_questions').select('points').eq('exam_id', sub?.exam_id ?? '')
+      const totalPoints = (examQ ?? []).reduce((acc, q) => acc + q.points, 0)
+
+      await supabase.from('submissions').update({
+        score: totalScore,
+        total_points: totalPoints,
+        percentage: totalPoints > 0 ? Math.round((totalScore / totalPoints) * 100) : 0,
+        // 모든 답안 채점 완료 시에만 graded로 변경
+        ...(allGraded ? { status: 'graded' } : {}),
+      }).eq('id', sub?.id ?? '')
     }
 
     router.refresh()
@@ -136,9 +138,10 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
       {evalResult && (
         <div className="mb-4 bg-purple-50 border border-purple-100 rounded-xl p-4 space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-bold text-purple-700">🤖 AI 평가 결과</p>
-            <span className="text-lg font-black text-purple-700">{evalResult.totalScore}점</span>
+            <p className="text-xs font-bold text-purple-700">🤖 AI 평가 결과 (100점 기준 참고용)</p>
+            <span className="text-lg font-black text-purple-700">{evalResult.totalScore}/100</span>
           </div>
+          <p className="text-xs text-purple-500">※ 실제 배점에 맞게 아래 점수를 직접 입력하세요</p>
           <div className="grid grid-cols-2 gap-2 text-xs">
             {[
               { label: '발음/유창성', v: evalResult.pronunciation, max: 25 },
