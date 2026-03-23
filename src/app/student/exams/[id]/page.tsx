@@ -259,10 +259,9 @@ export default function ExamTakePage() {
                   <SpeakingRecorder
                     prompt={q.speaking_prompt ?? q.content}
                     questionId={q.id}
-                    onRecorded={(url, evalResult) => {
-                      // 평가 결과를 JSON으로 student_answer에 저장
-                      const resultStr = JSON.stringify({ audioUrl: url, score: evalResult.totalScore, feedback: evalResult.feedback })
-                      saveAnswer(q.id, resultStr)
+                    submissionId={submissionId}
+                    onRecorded={(audioUrl) => {
+                      saveAnswer(q.id, audioUrl)
                     }}
                   />
                 ) : q.type === 'multiple_choice' && q.options ? (
