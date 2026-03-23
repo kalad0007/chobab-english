@@ -66,13 +66,13 @@ export default async function AnalyticsPage() {
     .sort((a, b) => a.accuracy - b.accuracy)
 
   return (
-    <div className="p-7">
+    <div className="p-4 md:p-7">
       <div className="mb-6">
         <h1 className="text-2xl font-extrabold text-gray-900">📊 통계 분석</h1>
         <p className="text-gray-500 text-sm mt-1">전체 학생 학습 현황</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-5 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
         {/* 영역별 정답률 */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
           <div className="px-5 py-4 border-b border-gray-50">

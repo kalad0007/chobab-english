@@ -35,7 +35,7 @@ export default async function ClassesPage() {
   }
 
   return (
-    <div className="p-7">
+    <div className="p-4 md:p-7">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900">🏫 반 관리</h1>

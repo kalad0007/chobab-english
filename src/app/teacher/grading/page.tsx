@@ -45,7 +45,7 @@ export default async function GradingPage() {
   })
 
   return (
-    <div className="p-7">
+    <div className="p-4 md:p-7">
       <div className="mb-6">
         <h1 className="text-2xl font-extrabold text-gray-900">✏️ 채점 관리</h1>
         <p className="text-gray-500 text-sm mt-1">주관식 답안 채점</p>

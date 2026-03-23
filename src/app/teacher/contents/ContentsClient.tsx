@@ -108,7 +108,7 @@ export default function ContentsClient({ contents: initialContents, classes }: P
   }
 
   return (
-    <div className="p-7">
+    <div className="p-4 md:p-7">
       {/* Header */}
       <div className="flex items-start justify-between mb-7">
         <div>

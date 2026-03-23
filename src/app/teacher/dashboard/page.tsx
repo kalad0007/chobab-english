@@ -62,12 +62,12 @@ export default async function TeacherDashboard() {
   }
 
   return (
-    <div className="p-7">
+    <div className="p-4 md:p-7">
       {/* 헤더 */}
-      <div className="flex items-start justify-between mb-7">
+      <div className="flex flex-col md:flex-row md:items-start justify-between mb-7 gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold text-gray-900">
-            안녕하세요, {profile?.name ?? '선생님'}! 👋
+          <h1 className="text-xl md:text-2xl font-extrabold text-gray-900">
+            안녕하세요, {profile?.name ?? '선생님'}샘! 👋
           </h1>
           <p className="text-gray-500 text-sm mt-1">오늘도 좋은 수업 되세요.</p>
         </div>
@@ -88,7 +88,7 @@ export default async function TeacherDashboard() {
       </div>
 
       {/* 스탯 카드 */}
-      <div className="grid grid-cols-4 gap-4 mb-7">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-7">
         {[
           { label: '전체 학생', value: studentCount ?? 0, sub: `${(classes ?? []).length}개 반`, icon: Users, color: 'border-blue-500', iconBg: 'bg-blue-50 text-blue-600' },
           { label: '문제 수', value: questionCount ?? 0, sub: '문제은행 등록', icon: BookOpen, color: 'border-purple-500', iconBg: 'bg-purple-50 text-purple-600' },
@@ -119,7 +119,7 @@ export default async function TeacherDashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* 최근 시험 */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
