@@ -127,14 +127,16 @@ export default function ExamTakePage() {
     if (!submissionId || submitting) return
     setSubmitting(true)
 
-    // 객관식 자동 채점
+    // 객관식 + 단답형 자동 채점
     let score = 0
     const { data: { user } } = await supabase.auth.getUser()
     const updates = []
     for (const q of questions) {
       const studentAns = answers[q.id] ?? ''
-      const isCorrect = q.type === 'multiple_choice' && q.category !== 'speaking'
-        ? q.answer?.trim() === studentAns.trim()
+      // 객관식 또는 단답형(완전일치, 대소문자 무시)은 자동 채점
+      const isAutoGraded = (q.type === 'multiple_choice' || q.type === 'short_answer') && q.category !== 'speaking'
+      const isCorrect = isAutoGraded
+        ? q.answer?.trim().toLowerCase() === studentAns.trim().toLowerCase()
         : false
       if (isCorrect) score += q.points
 
@@ -142,12 +144,12 @@ export default function ExamTakePage() {
         submission_id: submissionId,
         question_id: q.id,
         student_answer: studentAns,
-        is_correct: q.type === 'multiple_choice' && q.category !== 'speaking' ? isCorrect : null,
-        score: q.type === 'multiple_choice' && q.category !== 'speaking' ? (isCorrect ? q.points : 0) : 0,
+        is_correct: isAutoGraded ? isCorrect : null,
+        score: isAutoGraded ? (isCorrect ? q.points : 0) : 0,
       }, { onConflict: 'submission_id,question_id' }))
 
-      // 오답이면 재학습 큐에 추가 (객관식, 스피킹 제외)
-      if (!isCorrect && q.type === 'multiple_choice' && q.category !== 'speaking' && user) {
+      // 오답이면 재학습 큐에 추가 (자동채점 문제만)
+      if (!isCorrect && isAutoGraded && user) {
         await supabase.from('wrong_answer_queue').upsert({
           student_id: user.id,
           original_question_id: q.id,
@@ -159,20 +161,21 @@ export default function ExamTakePage() {
     await Promise.all(updates)
     const totalPoints = questions.reduce((s, q) => s + q.points, 0)
 
-    // 영역별 실력 통계 업데이트 (일반 객관식만)
-    for (const q of questions.filter(q => q.type === 'multiple_choice' && q.category !== 'speaking')) {
+    // 영역별 실력 통계 업데이트 (객관식 + 단답형)
+    for (const q of questions.filter(q => (q.type === 'multiple_choice' || q.type === 'short_answer') && q.category !== 'speaking')) {
       await fetch('/api/stats/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           category: q.category,
-          isCorrect: q.answer?.trim() === (answers[q.id] ?? '').trim(),
+          isCorrect: q.answer?.trim().toLowerCase() === (answers[q.id] ?? '').trim().toLowerCase(),
         }),
       })
     }
 
+    // essay만 선생님 채점 대기 (short_answer, 객관식, 스피킹 제외)
     const hasNonAutoGraded = questions.some(q =>
-      q.type !== 'multiple_choice' && q.category !== 'speaking'
+      q.type === 'essay' && q.category !== 'speaking'
     )
 
     await supabase.from('submissions').update({
