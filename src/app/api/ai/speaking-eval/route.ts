@@ -81,7 +81,7 @@ Reply in JSON only (no markdown):
 {"totalScore":0,"pronunciation":0,"grammar":0,"content":0,"confidence":0,"feedback":"한국어 피드백","strengths":"한국어 장점","improvements":"한국어 개선점"}`
 
   const evalRes = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
