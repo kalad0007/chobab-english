@@ -11,33 +11,36 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return NextResponse.json({ error: 'Gemini API key not configured' }, { status: 500 })
 
-  // 1단계: Supabase Storage에서 오디오 파일 fetch
+  // 1단계: 오디오 파일 fetch
   const audioRes = await fetch(audioUrl)
   if (!audioRes.ok) {
-    return NextResponse.json({ error: 'Failed to fetch audio file' }, { status: 500 })
+    return NextResponse.json({ error: `Failed to fetch audio: ${audioRes.status}` }, { status: 500 })
   }
   const audioBuffer = Buffer.from(await audioRes.arrayBuffer())
   const mimeType = audioUrl.endsWith('.mp4') ? 'audio/mp4' : 'audio/webm'
 
-  // 2단계: Gemini Files API에 업로드 (WebM 지원)
+  // 2단계: Gemini Files API multipart 업로드
+  const boundary = `boundary${Date.now()}`
+  const metaJson = JSON.stringify({ file: { displayName: 'student-recording', mimeType } })
+  const body = Buffer.concat([
+    Buffer.from(`--${boundary}\r\nContent-Type: application/json; charset=utf-8\r\n\r\n${metaJson}\r\n--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`),
+    audioBuffer,
+    Buffer.from(`\r\n--${boundary}--`),
+  ])
+
   const uploadRes = await fetch(
-    `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/upload/v1beta/files?uploadType=multipart&key=${apiKey}`,
     {
       method: 'POST',
-      headers: {
-        'X-Goog-Upload-Command': 'start, upload, finalize',
-        'X-Goog-Upload-Header-Content-Length': String(audioBuffer.length),
-        'X-Goog-Upload-Header-Content-Type': mimeType,
-        'Content-Type': mimeType,
-      },
-      body: audioBuffer,
+      headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
+      body,
     }
   )
 
   if (!uploadRes.ok) {
     const errText = await uploadRes.text()
-    console.error('Gemini Files upload error:', errText)
-    return NextResponse.json({ error: 'Audio upload failed', detail: errText }, { status: 500 })
+    console.error('Files API upload error:', errText)
+    return NextResponse.json({ error: 'Upload failed', detail: errText }, { status: 500 })
   }
 
   const uploadData = await uploadRes.json()
@@ -45,22 +48,34 @@ export async function POST(req: NextRequest) {
   const fileMimeType: string = uploadData?.file?.mimeType ?? mimeType
 
   if (!fileUri) {
-    return NextResponse.json({ error: 'No file URI from upload', raw: uploadData }, { status: 500 })
+    return NextResponse.json({ error: 'No fileUri returned', raw: uploadData }, { status: 500 })
   }
 
-  // 3단계: 업로드된 파일로 평가 요청
+  // 3단계: 파일 처리 대기 (ACTIVE 상태 확인)
+  let fileState = uploadData?.file?.state ?? 'PROCESSING'
+  let retries = 0
+  while (fileState === 'PROCESSING' && retries < 10) {
+    await new Promise(r => setTimeout(r, 1000))
+    const statusRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/files/${uploadData.file.name}?key=${apiKey}`
+    )
+    const statusData = await statusRes.json()
+    fileState = statusData?.state ?? 'ACTIVE'
+    retries++
+  }
+
+  // 4단계: 평가 요청
   const evalPrompt = `You are an English speaking evaluator for Korean middle/high school students.
+Task: ${prompt ?? 'General English speaking'}
 
-Question/Task: ${prompt ?? 'General English speaking'}
+Evaluate the spoken English on:
+1. Pronunciation & Fluency: 0-25
+2. Grammar & Vocabulary: 0-25
+3. Content & Relevance: 0-25
+4. Confidence & Expression: 0-25
 
-Please evaluate the student's spoken English response based on:
-1. Pronunciation & Fluency (발음/유창성): 0-25점
-2. Grammar & Vocabulary (문법/어휘): 0-25점
-3. Content & Relevance (내용/관련성): 0-25점
-4. Confidence & Expression (자신감/표현): 0-25점
-
-Respond in JSON format ONLY (no markdown, no code block):
-{"totalScore":0,"pronunciation":0,"grammar":0,"content":0,"confidence":0,"feedback":"Korean feedback","strengths":"Korean strengths","improvements":"Korean improvements"}`
+Reply in JSON only (no markdown):
+{"totalScore":0,"pronunciation":0,"grammar":0,"content":0,"confidence":0,"feedback":"한국어 피드백","strengths":"한국어 장점","improvements":"한국어 개선점"}`
 
   const evalRes = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
@@ -74,15 +89,14 @@ Respond in JSON format ONLY (no markdown, no code block):
             { text: evalPrompt },
           ],
         }],
-        generationConfig: { responseMimeType: 'application/json' },
       }),
     }
   )
 
-  // 4단계: 사용 후 파일 삭제 (비동기, 실패해도 무시)
-  const fileName = fileUri.split('/').pop()
+  // 5단계: 파일 삭제 (비동기)
+  const fileName = uploadData?.file?.name
   if (fileName) {
-    fetch(`https://generativelanguage.googleapis.com/v1beta/files/${fileName}?key=${apiKey}`, {
+    fetch(`https://generativelanguage.googleapis.com/v1beta/${fileName}?key=${apiKey}`, {
       method: 'DELETE',
     }).catch(() => {})
   }
@@ -94,14 +108,17 @@ Respond in JSON format ONLY (no markdown, no code block):
   }
 
   const evalData = await evalRes.json()
-  const text: string = evalData?.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}'
+  const text: string = evalData?.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+
+  if (!text) {
+    return NextResponse.json({ error: 'Empty response from Gemini', raw: evalData }, { status: 500 })
+  }
 
   try {
-    // JSON 파싱 (```json 블록 대응)
     const clean = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
     const result = JSON.parse(clean)
     return NextResponse.json(result)
   } catch {
-    return NextResponse.json({ error: 'Failed to parse evaluation result', raw: text }, { status: 500 })
+    return NextResponse.json({ error: 'JSON parse failed', raw: text }, { status: 500 })
   }
 }
