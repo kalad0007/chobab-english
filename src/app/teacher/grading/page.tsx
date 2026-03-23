@@ -17,6 +17,7 @@ export default async function GradingPage() {
       submissions!inner(exam_id, student_id, profiles:student_id(name), exams(title, teacher_id))
     `)
     .eq('questions.type', 'essay')
+    .neq('questions.category', 'speaking')
     .is('is_correct', null)
 
   const filtered = (pendingAnswers ?? []).filter(a => {
@@ -51,6 +52,7 @@ export default async function GradingPage() {
       submissions!inner(student_id, profiles:student_id(name), exams(title, teacher_id))
     `)
     .eq('questions.type', 'essay')
+    .neq('questions.category', 'speaking')
     .not('is_correct', 'is', null)
     .order('id', { ascending: false })
     .limit(20)
