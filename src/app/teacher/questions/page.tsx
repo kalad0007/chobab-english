@@ -12,6 +12,14 @@ const CATEGORY_COLORS: Record<string, string> = {
   writing:    'bg-orange-100 text-orange-700',
   cloze:      'bg-amber-100 text-amber-700',
   ordering:   'bg-pink-100 text-pink-700',
+  listening:  'bg-sky-100 text-sky-700',
+  speaking:   'bg-yellow-100 text-yellow-700',
+}
+
+const CATEGORY_ICON: Record<string, string> = {
+  grammar: '📘', vocabulary: '📗', reading: '📕',
+  writing: '📝', cloze: '🔲', ordering: '🔀',
+  listening: '🎧', speaking: '🎤',
 }
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -146,7 +154,7 @@ export default async function QuestionsPage({
               (questions as Question[]).map(q => (
                 <div key={q.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-start gap-4 hover:border-blue-200 transition group">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0 ${CATEGORY_COLORS[q.category] ?? 'bg-gray-100 text-gray-600'}`}>
-                    📘
+                    {CATEGORY_ICON[q.category] ?? '📘'}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -161,6 +169,10 @@ export default async function QuestionsPage({
                         <span className={`text-xs px-2 py-0.5 rounded-full ${q.source === 'ai_generated' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
                           {SOURCE_LABEL[q.source]}
                         </span>
+                      )}
+                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                      {(q as any).audio_url && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-sky-100 text-sky-700">🎧 음성있음</span>
                       )}
                     </div>
                     <p className="text-sm text-gray-800 font-medium line-clamp-2">{q.content}</p>

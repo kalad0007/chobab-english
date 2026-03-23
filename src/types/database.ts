@@ -2,7 +2,7 @@ export type Json = string | number | boolean | null | { [key: string]: Json } | 
 
 export type UserRole = 'teacher' | 'student'
 export type QuestionType = 'multiple_choice' | 'short_answer' | 'essay'
-export type QuestionCategory = 'grammar' | 'vocabulary' | 'reading' | 'writing' | 'cloze' | 'ordering'
+export type QuestionCategory = 'grammar' | 'vocabulary' | 'reading' | 'writing' | 'cloze' | 'ordering' | 'listening' | 'speaking'
 export type QuestionSource = 'teacher' | 'ai_generated' | 'ksat'
 export type ExamStatus = 'draft' | 'published' | 'closed'
 export type SubmissionStatus = 'in_progress' | 'submitted' | 'graded'
@@ -52,6 +52,11 @@ export interface Question {
   is_active: boolean
   created_at: string
   updated_at: string
+  // 리스닝/스피킹 필드
+  audio_url: string | null
+  audio_script: string | null
+  audio_play_limit: number | null
+  speaking_prompt: string | null
 }
 
 export interface Exam {

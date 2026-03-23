@@ -5,6 +5,8 @@ import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ChevronLeft, ChevronRight, CheckSquare, Clock } from 'lucide-react'
 import { renderWithUnderlines } from '@/lib/utils'
+import AudioPlayer from '@/components/ui/AudioPlayer'
+import SpeakingRecorder from '@/components/ui/SpeakingRecorder'
 
 interface Question {
   id: string
@@ -16,6 +18,11 @@ interface Question {
   category: string
   points: number
   order_num: number
+  // 리스닝/스피킹
+  audio_url?: string | null
+  audio_script?: string | null
+  audio_play_limit?: number | null
+  speaking_prompt?: string | null
 }
 
 export default function ExamTakePage() {
@@ -32,6 +39,8 @@ export default function ExamTakePage() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  // 리스닝 재생 횟수 추적
+  const [playedCounts, setPlayedCounts] = useState<Record<string, number>>({})
 
   useEffect(() => {
     async function load() {
@@ -124,7 +133,7 @@ export default function ExamTakePage() {
     const updates = []
     for (const q of questions) {
       const studentAns = answers[q.id] ?? ''
-      const isCorrect = q.type === 'multiple_choice'
+      const isCorrect = q.type === 'multiple_choice' && q.category !== 'speaking'
         ? q.answer?.trim() === studentAns.trim()
         : false
       if (isCorrect) score += q.points
@@ -133,12 +142,12 @@ export default function ExamTakePage() {
         submission_id: submissionId,
         question_id: q.id,
         student_answer: studentAns,
-        is_correct: q.type === 'multiple_choice' ? isCorrect : null,
-        score: q.type === 'multiple_choice' ? (isCorrect ? q.points : 0) : 0,
+        is_correct: q.type === 'multiple_choice' && q.category !== 'speaking' ? isCorrect : null,
+        score: q.type === 'multiple_choice' && q.category !== 'speaking' ? (isCorrect ? q.points : 0) : 0,
       }, { onConflict: 'submission_id,question_id' }))
 
-      // 오답이면 재학습 큐에 추가
-      if (!isCorrect && q.type === 'multiple_choice' && user) {
+      // 오답이면 재학습 큐에 추가 (객관식, 스피킹 제외)
+      if (!isCorrect && q.type === 'multiple_choice' && q.category !== 'speaking' && user) {
         await supabase.from('wrong_answer_queue').upsert({
           student_id: user.id,
           original_question_id: q.id,
@@ -150,8 +159,8 @@ export default function ExamTakePage() {
     await Promise.all(updates)
     const totalPoints = questions.reduce((s, q) => s + q.points, 0)
 
-    // 영역별 실력 통계 업데이트 (객관식만) — race condition 방지를 위해 순차 처리
-    for (const q of questions.filter(q => q.type === 'multiple_choice')) {
+    // 영역별 실력 통계 업데이트 (일반 객관식만)
+    for (const q of questions.filter(q => q.type === 'multiple_choice' && q.category !== 'speaking')) {
       await fetch('/api/stats/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -162,8 +171,12 @@ export default function ExamTakePage() {
       })
     }
 
+    const hasNonAutoGraded = questions.some(q =>
+      q.type !== 'multiple_choice' && q.category !== 'speaking'
+    )
+
     await supabase.from('submissions').update({
-      status: questions.some(q => q.type !== 'multiple_choice') ? 'submitted' : 'graded',
+      status: hasNonAutoGraded ? 'submitted' : 'graded',
       score,
       total_points: totalPoints,
       percentage: totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0,
@@ -180,6 +193,9 @@ export default function ExamTakePage() {
   const minutes = timeLeft !== null ? Math.floor(timeLeft / 60) : null
   const seconds = timeLeft !== null ? timeLeft % 60 : null
 
+  const isListening = q?.category === 'listening'
+  const isSpeaking = q?.category === 'speaking'
+
   return (
     <div className="min-h-screen bg-slate-50 p-3 md:p-5 pt-16 md:pt-5">
       {/* 상단 헤더 */}
@@ -190,7 +206,8 @@ export default function ExamTakePage() {
             <p className="text-xs text-gray-400">{answeredCount}/{questions.length}문제 답변 완료</p>
           </div>
           {timeLeft !== null && (
-            <div className={`text-2xl font-black tabular-nums ${timeLeft < 300 ? 'text-red-500' : 'text-gray-900'}`}>
+            <div className={`flex items-center gap-1.5 text-2xl font-black tabular-nums ${timeLeft < 300 ? 'text-red-500' : 'text-gray-900'}`}>
+              <Clock size={18} className={timeLeft < 300 ? 'text-red-400' : 'text-gray-400'} />
               {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
             </div>
           )}
@@ -201,19 +218,54 @@ export default function ExamTakePage() {
           <div className="flex-1">
             {q && (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <div className="text-xs font-bold text-purple-600 uppercase tracking-widest mb-4">
-                  문제 {q.order_num} / {questions.length} · {q.points}점
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-xs font-bold text-purple-600 uppercase tracking-widest">
+                    문제 {q.order_num} / {questions.length} · {q.points}점
+                  </span>
+                  {isListening && (
+                    <span className="text-xs font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">🎧 리스닝</span>
+                  )}
+                  {isSpeaking && (
+                    <span className="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">🎤 스피킹</span>
+                  )}
                 </div>
 
+                {/* 리스닝: 오디오 플레이어 */}
+                {isListening && q.audio_url && (
+                  <div className="mb-5">
+                    <AudioPlayer
+                      audioUrl={q.audio_url}
+                      playLimit={q.audio_play_limit ?? 3}
+                      onPlayed={(count) => setPlayedCounts(prev => ({ ...prev, [q.id]: count }))}
+                    />
+                  </div>
+                )}
+
+                {/* 지문 */}
                 {q.passage && (
                   <div className="bg-blue-50 border-l-4 border-blue-400 rounded-r-xl p-4 text-sm text-gray-700 leading-7 mb-5">
                     {renderWithUnderlines(q.passage)}
                   </div>
                 )}
 
-                <p className="text-base font-semibold text-gray-900 leading-7 mb-5">{renderWithUnderlines(q.content)}</p>
+                {/* 문제 본문 */}
+                <p className="text-base font-semibold text-gray-900 leading-7 mb-5">
+                  {renderWithUnderlines(q.content)}
+                </p>
 
-                {q.type === 'multiple_choice' && q.options ? (
+                {/* 스피킹: 녹음 컴포넌트 */}
+                {isSpeaking ? (
+                  <SpeakingRecorder
+                    prompt={q.speaking_prompt ?? q.content}
+                    questionId={q.id}
+                    onRecorded={(url, evalResult) => {
+                      // 평가 결과를 JSON으로 student_answer에 저장
+                      const resultStr = JSON.stringify({ audioUrl: url, score: evalResult.totalScore, feedback: evalResult.feedback })
+                      saveAnswer(q.id, resultStr)
+                    }}
+                  />
+                ) : q.type === 'multiple_choice' && q.options ? (
+                  /* 객관식 보기 */
                   <div className="space-y-2.5">
                     {q.options.map(opt => (
                       <button
@@ -233,6 +285,7 @@ export default function ExamTakePage() {
                     ))}
                   </div>
                 ) : (
+                  /* 서술형/단답형 */
                   <textarea
                     value={answers[q.id] ?? ''}
                     onChange={e => saveAnswer(q.id, e.target.value)}

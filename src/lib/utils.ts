@@ -21,6 +21,8 @@ export const CATEGORY_LABELS: Record<string, string> = {
   writing: '쓰기',
   cloze: '빈칸',
   ordering: '순서/삽입',
+  listening: '리스닝',
+  speaking: '스피킹',
 }
 
 // 난이도 별 표시
