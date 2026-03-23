@@ -102,6 +102,16 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
       }).eq('id', sub?.id ?? '')
     }
 
+    // 학생 speaking 영역 실력 통계 업데이트
+    const studentId = sub?.student_id
+    if (studentId) {
+      fetch('/api/stats/update-speaking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId, isCorrect: numScore > 0 }),
+      }).catch(() => {})
+    }
+
     router.refresh()
     setSaving(false)
   }
