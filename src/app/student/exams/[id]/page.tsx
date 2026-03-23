@@ -180,7 +180,7 @@ export default function ExamTakePage() {
   const seconds = timeLeft !== null ? timeLeft % 60 : null
 
   return (
-    <div className="min-h-screen bg-slate-50 p-5">
+    <div className="min-h-screen bg-slate-50 p-3 md:p-5 pt-16 md:pt-5">
       {/* 상단 헤더 */}
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center justify-between mb-5">
@@ -195,7 +195,7 @@ export default function ExamTakePage() {
           )}
         </div>
 
-        <div className="flex gap-5">
+        <div className="flex flex-col md:flex-row gap-5">
           {/* 문제 영역 */}
           <div className="flex-1">
             {q && (
@@ -264,7 +264,7 @@ export default function ExamTakePage() {
           </div>
 
           {/* 문제 번호 그리드 */}
-          <div className="w-44 flex-shrink-0">
+          <div className="w-full md:w-44 flex-shrink-0">
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
               <p className="text-xs font-bold text-gray-400 mb-3">문제 현황</p>
               <div className="grid grid-cols-5 gap-1.5">

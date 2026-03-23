@@ -80,9 +80,9 @@ export default async function StudentDashboard() {
   const weakCategory = skillStats?.find(s => s.accuracy < 70)
 
   return (
-    <div className="p-7">
-      <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-gray-900">안녕하세요, {profile?.name ?? '학생'}! 👋</h1>
+    <div className="p-4 md:p-7">
+      <div className="mb-6 pt-2 md:pt-0">
+        <h1 className="text-xl md:text-2xl font-extrabold text-gray-900">안녕하세요, {profile?.name ?? '학생'}! 👋</h1>
         <p className="text-gray-500 text-sm mt-1">오늘도 열심히 공부해봐요!</p>
       </div>
 
@@ -115,40 +115,40 @@ export default async function StudentDashboard() {
       </div>
 
       {/* 액션 카드 3개 */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-3 gap-3 mb-6">
         <Link href="/student/exams"
-          className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl p-5 flex items-start gap-3 transition group">
+          className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl p-4 flex flex-col items-center gap-2 text-center transition">
           <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
             <FileText size={20} />
           </div>
           <div>
-            <p className="font-bold">시험 보기</p>
+            <p className="font-bold text-sm">시험 보기</p>
             <p className="text-blue-200 text-xs mt-0.5">{(pendingExams ?? []).length}개 대기 중</p>
           </div>
         </Link>
         <Link href="/student/review"
-          className="bg-purple-600 hover:bg-purple-700 text-white rounded-2xl p-5 flex items-start gap-3 transition">
+          className="bg-purple-600 hover:bg-purple-700 text-white rounded-2xl p-4 flex flex-col items-center gap-2 text-center transition">
           <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
             <RefreshCw size={20} />
           </div>
           <div>
-            <p className="font-bold">오답 복습</p>
+            <p className="font-bold text-sm">오답 복습</p>
             <p className="text-purple-200 text-xs mt-0.5">{reviewCount ?? 0}개 복습 필요</p>
           </div>
         </Link>
         <Link href="/student/learn"
-          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl p-5 flex items-start gap-3 transition">
+          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl p-4 flex flex-col items-center gap-2 text-center transition">
           <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
             <BookOpen size={20} />
           </div>
           <div>
-            <p className="font-bold">학습 자료</p>
-            <p className="text-emerald-200 text-xs mt-0.5">선생님 자료 보기</p>
+            <p className="font-bold text-sm">학습 자료</p>
+            <p className="text-emerald-200 text-xs mt-0.5">자료 보기</p>
           </div>
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* 영역별 실력 */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
           <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
