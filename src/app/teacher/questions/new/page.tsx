@@ -43,22 +43,39 @@ export default function NewQuestionPage() {
       setError('먼저 스크립트를 입력하세요.')
       return
     }
+    // 재생 중이면 중지
+    window.speechSynthesis.cancel()
     if (previewing) {
-      window.speechSynthesis.cancel()
       setPreviewing(false)
       return
     }
     setError('')
+
     const utterance = new SpeechSynthesisUtterance(audioScript)
     utterance.lang = 'en-US'
-    utterance.rate = 0.9
-    const voices = window.speechSynthesis.getVoices()
-    const engVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural')))
-      ?? voices.find(v => v.lang.startsWith('en'))
-    if (engVoice) utterance.voice = engVoice
-    utterance.onstart = () => setPreviewing(true)
+    utterance.rate = 0.85
     utterance.onend = () => setPreviewing(false)
-    window.speechSynthesis.speak(utterance)
+    utterance.onerror = () => setPreviewing(false)
+
+    // 목소리 비동기 로딩 대응
+    const speak = () => {
+      const voices = window.speechSynthesis.getVoices()
+      const engVoice = voices.find(v => v.lang === 'en-US')
+        ?? voices.find(v => v.lang.startsWith('en'))
+      if (engVoice) utterance.voice = engVoice
+      setPreviewing(true)
+      window.speechSynthesis.speak(utterance)
+    }
+
+    if (window.speechSynthesis.getVoices().length > 0) {
+      speak()
+    } else {
+      window.speechSynthesis.addEventListener('voiceschanged', speak, { once: true })
+      // 500ms 후에도 voices 안 오면 그냥 재생
+      setTimeout(() => {
+        if (!window.speechSynthesis.speaking) speak()
+      }, 500)
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {

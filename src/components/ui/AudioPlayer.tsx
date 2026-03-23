@@ -45,27 +45,13 @@ export default function AudioPlayer({ audioUrl, script, playLimit = 3, onPlayed 
   function playScript() {
     if (!script || !window.speechSynthesis) return
 
-    // 이미 재생 중이면 중지
-    if (playing) {
-      window.speechSynthesis.cancel()
-      setPlaying(false)
-      return
-    }
+    window.speechSynthesis.cancel()
 
     const utterance = new SpeechSynthesisUtterance(script)
     utterance.lang = 'en-US'
-    utterance.rate = 0.9   // 약간 천천히 (리스닝 연습)
-    utterance.pitch = 1.0
-
-    // 영어 목소리 선택 (있으면)
-    const voices = window.speechSynthesis.getVoices()
-    const englishVoice = voices.find(v =>
-      v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Premium'))
-    ) ?? voices.find(v => v.lang.startsWith('en'))
-    if (englishVoice) utterance.voice = englishVoice
-
-    utterance.onstart = () => setPlaying(true)
+    utterance.rate = 0.85
     utterance.onend = () => { setPlaying(false); setProgress(0) }
+    utterance.onerror = () => { setPlaying(false); setProgress(0) }
     utterance.onboundary = (e) => {
       if (utterance.text.length > 0) {
         setProgress(Math.round((e.charIndex / utterance.text.length) * 100))
@@ -73,7 +59,24 @@ export default function AudioPlayer({ audioUrl, script, playLimit = 3, onPlayed 
     }
 
     utteranceRef.current = utterance
-    window.speechSynthesis.speak(utterance)
+
+    const speak = () => {
+      const voices = window.speechSynthesis.getVoices()
+      const englishVoice = voices.find(v => v.lang === 'en-US')
+        ?? voices.find(v => v.lang.startsWith('en'))
+      if (englishVoice) utterance.voice = englishVoice
+      setPlaying(true)
+      window.speechSynthesis.speak(utterance)
+    }
+
+    if (window.speechSynthesis.getVoices().length > 0) {
+      speak()
+    } else {
+      window.speechSynthesis.addEventListener('voiceschanged', speak, { once: true })
+      setTimeout(() => {
+        if (!window.speechSynthesis.speaking) speak()
+      }, 500)
+    }
   }
 
   function playAudioFile() {
@@ -93,9 +96,8 @@ export default function AudioPlayer({ audioUrl, script, playLimit = 3, onPlayed 
 
   function handlePlay() {
     if (playing) {
-      // 중지
       if (audioUrl) playAudioFile()
-      else { window.speechSynthesis.cancel(); setPlaying(false) }
+      else { window.speechSynthesis.cancel(); setPlaying(false); setProgress(0) }
       return
     }
 
