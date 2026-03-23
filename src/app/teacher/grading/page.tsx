@@ -14,7 +14,7 @@ export default async function GradingPage() {
     .select(`
       id, student_answer, score, is_correct,
       questions!inner(content, answer, explanation, type, category),
-      submissions!inner(exam_id, student_id, profiles:student_id(name), exams(title, teacher_id))
+      submissions!inner(id, exam_id, student_id, profiles:student_id(name), exams(title, teacher_id))
     `)
     .in('questions.type', ['essay', 'short_answer'])
     .neq('questions.category', 'speaking')
@@ -49,7 +49,7 @@ export default async function GradingPage() {
     .select(`
       id, student_answer, score, is_correct,
       questions!inner(content, answer, type),
-      submissions!inner(student_id, profiles:student_id(name), exams(title, teacher_id))
+      submissions!inner(id, student_id, profiles:student_id(name), exams(title, teacher_id))
     `)
     .in('questions.type', ['essay', 'short_answer'])
     .neq('questions.category', 'speaking')
