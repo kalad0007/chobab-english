@@ -38,7 +38,7 @@ Reply in JSON only (no markdown):
 
   // 3단계: Gemini API 호출 (인라인 base64, Files API 불필요)
   const evalRes = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
