@@ -61,7 +61,15 @@ Reply in JSON only (no markdown):
   if (!evalRes.ok) {
     const errText = await evalRes.text()
     console.error('Gemini eval error:', errText)
-    return NextResponse.json({ error: 'Evaluation failed', detail: errText }, { status: 500 })
+    return NextResponse.json({
+      error: 'Evaluation failed',
+      detail: errText,
+      debug: {
+        keyPrefix: apiKey.slice(0, 10) + '...',
+        usingGeminiKey: !!process.env.GEMINI_API_KEY,
+        usingTtsKey: !!process.env.GOOGLE_TTS_API_KEY,
+      }
+    }, { status: 500 })
   }
 
   const evalData = await evalRes.json()
