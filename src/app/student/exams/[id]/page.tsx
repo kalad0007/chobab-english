@@ -231,10 +231,11 @@ export default function ExamTakePage() {
                 </div>
 
                 {/* 리스닝: 오디오 플레이어 */}
-                {isListening && q.audio_url && (
+                {isListening && (q.audio_url || q.audio_script) && (
                   <div className="mb-5">
                     <AudioPlayer
                       audioUrl={q.audio_url}
+                      script={q.audio_script}
                       playLimit={q.audio_play_limit ?? 3}
                       onPlayed={(count) => setPlayedCounts(prev => ({ ...prev, [q.id]: count }))}
                     />

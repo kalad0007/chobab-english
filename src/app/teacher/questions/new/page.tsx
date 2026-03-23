@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORY_LABELS } from '@/lib/utils'
-import { Loader2, Volume2, Mic } from 'lucide-react'
+import { Volume2, Mic } from 'lucide-react'
 import UnderlineTextarea from '@/components/ui/UnderlineTextarea'
 
 export default function NewQuestionPage() {
@@ -26,9 +26,8 @@ export default function NewQuestionPage() {
 
   // 리스닝 필드
   const [audioScript, setAudioScript] = useState('')
-  const [audioUrl, setAudioUrl] = useState('')
   const [audioPlayLimit, setAudioPlayLimit] = useState(3)
-  const [generatingAudio, setGeneratingAudio] = useState(false)
+  const [previewing, setPreviewing] = useState(false)
 
   // 스피킹 필드
   const [speakingPrompt, setSpeakingPrompt] = useState('')
@@ -39,28 +38,27 @@ export default function NewQuestionPage() {
   const isListening = category === 'listening'
   const isSpeaking = category === 'speaking'
 
-  async function generateAudio() {
+  function previewAudio() {
     if (!audioScript.trim()) {
-      setError('음성으로 변환할 스크립트를 먼저 입력하세요.')
+      setError('먼저 스크립트를 입력하세요.')
       return
     }
-    setGeneratingAudio(true)
-    setError('')
-
-    const res = await fetch('/api/ai/tts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ script: audioScript, questionId: `temp_${Date.now()}` }),
-    })
-
-    if (res.ok) {
-      const data = await res.json()
-      setAudioUrl(data.audioUrl)
-    } else {
-      const err = await res.json()
-      setError(`음성 생성 실패: ${err.detail ?? err.error ?? '알 수 없는 오류'}`)
+    if (previewing) {
+      window.speechSynthesis.cancel()
+      setPreviewing(false)
+      return
     }
-    setGeneratingAudio(false)
+    setError('')
+    const utterance = new SpeechSynthesisUtterance(audioScript)
+    utterance.lang = 'en-US'
+    utterance.rate = 0.9
+    const voices = window.speechSynthesis.getVoices()
+    const engVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural')))
+      ?? voices.find(v => v.lang.startsWith('en'))
+    if (engVoice) utterance.voice = engVoice
+    utterance.onstart = () => setPreviewing(true)
+    utterance.onend = () => setPreviewing(false)
+    window.speechSynthesis.speak(utterance)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -84,7 +82,7 @@ export default function NewQuestionPage() {
       explanation: explanation || null,
       source: 'teacher',
       // 리스닝/스피킹 필드
-      audio_url: audioUrl || null,
+      audio_url: null,
       audio_script: audioScript || null,
       audio_play_limit: isListening ? audioPlayLimit : null,
       speaking_prompt: speakingPrompt || null,
@@ -174,22 +172,18 @@ export default function NewQuestionPage() {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={generateAudio}
-                disabled={generatingAudio || !audioScript.trim()}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-xl text-sm font-bold transition"
+                onClick={previewAudio}
+                disabled={!audioScript.trim()}
+                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50 ${
+                  previewing
+                    ? 'bg-red-500 hover:bg-red-600 text-white'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
               >
-                {generatingAudio ? (
-                  <><Loader2 size={15} className="animate-spin" /> 음성 생성 중...</>
-                ) : (
-                  <><Volume2 size={15} /> AI 음성 생성</>
-                )}
+                <Volume2 size={15} />
+                {previewing ? '■ 중지' : '🔊 미리 듣기'}
               </button>
-              {audioUrl && (
-                <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
-                  <span className="text-sm font-semibold">✓ 음성 생성 완료</span>
-                  <audio controls src={audioUrl} className="h-8" />
-                </div>
-              )}
+              <p className="text-xs text-gray-500">브라우저 음성으로 미리 확인할 수 있어요.<br />학생 시험에서도 동일하게 재생됩니다.</p>
             </div>
 
             <div>
