@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import React from 'react'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -38,6 +39,17 @@ export function accuracyColor(accuracy: number) {
 // XP → 레벨 계산
 export function xpToLevel(xp: number) {
   return Math.floor(Math.sqrt(xp / 100)) + 1
+}
+
+// <u>텍스트</u> 를 실제 밑줄로 렌더링
+export function renderWithUnderlines(text: string): React.ReactNode {
+  const parts = text.split(/(<u>[\s\S]*?<\/u>)/g)
+  return parts.map((part, i) => {
+    if (part.startsWith('<u>') && part.endsWith('</u>')) {
+      return React.createElement('u', { key: i, className: 'underline decoration-2' }, part.slice(3, -4))
+    }
+    return part
+  })
 }
 
 // 레벨 타이틀

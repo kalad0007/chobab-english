@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORY_LABELS } from '@/lib/utils'
+import UnderlineTextarea from '@/components/ui/UnderlineTextarea'
 
 export default function EditQuestionPage() {
   const router = useRouter()
@@ -156,10 +157,12 @@ export default function EditQuestionPage() {
         {/* 지문 */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
           <h2 className="font-bold text-gray-900">지문 (선택)</h2>
-          <textarea value={passage} onChange={e => setPassage(e.target.value)}
+          <UnderlineTextarea
+            value={passage}
+            onChange={setPassage}
             placeholder="독해 지문이 있으면 여기에 입력하세요..."
             rows={5}
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+          />
         </div>
 
         {/* 문제 본문 */}

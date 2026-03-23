@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { CATEGORY_LABELS } from '@/lib/utils'
+import { CATEGORY_LABELS, renderWithUnderlines } from '@/lib/utils'
 import { RefreshCw, CheckCircle, XCircle, Sparkles, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -181,11 +181,11 @@ export default function ReviewPage() {
 
         {q.passage && (
           <div className="bg-blue-50 border-l-4 border-blue-400 rounded-r-xl p-4 text-sm text-gray-700 leading-7 mb-5">
-            {q.passage}
+            {renderWithUnderlines(q.passage)}
           </div>
         )}
 
-        <p className="text-base font-semibold text-gray-900 leading-7 mb-5">{q.content}</p>
+        <p className="text-base font-semibold text-gray-900 leading-7 mb-5">{renderWithUnderlines(q.content)}</p>
 
         {q.options && (
           <div className="space-y-2.5">

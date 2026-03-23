@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ChevronLeft, ChevronRight, CheckSquare, Clock } from 'lucide-react'
+import { renderWithUnderlines } from '@/lib/utils'
 
 interface Question {
   id: string
@@ -206,11 +207,11 @@ export default function ExamTakePage() {
 
                 {q.passage && (
                   <div className="bg-blue-50 border-l-4 border-blue-400 rounded-r-xl p-4 text-sm text-gray-700 leading-7 mb-5">
-                    {q.passage}
+                    {renderWithUnderlines(q.passage)}
                   </div>
                 )}
 
-                <p className="text-base font-semibold text-gray-900 leading-7 mb-5">{q.content}</p>
+                <p className="text-base font-semibold text-gray-900 leading-7 mb-5">{renderWithUnderlines(q.content)}</p>
 
                 {q.type === 'multiple_choice' && q.options ? (
                   <div className="space-y-2.5">
