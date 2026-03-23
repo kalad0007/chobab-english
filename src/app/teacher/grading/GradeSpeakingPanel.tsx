@@ -24,6 +24,7 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
   const [saving, setSaving] = useState(false)
   const [evaluating, setEvaluating] = useState(false)
   const [evalResult, setEvalResult] = useState<EvalResult | null>(null)
+  const [evalError, setEvalError] = useState<string | null>(null)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const q = answer.questions as any
@@ -37,25 +38,26 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
   async function aiEvaluate() {
     if (!audioUrl?.startsWith('http')) return
     setEvaluating(true)
+    setEvalError(null)
 
     try {
-      // 서버에서 오디오 fetch + 평가 (URL만 전송)
       const res = await fetch('/api/ai/speaking-eval', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          audioUrl,
-          prompt: q?.content ?? '',
-        }),
+        body: JSON.stringify({ audioUrl, prompt: q?.content ?? '' }),
       })
 
-      if (!res.ok) throw new Error('평가 실패')
-      const result: EvalResult = await res.json()
-      setEvalResult(result)
-      setScore(String(result.totalScore))
+      const data = await res.json()
+
+      if (!res.ok) {
+        const msg = data?.detail ?? data?.error ?? `HTTP ${res.status}`
+        setEvalError(msg)
+        return
+      }
+      setEvalResult(data)
+      setScore(String(data.totalScore))
     } catch (e) {
-      console.error(e)
-      alert('AI 평가 중 오류가 발생했습니다.')
+      setEvalError(String(e))
     } finally {
       setEvaluating(false)
     }
@@ -151,6 +153,14 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
             ))}
           </div>
           <p className="text-xs text-gray-600 bg-white rounded-lg px-3 py-2">{evalResult.feedback}</p>
+        </div>
+      )}
+
+      {/* 에러 메시지 */}
+      {evalError && (
+        <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700 break-all">
+          <p className="font-bold mb-1">⚠️ AI 평가 오류</p>
+          <p>{evalError}</p>
         </div>
       )}
 

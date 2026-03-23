@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromCookie } from '@/lib/supabase/server'
 
+export const maxDuration = 60 // Vercel Pro: 60초 타임아웃
+
 export async function POST(req: NextRequest) {
   const user = await getUserFromCookie()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
