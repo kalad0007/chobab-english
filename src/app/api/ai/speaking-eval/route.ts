@@ -10,8 +10,9 @@ export async function POST(req: NextRequest) {
   const { audioUrl, prompt } = await req.json()
   if (!audioUrl) return NextResponse.json({ error: 'audioUrl required' }, { status: 400 })
 
-  const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) return NextResponse.json({ error: 'Gemini API key not configured' }, { status: 500 })
+  // Google Cloud 키 우선 사용 (할당량 제한 없음), 없으면 Gemini AI Studio 키
+  const apiKey = process.env.GOOGLE_TTS_API_KEY ?? process.env.GEMINI_API_KEY
+  if (!apiKey) return NextResponse.json({ error: 'API key not configured' }, { status: 500 })
 
   // 1단계: 오디오 파일 fetch
   const audioRes = await fetch(audioUrl)
