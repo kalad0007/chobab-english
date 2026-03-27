@@ -417,6 +417,7 @@ export default function NewQuestionPage() {
   const [audioScript, setAudioScript] = useState('')
   const [audioUrl, setAudioUrl] = useState('')
   const [generatingAudio, setGeneratingAudio] = useState(false)
+  const [voiceGender, setVoiceGender] = useState<'female' | 'male'>('female')
 
   // Speaking/Writing 필드
   const [speakingPrompt, setSpeakingPrompt] = useState('')
@@ -439,6 +440,8 @@ export default function NewQuestionPage() {
   const isSpeaking = category === 'speaking'
   const isWriting = category === 'writing'
   const isMC = isReading || isListening
+  const isConversation = questionSubtype === 'conversation'
+  const isSingleSpeaker = ['choose_response', 'academic_talk', 'listen_and_repeat', 'take_an_interview'].includes(questionSubtype)
 
   const speakingTimes = isSpeaking && questionSubtype ? SPEAKING_TASK_TIMES[questionSubtype] : null
 
@@ -535,7 +538,12 @@ export default function NewQuestionPage() {
     const res = await fetch('/api/ai/tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ script: audioScript, questionId: `temp_${Date.now()}` }),
+      body: JSON.stringify({
+        script: audioScript,
+        questionId: `temp_${Date.now()}`,
+        gender: voiceGender,
+        subtype: questionSubtype,
+      }),
     })
     if (res.ok) {
       const data = await res.json()
@@ -996,6 +1004,36 @@ export default function NewQuestionPage() {
                   rows={8}
                   className="w-full px-3 py-2.5 border border-emerald-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none bg-white" />
               </div>
+              {/* 목소리 선택 */}
+              {isSingleSpeaker && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">목소리</label>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setVoiceGender('female')}
+                      className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold border transition ${
+                        voiceGender === 'female'
+                          ? 'bg-pink-100 text-pink-700 border-pink-300'
+                          : 'bg-white text-gray-500 border-gray-200 hover:border-pink-200'
+                      }`}>
+                      👩 여성
+                    </button>
+                    <button type="button" onClick={() => setVoiceGender('male')}
+                      className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold border transition ${
+                        voiceGender === 'male'
+                          ? 'bg-blue-100 text-blue-700 border-blue-300'
+                          : 'bg-white text-gray-500 border-gray-200 hover:border-blue-200'
+                      }`}>
+                      👨 남성
+                    </button>
+                  </div>
+                </div>
+              )}
+              {isConversation && (
+                <p className="text-xs text-emerald-700 bg-white border border-emerald-200 px-3 py-2 rounded-lg">
+                  💬 대화형: <strong>A:</strong> 여성 · <strong>B:</strong> 남성 목소리로 자동 생성됩니다.<br/>
+                  스크립트를 <code className="bg-emerald-50 px-1 rounded">A: 문장</code> / <code className="bg-emerald-50 px-1 rounded">B: 문장</code> 형식으로 입력하세요.
+                </p>
+              )}
               <div className="flex items-center gap-3 flex-wrap">
                 <button type="button" onClick={generateAudio}
                   disabled={generatingAudio || !audioScript.trim()}
@@ -1118,6 +1156,25 @@ export default function NewQuestionPage() {
                   placeholder={questionSubtype === 'listen_and_repeat' ? '학생이 반복할 문장을 입력하세요' : taskNumber === 2 ? '학생 대화 스크립트' : '교수 강의 스크립트'}
                   rows={6}
                   className="w-full px-3 py-2.5 border border-orange-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none bg-white" />
+                {isSingleSpeaker && (
+                  <div className="mt-2">
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">목소리</label>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setVoiceGender('female')}
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold border transition ${
+                          voiceGender === 'female'
+                            ? 'bg-pink-100 text-pink-700 border-pink-300'
+                            : 'bg-white text-gray-500 border-gray-200 hover:border-pink-200'
+                        }`}>👩 여성</button>
+                      <button type="button" onClick={() => setVoiceGender('male')}
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold border transition ${
+                          voiceGender === 'male'
+                            ? 'bg-blue-100 text-blue-700 border-blue-300'
+                            : 'bg-white text-gray-500 border-gray-200 hover:border-blue-200'
+                        }`}>👨 남성</button>
+                    </div>
+                  </div>
+                )}
                 <div className="mt-2 flex items-center gap-3">
                   <button type="button" onClick={generateAudio} disabled={generatingAudio || !audioScript.trim()}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-300 text-white rounded-xl text-sm font-bold transition">

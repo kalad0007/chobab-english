@@ -113,6 +113,8 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
 - 같은 대화에 속한 ${qpp}개 문제는 동일한 audio_script를 공유하세요
 - 각 대화 스크립트는 200-300단어 (두 사람의 캠퍼스 일상 대화)
 - audio_script 필드에 전체 대화 스크립트를 넣으세요
+- 대화 스크립트는 반드시 "A:" 와 "B:" 레이블로 시작하는 형식을 사용하세요 (A: 는 여성, B: 는 남성 목소리로 TTS 생성됩니다)
+- 예시 형식: "A: Excuse me, do you have a moment?\\nB: Sure, what's up?\\nA: I wanted to ask about..."
 - options는 반드시 4개를 포함해야 합니다
 - answer는 정답 번호를 문자열로 (예: "1")
 - 난이도: ${diffDesc} ${topicNote}
@@ -121,7 +123,7 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
 - 모든 항목의 category는 반드시 "listening"으로 설정하세요
 
 반드시 다음 JSON 형식으로만 응답 (마크다운 코드블록 없이 순수 JSON):
-{"questions":[{"content":"What is the conversation mainly about?","passage":null,"options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"1","explanation":"해설...","category":"listening","difficulty":${difficulty},"question_subtype":"conversation","audio_script":"Student A: Excuse me, Professor Johnson. Do you have a moment? [full dialogue 200-300 words]","speaking_prompt":null},{"content":"두 번째 질문 (같은 대화)...","passage":null,"options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"2","explanation":"해설...","category":"listening","difficulty":${difficulty},"question_subtype":"conversation","audio_script":"Student A: Excuse me, Professor Johnson. Do you have a moment? [same full dialogue]","speaking_prompt":null}]}`,
+{"questions":[{"content":"What is the conversation mainly about?","passage":null,"options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"1","explanation":"해설...","category":"listening","difficulty":${difficulty},"question_subtype":"conversation","audio_script":"A: Excuse me, Professor Johnson. Do you have a moment?\\nB: Sure, come on in. What can I help you with?\\nA: [full dialogue continues in A:/B: format, 200-300 words total]","speaking_prompt":null},{"content":"두 번째 질문 (같은 대화)...","passage":null,"options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"2","explanation":"해설...","category":"listening","difficulty":${difficulty},"question_subtype":"conversation","audio_script":"A: Excuse me, Professor Johnson. Do you have a moment?\\nB: Sure, come on in. What can I help you with?\\nA: [same full dialogue in A:/B: format]","speaking_prompt":null}]}`,
 
     academic_talk: `TOEFL "Listen to an Academic Talk" 문제 세트 ${n}개를 생성하세요.
 - 강의 ${n}개 × 각 ${qpp}문제 = 반드시 정확히 ${n * qpp}개의 문제 객체를 questions 배열에 넣으세요

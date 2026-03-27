@@ -2,54 +2,98 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { getUserFromCookie } from '@/lib/supabase/server'
 
-// Google Cloud Text-to-Speech Neural2 → Supabase Storage
-export async function POST(req: NextRequest) {
-  const user = await getUserFromCookie()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+const VOICE_FEMALE = 'en-US-Neural2-F'
+const VOICE_MALE   = 'en-US-Neural2-D'
 
-  const { script, questionId } = await req.json()
-  if (!script) return NextResponse.json({ error: 'script required' }, { status: 400 })
-
-  const apiKey = process.env.GOOGLE_TTS_API_KEY
-  if (!apiKey) return NextResponse.json({ error: 'Google TTS API key not configured' }, { status: 500 })
-
-  // Google Cloud TTS Neural2 호출 (en-US-Neural2-F: 자연스러운 여성 영어 목소리)
-  const ttsRes = await fetch(
+async function synthesize(text: string, voiceName: string, apiKey: string): Promise<Buffer | null> {
+  const res = await fetch(
     `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        input: { text: script },
-        voice: {
-          languageCode: 'en-US',
-          name: 'en-US-Neural2-F',   // 자연스러운 여성 목소리
-        },
-        audioConfig: {
-          audioEncoding: 'MP3',
-          speakingRate: 0.9,         // 약간 천천히 (리스닝 연습)
-          pitch: 0,
-        },
+        input: { text },
+        voice: { languageCode: 'en-US', name: voiceName },
+        audioConfig: { audioEncoding: 'MP3', speakingRate: 0.9, pitch: 0 },
       }),
     }
   )
-
-  if (!ttsRes.ok) {
-    const errText = await ttsRes.text()
-    console.error('Google TTS error:', errText)
-    return NextResponse.json({ error: 'TTS generation failed', detail: errText }, { status: 500 })
+  if (!res.ok) {
+    console.error('Google TTS error:', await res.text())
+    return null
   }
+  const data = await res.json()
+  return data.audioContent ? Buffer.from(data.audioContent, 'base64') : null
+}
 
-  const ttsData = await ttsRes.json()
-  const audioBase64: string = ttsData.audioContent
+// Google Cloud Text-to-Speech Neural2 → Supabase Storage
+export async function POST(req: NextRequest) {
+  const user = await getUserFromCookie()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  if (!audioBase64) {
-    return NextResponse.json({ error: 'No audio content in response' }, { status: 500 })
+  const { script, questionId, gender = 'female', subtype } = await req.json()
+  if (!script) return NextResponse.json({ error: 'script required' }, { status: 400 })
+
+  const apiKey = process.env.GOOGLE_TTS_API_KEY
+  if (!apiKey) return NextResponse.json({ error: 'Google TTS API key not configured' }, { status: 500 })
+
+  let audioBuffer: Buffer
+
+  if (subtype === 'conversation') {
+    // 대화형: A: → 여성, B: → 남성으로 각 라인별 합성 후 연결
+    const lines = script.split('\n').filter((l: string) => l.trim())
+    const segments: { voice: string; text: string }[] = []
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (/^A:/i.test(trimmed)) {
+        segments.push({ voice: VOICE_FEMALE, text: trimmed.replace(/^A:\s*/i, '') })
+      } else if (/^B:/i.test(trimmed)) {
+        segments.push({ voice: VOICE_MALE, text: trimmed.replace(/^B:\s*/i, '') })
+      } else if (trimmed) {
+        // 라벨 없는 줄: 이전 화자와 반대 목소리 또는 여성으로 fallback
+        const last = segments[segments.length - 1]
+        const voice = last ? (last.voice === VOICE_FEMALE ? VOICE_MALE : VOICE_FEMALE) : VOICE_FEMALE
+        segments.push({ voice, text: trimmed })
+      }
+    }
+
+    // 연속된 같은 목소리 묶기 (API 호출 최소화)
+    const merged: { voice: string; text: string }[] = []
+    for (const seg of segments) {
+      if (merged.length > 0 && merged[merged.length - 1].voice === seg.voice) {
+        merged[merged.length - 1].text += ' ' + seg.text
+      } else {
+        merged.push({ ...seg })
+      }
+    }
+
+    if (merged.length === 0) {
+      return NextResponse.json({ error: '스크립트를 파싱할 수 없습니다. A:/B: 형식으로 작성하세요.' }, { status: 400 })
+    }
+
+    const buffers: Buffer[] = []
+    for (const seg of merged) {
+      const buf = await synthesize(seg.text, seg.voice, apiKey)
+      if (buf) buffers.push(buf)
+    }
+
+    if (buffers.length === 0) {
+      return NextResponse.json({ error: 'TTS 생성에 실패했습니다.' }, { status: 500 })
+    }
+    audioBuffer = Buffer.concat(buffers)
+
+  } else {
+    // 단일 화자: gender 파라미터로 목소리 선택
+    const voice = gender === 'male' ? VOICE_MALE : VOICE_FEMALE
+    const buf = await synthesize(script, voice, apiKey)
+    if (!buf) {
+      return NextResponse.json({ error: 'TTS 생성에 실패했습니다.' }, { status: 500 })
+    }
+    audioBuffer = buf
   }
 
   // base64 → Buffer → Supabase Storage 업로드
-  const audioBuffer = Buffer.from(audioBase64, 'base64')
-
   const supabase = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!

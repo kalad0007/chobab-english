@@ -179,7 +179,7 @@ export default function QuestionsClient({ listItems }: Props) {
                     <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-bold">
                       <Layers size={10} /> {setQs.length}문제 세트
                     </span>
-                    {rep.audio_url && <span className="text-xs px-2 py-0.5 rounded-full bg-sky-100 text-sky-700">🎧 음성있음</span>}
+                    {setQs.some(q => q.audio_url) && <span className="text-xs px-2 py-0.5 rounded-full bg-sky-100 text-sky-700">🎧 음성있음</span>}
                   </div>
                   {rep.summary ? (
                     <p className="text-sm text-gray-800 font-medium line-clamp-2">{rep.summary}</p>
