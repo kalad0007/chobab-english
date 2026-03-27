@@ -118,7 +118,12 @@ export default function EditQuestionPage() {
           setAnswer(rawAnswer)
         }
       } else {
-        setAnswer(data.answer ?? '')
+        let loadedAnswer = data.answer ?? ''
+        if (data.type === 'multiple_choice' && usesAlphaOptions(data.category, data.question_subtype)) {
+          const numToLetter: Record<string, string> = { '1': 'A', '2': 'B', '3': 'C', '4': 'D', '5': 'E' }
+          loadedAnswer = numToLetter[loadedAnswer] ?? loadedAnswer
+        }
+        setAnswer(loadedAnswer)
         setExplanation(data.explanation ?? '')
       }
 

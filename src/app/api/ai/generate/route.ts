@@ -108,9 +108,9 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
 {"questions":[{"content":"What is the best response to the statement?","passage":null,"options":[{"num":1,"text":"That sounds terrible."},{"num":2,"text":"You should take a break."},{"num":3,"text":"I already finished mine."},{"num":4,"text":"The library is closed today."}],"answer":"2","explanation":"해설...","category":"listening","difficulty":${difficulty},"question_subtype":"choose_response","audio_script":"I can't believe how much homework we have tonight.","speaking_prompt":null}]}`,
 
     conversation: `TOEFL "Listen to a Conversation" 문제 세트 ${n}개를 생성하세요.
-- 두 사람의 캠퍼스 일상 대화 ${n}개를 생성하고, 각 대화마다 ${qpp}개의 MCQ 질문을 만드세요
-- 총 ${n * qpp}개의 문제 객체를 questions 배열에 포함하세요
-- 같은 대화에 대한 ${qpp}개 문제는 동일한 audio_script 값을 사용하세요
+- 대화 ${n}개 × 각 ${qpp}문제 = 반드시 정확히 ${n * qpp}개의 문제 객체를 questions 배열에 넣으세요
+- 대화 1개당 questions 배열에 정확히 ${qpp}개 문제가 있어야 합니다
+- 같은 대화에 속한 ${qpp}개 문제는 동일한 audio_script를 공유하세요
 - 각 대화 스크립트는 200-300단어 (두 사람의 캠퍼스 일상 대화)
 - audio_script 필드에 전체 대화 스크립트를 넣으세요
 - options는 반드시 4개를 포함해야 합니다
@@ -124,8 +124,8 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
 {"questions":[{"content":"What is the conversation mainly about?","passage":null,"options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"1","explanation":"해설...","category":"listening","difficulty":${difficulty},"question_subtype":"conversation","audio_script":"Student A: Excuse me, Professor Johnson. Do you have a moment? [full dialogue 200-300 words]","speaking_prompt":null},{"content":"두 번째 질문 (같은 대화)...","passage":null,"options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"2","explanation":"해설...","category":"listening","difficulty":${difficulty},"question_subtype":"conversation","audio_script":"Student A: Excuse me, Professor Johnson. Do you have a moment? [same full dialogue]","speaking_prompt":null}]}`,
 
     academic_talk: `TOEFL "Listen to an Academic Talk" 문제 세트 ${n}개를 생성하세요.
-- 교수/강연자의 학술 강의 ${n}개를 생성하고, 각 강의마다 ${qpp}개의 MCQ 질문을 만드세요
-- 총 ${n * qpp}개의 문제 객체를 questions 배열에 포함하세요
+- 강의 ${n}개 × 각 ${qpp}문제 = 반드시 정확히 ${n * qpp}개의 문제 객체를 questions 배열에 넣으세요
+- 강의 1개당 questions 배열에 정확히 ${qpp}개 문제가 있어야 합니다
 - 같은 강의에 대한 ${qpp}개 문제는 동일한 audio_script 값을 사용하세요
 - 각 강의 스크립트는 400-500단어 (교수/강연자 학술 강의)
 - audio_script 필드에 전체 강의 스크립트를 넣으세요

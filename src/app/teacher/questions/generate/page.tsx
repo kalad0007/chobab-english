@@ -327,7 +327,9 @@ export default function GenerateQuestionsPage() {
                         </p>
                       ))}
                       <div className="flex items-center gap-3 mt-2">
-                        <span className="text-xs text-green-700 font-semibold bg-green-50 px-2 py-0.5 rounded break-all line-clamp-2">정답: {q.answer}</span>
+                        <span className="text-xs text-green-700 font-semibold bg-green-50 px-2 py-0.5 rounded break-all line-clamp-2">
+                          정답: {usesAlphaOptions(q.category, q.question_subtype) && /^\d+$/.test(q.answer) ? optionLabel(Number(q.answer), true) : q.answer}
+                        </span>
                         {q.explanation && <span className="text-xs text-gray-400 line-clamp-2 break-words">{q.explanation}</span>}
                       </div>
                     </div>
