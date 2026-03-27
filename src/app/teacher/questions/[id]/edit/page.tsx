@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORY_LABELS, DIFFICULTY_LEVELS, QUESTION_SUBTYPE_LABELS, getDiffInfo } from '@/lib/utils'
+import { Loader2, Volume2 } from 'lucide-react'
 
 const CATEGORY_COLORS: Record<string, string> = {
   reading:   'bg-blue-100 text-blue-700',
@@ -40,11 +41,19 @@ export default function EditQuestionPage() {
   const [fbTitle, setFbTitle] = useState('')
   const [fbTimeLimit, setFbTimeLimit] = useState(10)
 
+  // listening / speaking audio fields
+  const [audioScript, setAudioScript] = useState('')
+  const [audioUrl, setAudioUrl] = useState('')
+  const [speakingPrompt, setSpeakingPrompt] = useState('')
+  const [generatingAudio, setGeneratingAudio] = useState(false)
+
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
   const [error, setError] = useState('')
 
   const isFillBlank = FILL_BLANK_SUBTYPES.includes(questionSubtype)
+  const isListening = category === 'listening'
+  const isSpeaking = category === 'speaking'
 
   useEffect(() => {
     async function fetchQuestion() {
@@ -68,6 +77,11 @@ export default function EditQuestionPage() {
       setDifficulty(data.difficulty)
       setContent(data.content)
       setPassage(data.passage ?? '')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const d = data as any
+      setAudioScript(d.audio_script ?? '')
+      setAudioUrl(d.audio_url ?? '')
+      setSpeakingPrompt(d.speaking_prompt ?? '')
 
       const subtype = data.question_subtype ?? ''
       if (FILL_BLANK_SUBTYPES.includes(subtype)) {
@@ -123,6 +137,24 @@ export default function EditQuestionPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
+  async function generateAudio() {
+    if (!audioScript.trim()) { setError('스크립트를 먼저 입력하세요.'); return }
+    setGeneratingAudio(true)
+    setError('')
+    try {
+      const res = await fetch('/api/ai/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ script: audioScript, questionId: id }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error ?? 'TTS 생성 실패'); return }
+      setAudioUrl(data.audioUrl)
+    } finally {
+      setGeneratingAudio(false)
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
@@ -154,6 +186,11 @@ export default function EditQuestionPage() {
         options: type === 'multiple_choice' ? options.filter(o => o.text.trim()) : null,
         answer,
         explanation: savedExplanation,
+        ...(isListening || isSpeaking ? {
+          audio_script: audioScript || null,
+          audio_url: audioUrl || null,
+        } : {}),
+        ...(isSpeaking ? { speaking_prompt: speakingPrompt || null } : {}),
       } as Record<string, unknown>)
       .eq('id', id)
 
@@ -330,6 +367,64 @@ export default function EditQuestionPage() {
             )}
           </div>
         </div>
+
+        {/* 리스닝 음성 스크립트 */}
+        {(isListening || isSpeaking) && (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <Volume2 size={16} className="text-emerald-600" />
+              <h2 className="font-bold text-gray-900">
+                {isListening ? '음성 스크립트' : '음성 스크립트 (선택)'}
+              </h2>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                {isListening ? '리스닝 스크립트 (영어)' : '음성 스크립트 (영어)'}
+              </label>
+              <textarea
+                value={audioScript}
+                onChange={e => setAudioScript(e.target.value)}
+                placeholder="학생이 들을 영어 스크립트를 입력하세요..."
+                rows={5}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              />
+            </div>
+
+            <div className="flex items-center gap-3 flex-wrap">
+              <button
+                type="button"
+                onClick={generateAudio}
+                disabled={generatingAudio || !audioScript.trim()}
+                className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition"
+              >
+                {generatingAudio
+                  ? <><Loader2 size={14} className="animate-spin" /> 생성 중...</>
+                  : <><Volume2 size={14} /> AI 음성 생성</>
+                }
+              </button>
+              {audioUrl && (
+                <div className="flex items-center gap-2">
+                  <audio controls src={audioUrl} className="h-9 max-w-xs rounded-lg" />
+                  <span className="text-xs text-emerald-700 font-bold">✓ 생성됨</span>
+                </div>
+              )}
+            </div>
+
+            {isSpeaking && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">스피킹 과제 (학생에게 보여줄 지시문)</label>
+                <textarea
+                  value={speakingPrompt}
+                  onChange={e => setSpeakingPrompt(e.target.value)}
+                  placeholder="예: Listen and summarize the main point of the conversation."
+                  rows={3}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 해설 */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
