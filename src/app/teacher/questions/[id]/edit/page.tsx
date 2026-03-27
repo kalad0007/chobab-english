@@ -288,87 +288,7 @@ export default function EditQuestionPage() {
           </div>
         </div>
 
-        {/* 지문 (fill-blank: 단락/문장 내용) */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-          <h2 className="font-bold text-gray-900">
-            {isFillBlank
-              ? questionSubtype === 'complete_the_words' ? '단락 (빈칸 포함)' : '문장 목록 (빈칸 포함)'
-              : '지문 (선택)'}
-          </h2>
-          {isFillBlank ? (
-            <textarea value={content} onChange={e => setContent(e.target.value)}
-              placeholder={questionSubtype === 'complete_the_words'
-                ? '빈칸이 포함된 학술 단락을 입력하세요. 예: te__, bel____'
-                : '빈칸이 있는 문장을 한 줄씩 입력하세요. 예: The scientist ___ to work late.'}
-              rows={8} required
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono" />
-          ) : (
-            <UnderlineTextarea
-              value={passage}
-              onChange={setPassage}
-              placeholder="독해 지문이 있으면 여기에 입력하세요..."
-              rows={5}
-            />
-          )}
-        </div>
-
-        {/* 문제 본문 (non-fill-blank only) / 정답 */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-          <h2 className="font-bold text-gray-900">
-            {isFillBlank ? '정답 목록' : '문제'}
-          </h2>
-
-          {!isFillBlank && (
-            <>
-              <textarea value={content} onChange={e => setContent(e.target.value)}
-                placeholder="문제를 입력하세요..."
-                rows={4} required
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
-
-              {type === 'multiple_choice' && (
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">보기</label>
-                  {options.map((opt, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <span className="w-6 h-6 flex items-center justify-center bg-gray-100 rounded-full text-xs font-bold text-gray-600 flex-shrink-0">
-                        {opt.num}
-                      </span>
-                      <input
-                        value={opt.text}
-                        onChange={e => {
-                          const next = [...options]
-                          next[i] = { ...next[i], text: e.target.value }
-                          setOptions(next)
-                        }}
-                        placeholder={`보기 ${opt.num}`}
-                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              {isFillBlank
-                ? '정답 (쉼표로 구분, 빈칸 순서대로)'
-                : type === 'multiple_choice' ? '정답 번호' : '정답'}
-            </label>
-            <input
-              value={answer} onChange={e => setAnswer(e.target.value)}
-              placeholder={isFillBlank ? '예: tend,believe,surface,recognize,...' : type === 'multiple_choice' ? '예: 2' : '정답을 입력하세요'}
-              required
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            {isFillBlank && (
-              <p className="text-xs text-gray-400 mt-1">빈칸에 들어갈 완성된 단어를 순서대로 쉼표로 구분하여 입력하세요</p>
-            )}
-          </div>
-        </div>
-
-        {/* 리스닝 음성 스크립트 */}
+        {/* 리스닝/스피킹 음성 스크립트 — 문제보다 위 */}
         {(isListening || isSpeaking) && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
             <div className="flex items-center gap-2">
@@ -425,6 +345,88 @@ export default function EditQuestionPage() {
             )}
           </div>
         )}
+
+        {/* 지문 — 리스닝은 스크립트가 있으므로 숨김, fill-blank는 별도 처리 */}
+        {!isListening && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+          <h2 className="font-bold text-gray-900">
+            {isFillBlank
+              ? questionSubtype === 'complete_the_words' ? '단락 (빈칸 포함)' : '문장 목록 (빈칸 포함)'
+              : '지문 (선택)'}
+          </h2>
+          {isFillBlank ? (
+            <textarea value={content} onChange={e => setContent(e.target.value)}
+              placeholder={questionSubtype === 'complete_the_words'
+                ? '빈칸이 포함된 학술 단락을 입력하세요. 예: te__, bel____'
+                : '빈칸이 있는 문장을 한 줄씩 입력하세요. 예: The scientist ___ to work late.'}
+              rows={8} required
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono" />
+          ) : (
+            <UnderlineTextarea
+              value={passage}
+              onChange={setPassage}
+              placeholder="독해 지문이 있으면 여기에 입력하세요..."
+              rows={5}
+            />
+          )}
+        </div>
+        )}
+
+        {/* 문제 본문 (non-fill-blank only) / 정답 */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+          <h2 className="font-bold text-gray-900">
+            {isFillBlank ? '정답 목록' : '문제'}
+          </h2>
+
+          {!isFillBlank && (
+            <>
+              <textarea value={content} onChange={e => setContent(e.target.value)}
+                placeholder="문제를 입력하세요..."
+                rows={4} required
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+
+              {type === 'multiple_choice' && (
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-gray-700">보기</label>
+                  {options.map((opt, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="w-6 h-6 flex items-center justify-center bg-gray-100 rounded-full text-xs font-bold text-gray-600 flex-shrink-0">
+                        {opt.num}
+                      </span>
+                      <input
+                        value={opt.text}
+                        onChange={e => {
+                          const next = [...options]
+                          next[i] = { ...next[i], text: e.target.value }
+                          setOptions(next)
+                        }}
+                        placeholder={`보기 ${opt.num}`}
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+              {isFillBlank
+                ? '정답 (쉼표로 구분, 빈칸 순서대로)'
+                : type === 'multiple_choice' ? '정답 번호' : '정답'}
+            </label>
+            <input
+              value={answer} onChange={e => setAnswer(e.target.value)}
+              placeholder={isFillBlank ? '예: tend,believe,surface,recognize,...' : type === 'multiple_choice' ? '예: 2' : '정답을 입력하세요'}
+              required
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {isFillBlank && (
+              <p className="text-xs text-gray-400 mt-1">빈칸에 들어갈 완성된 단어를 순서대로 쉼표로 구분하여 입력하세요</p>
+            )}
+          </div>
+        </div>
 
         {/* 해설 */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">

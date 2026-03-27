@@ -2,7 +2,7 @@ import { createClient, getUserFromCookie } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { CATEGORY_LABELS, QUESTION_SUBTYPE_LABELS, getDiffInfo } from '@/lib/utils'
-import { ArrowLeft, Pencil } from 'lucide-react'
+import { ArrowLeft, Pencil, Volume2 } from 'lucide-react'
 import type { Question } from '@/types/database'
 import BuildASentencePlayer from '@/components/ui/BuildASentencePlayer'
 
@@ -164,6 +164,22 @@ export default async function QuestionPreviewPage({
         )}
       </div>
 
+      {/* 리스닝 음성 스크립트 + 재생 — 문제보다 위 */}
+      {question.category === 'listening' && (question.audio_script || (question as Question & { audio_url?: string }).audio_url) && (
+        <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 mb-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Volume2 size={16} className="text-emerald-600" />
+            <p className="text-sm font-bold text-emerald-700">음성 스크립트</p>
+          </div>
+          {(question as Question & { audio_url?: string }).audio_url && (
+            <audio controls src={(question as Question & { audio_url?: string }).audio_url} className="w-full rounded-xl" />
+          )}
+          {question.audio_script && (
+            <p className="text-sm text-emerald-900 whitespace-pre-wrap leading-7">{question.audio_script}</p>
+          )}
+        </div>
+      )}
+
       {/* fill-blank 타이틀 */}
       {isFillBlank && fbMeta.title && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
@@ -243,14 +259,6 @@ export default async function QuestionPreviewPage({
                 <span className="text-sm text-gray-800">{opt.text}</span>
               </div>
             ))}
-          </div>
-        )}
-
-        {/* 음성 스크립트 */}
-        {question.audio_script && (
-          <div className="mt-4 p-4 bg-sky-50 rounded-xl border border-sky-100">
-            <p className="text-xs font-bold text-sky-700 mb-2">🎧 음성 스크립트</p>
-            <p className="text-sm text-sky-900 whitespace-pre-wrap">{question.audio_script}</p>
           </div>
         )}
 
