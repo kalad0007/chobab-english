@@ -171,7 +171,11 @@ export default async function SetPreviewPage({
               <div className="px-5 pb-4 space-y-2 pt-2">
                 <div>
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">정답</p>
-                  <p className="text-sm text-gray-900 font-mono bg-green-50 px-3 py-1.5 rounded-lg">{q.answer}</p>
+                  <p className="text-sm text-gray-900 font-mono bg-green-50 px-3 py-1.5 rounded-lg">
+                    {usesAlphaOptions(q.category, q.question_subtype) && /^\d+$/.test(q.answer ?? '')
+                      ? optionLabel(Number(q.answer), true)
+                      : q.answer}
+                  </p>
                 </div>
                 {q.explanation && (
                   <div>

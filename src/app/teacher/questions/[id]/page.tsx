@@ -288,7 +288,9 @@ export default async function QuestionPreviewPage({
                 ? (question.answer ?? '').split(',').map((a, i) => (
                     <span key={i} className="inline-block mr-2 mb-1 bg-green-100 text-green-800 px-2 py-0.5 rounded font-semibold text-xs">{i+1}. {a.trim()}</span>
                   ))
-                : question.answer}
+                : usesAlphaOptions(question.category, question.question_subtype) && /^\d+$/.test(question.answer ?? '')
+                  ? optionLabel(Number(question.answer), true)
+                  : question.answer}
             </p>
           </div>
           {explanationText && (
