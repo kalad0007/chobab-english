@@ -42,17 +42,24 @@ export async function POST(req: NextRequest) {
     summary: q.summary ?? null,
   }))
 
-  // Group questions sharing the same passage with a shared UUID
+  // Group questions sharing the same passage OR audio_script with a shared UUID
   const passageCounts = new Map<string, number>()
+  const audioCounts = new Map<string, number>()
   for (const row of rows) {
     if (row.passage) passageCounts.set(row.passage, (passageCounts.get(row.passage) ?? 0) + 1)
+    if (row.audio_script) audioCounts.set(row.audio_script, (audioCounts.get(row.audio_script) ?? 0) + 1)
   }
   type Row = (typeof rows)[number]
   const passageGroupMap = new Map<string, string>()
+  const audioGroupMap = new Map<string, string>()
   const rowsWithGroups = rows.map((row: Row) => {
     if (row.passage && (passageCounts.get(row.passage) ?? 0) > 1) {
       if (!passageGroupMap.has(row.passage)) passageGroupMap.set(row.passage, crypto.randomUUID())
       return { ...row, passage_group_id: passageGroupMap.get(row.passage) }
+    }
+    if (row.audio_script && (audioCounts.get(row.audio_script) ?? 0) > 1) {
+      if (!audioGroupMap.has(row.audio_script)) audioGroupMap.set(row.audio_script, crypto.randomUUID())
+      return { ...row, passage_group_id: audioGroupMap.get(row.audio_script) }
     }
     return { ...row, passage_group_id: null }
   })
