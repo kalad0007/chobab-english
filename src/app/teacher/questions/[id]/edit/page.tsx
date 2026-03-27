@@ -46,7 +46,7 @@ export default function EditQuestionPage() {
   const [audioUrl, setAudioUrl] = useState('')
   const [speakingPrompt, setSpeakingPrompt] = useState('')
   const [generatingAudio, setGeneratingAudio] = useState(false)
-  const [voiceGender, setVoiceGender] = useState<'female' | 'male'>('female')
+  const [voiceGender, setVoiceGender] = useState<'yw' | 'ym' | 'ow' | 'om'>('yw')
 
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
@@ -335,23 +335,23 @@ export default function EditQuestionPage() {
             {isSingleSpeaker && (
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">목소리</label>
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => setVoiceGender('female')}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold border transition ${
-                      voiceGender === 'female'
-                        ? 'bg-pink-100 text-pink-700 border-pink-300'
-                        : 'bg-white text-gray-500 border-gray-200 hover:border-pink-200'
-                    }`}>
-                    👩 여성
-                  </button>
-                  <button type="button" onClick={() => setVoiceGender('male')}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold border transition ${
-                      voiceGender === 'male'
-                        ? 'bg-blue-100 text-blue-700 border-blue-300'
-                        : 'bg-white text-gray-500 border-gray-200 hover:border-blue-200'
-                    }`}>
-                    👨 남성
-                  </button>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    { key: 'yw', label: 'Y W', desc: 'Neural2-F', color: 'pink' },
+                    { key: 'ym', label: 'Y M', desc: 'Neural2-D', color: 'blue' },
+                    { key: 'ow', label: 'O W', desc: 'Neural2-E', color: 'purple' },
+                    { key: 'om', label: 'O M', desc: 'Neural2-J', color: 'green' },
+                  ] as const).map(v => (
+                    <button key={v.key} type="button" onClick={() => setVoiceGender(v.key)}
+                      className={`flex flex-col items-center px-4 py-2 rounded-xl text-sm font-bold border transition ${
+                        voiceGender === v.key
+                          ? `bg-${v.color}-100 text-${v.color}-700 border-${v.color}-300`
+                          : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                      }`}>
+                      <span>{v.label}</span>
+                      <span className="text-[10px] font-normal opacity-60">{v.desc}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
             )}

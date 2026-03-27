@@ -2,8 +2,25 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { getUserFromCookie } from '@/lib/supabase/server'
 
-const VOICE_FEMALE = 'en-US-Neural2-F'
-const VOICE_MALE   = 'en-US-Neural2-D'
+// 단일화자 4가지 음성
+const VOICE_YW = 'en-US-Neural2-F'  // Young Woman  (밝고 젊은 여성)
+const VOICE_YM = 'en-US-Neural2-D'  // Young Man    (젊고 권위있는 남성)
+const VOICE_OW = 'en-US-Neural2-E'  // Older Woman  (안정적·중성적 여성)
+const VOICE_OM = 'en-US-Neural2-J'  // Older Man    (차분하고 깊은 남성)
+
+// 대화형 자동 배정: A: → 여성(YW), B: → 남성(YM)
+const VOICE_FEMALE = VOICE_YW
+const VOICE_MALE   = VOICE_YM
+
+const VOICE_MAP: Record<string, string> = {
+  yw: VOICE_YW,
+  ym: VOICE_YM,
+  ow: VOICE_OW,
+  om: VOICE_OM,
+  // 하위 호환
+  female: VOICE_YW,
+  male:   VOICE_YM,
+}
 
 async function synthesize(text: string, voiceName: string, apiKey: string): Promise<Buffer | null> {
   const res = await fetch(
@@ -84,8 +101,8 @@ export async function POST(req: NextRequest) {
     audioBuffer = Buffer.concat(buffers)
 
   } else {
-    // 단일 화자: gender 파라미터로 목소리 선택
-    const voice = gender === 'male' ? VOICE_MALE : VOICE_FEMALE
+    // 단일 화자: gender 파라미터로 목소리 선택 (yw/ym/ow/om 또는 female/male)
+    const voice = VOICE_MAP[gender?.toLowerCase?.()] ?? VOICE_YW
     const buf = await synthesize(script, voice, apiKey)
     if (!buf) {
       return NextResponse.json({ error: 'TTS 생성에 실패했습니다.' }, { status: 500 })
@@ -99,7 +116,8 @@ export async function POST(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  const fileName = `listening/${user.id}_${questionId ?? Date.now()}_${Date.now()}.mp3`
+  // questionId 기반 고정 파일명 → 재생성 시 기존 파일 자동 덮어쓰기 (upsert:true)
+  const fileName = `listening/${user.id}_${questionId ?? Date.now()}.mp3`
 
   const { error: uploadError } = await supabase.storage
     .from('question-audio')
