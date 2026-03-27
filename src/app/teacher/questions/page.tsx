@@ -1,10 +1,9 @@
 import { createClient, getUserFromCookie } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { CATEGORY_LABELS, QUESTION_SUBTYPE_LABELS, getDiffInfo } from '@/lib/utils'
-import { Sparkles, Plus, BookOpen, Eye, Layers } from 'lucide-react'
+import { CATEGORY_LABELS, QUESTION_SUBTYPE_LABELS } from '@/lib/utils'
+import { Sparkles, Plus, BookOpen } from 'lucide-react'
 import type { Question } from '@/types/database'
-import CopyButton from './CopyButton'
-import DeleteButton from './DeleteButton'
+import QuestionsClient from './QuestionsClient'
 
 const CATEGORY_COLORS: Record<string, string> = {
   reading:    'bg-blue-100 text-blue-700',
@@ -247,116 +246,15 @@ export default async function QuestionsPage({
           </div>
 
           {/* 문제 카드 목록 */}
-          <div className="space-y-2">
-            {questions.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
-                <BookOpen size={40} className="mx-auto text-gray-300 mb-3" />
-                <p className="text-gray-400 font-medium">문제가 없어요</p>
-                <p className="text-gray-300 text-sm mt-1">AI로 생성하거나 직접 출제해보세요</p>
-              </div>
-            ) : (
-              <>
-                {listItems.map(item => {
-                  if (item.kind === 'set') {
-                    const { groupId, questions: setQs } = item
-                    const rep = setQs[0]
-                    const diff = getDiffInfo(rep.difficulty)
-                    return (
-                      <div key={groupId} className="bg-white rounded-xl border border-indigo-100 shadow-sm p-4 flex items-start gap-4 hover:border-indigo-300 transition group">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0 ${CATEGORY_COLORS[rep.category] ?? 'bg-gray-100 text-gray-600'}`}>
-                          {CATEGORY_ICON[rep.category] ?? '📘'}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${CATEGORY_COLORS[rep.category] ?? 'bg-gray-100 text-gray-600'}`}>
-                              {CATEGORY_LABELS[rep.category] ?? rep.category}
-                            </span>
-                            {rep.subcategory && (
-                              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                                # {rep.subcategory}
-                              </span>
-                            )}
-                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${diff.color}`}>
-                              {diff.cefr} {diff.label}
-                            </span>
-                            <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-bold">
-                              <Layers size={10} /> {setQs.length}문제 세트
-                            </span>
-                            {rep.audio_url && (
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-sky-100 text-sky-700">🎧 음성있음</span>
-                            )}
-                          </div>
-                          {(rep as QuestionRow & { summary?: string | null }).summary ? (
-                            <p className="text-sm text-gray-800 font-medium line-clamp-2">{(rep as QuestionRow & { summary?: string | null }).summary}</p>
-                          ) : (
-                            <p className="text-sm text-gray-500 italic line-clamp-2">{(rep.passage ?? rep.content ?? '').replace(/\n/g, ' ').slice(0, 120)}…</p>
-                          )}
-                          <p className="text-xs text-gray-300 mt-1">{new Date(rep.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })} · {setQs.length}문제</p>
-                        </div>
-                        <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition flex-shrink-0">
-                          <Link href={`/teacher/questions/set/${groupId}`}
-                            className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition">
-                            <Eye size={12} /> 세트 보기
-                          </Link>
-                        </div>
-                      </div>
-                    )
-                  }
-                  const iq = item.question as QuestionRow & { summary?: string | null }
-                  const diff = getDiffInfo(iq.difficulty)
-                  return (
-                    <div key={iq.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-start gap-4 hover:border-blue-200 transition group">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0 ${CATEGORY_COLORS[iq.category] ?? 'bg-gray-100 text-gray-600'}`}>
-                        {CATEGORY_ICON[iq.category] ?? '📘'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${CATEGORY_COLORS[iq.category] ?? 'bg-gray-100 text-gray-600'}`}>
-                            {CATEGORY_LABELS[iq.category] ?? iq.category}
-                          </span>
-                          {iq.subcategory && (
-                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                              # {iq.subcategory}
-                            </span>
-                          )}
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${diff.color}`}>
-                            {diff.cefr} {diff.label}
-                          </span>
-                          {iq.audio_url && (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-sky-100 text-sky-700">🎧 음성있음</span>
-                          )}
-                          {iq.source === 'ai_generated' && (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">AI생성</span>
-                          )}
-                        </div>
-                        {iq.summary ? (
-                          <p className="text-sm text-gray-800 font-medium line-clamp-2">{iq.summary}</p>
-                        ) : (
-                          <p className="text-sm text-gray-700 line-clamp-2">{iq.content}</p>
-                        )}
-                        <p className="text-xs text-gray-300 mt-1">
-                          {new Date(iq.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })}
-                          {iq.attempt_count > 0 && ` · 정답률 ${Math.round((iq.correct_count / iq.attempt_count) * 100)}% · 출제 ${iq.attempt_count}회`}
-                        </p>
-                      </div>
-                      <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition flex-shrink-0">
-                        <Link href={`/teacher/questions/${iq.id}`}
-                          className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition">
-                          <Eye size={12} /> 미리보기
-                        </Link>
-                        <Link href={`/teacher/questions/${iq.id}/edit`}
-                          className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-lg hover:bg-gray-50 transition">
-                          수정
-                        </Link>
-                        <CopyButton question={iq} />
-                        <DeleteButton id={iq.id} />
-                      </div>
-                    </div>
-                  )
-                })}
-              </>
-            )}
-          </div>
+          {questions.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
+              <BookOpen size={40} className="mx-auto text-gray-300 mb-3" />
+              <p className="text-gray-400 font-medium">문제가 없어요</p>
+              <p className="text-gray-300 text-sm mt-1">AI로 생성하거나 직접 출제해보세요</p>
+            </div>
+          ) : (
+            <QuestionsClient listItems={listItems as Parameters<typeof QuestionsClient>[0]['listItems']} />
+          )}
         </div>
       </div>
     </div>
