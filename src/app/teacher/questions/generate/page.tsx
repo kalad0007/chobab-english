@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CATEGORY_LABELS, DIFFICULTY_LEVELS } from '@/lib/utils'
+import { CATEGORY_LABELS, DIFFICULTY_LEVELS, usesAlphaOptions, optionLabel } from '@/lib/utils'
 import { Sparkles, Check, Loader2 } from 'lucide-react'
 
 interface GeneratedQuestion {
@@ -42,7 +42,7 @@ const SUBTYPE_OPTIONS: Record<string, { value: string; label: string; desc: stri
   ],
 }
 
-const MULTI_QPP_SUBTYPES = ['daily_life_email', 'daily_life_text_chain', 'academic_passage', 'conversation']
+const MULTI_QPP_SUBTYPES = ['daily_life_email', 'daily_life_text_chain', 'academic_passage', 'conversation', 'academic_talk']
 
 export default function GenerateQuestionsPage() {
   const router = useRouter()
@@ -323,7 +323,7 @@ export default function GenerateQuestionsPage() {
                       <p className="text-sm font-semibold text-gray-800 mb-2 break-words">{q.content}</p>
                       {q.options?.map(opt => (
                         <p key={opt.num} className="text-xs text-gray-600 py-0.5">
-                          <span className="font-semibold">{opt.num}.</span> {opt.text}
+                          <span className="font-semibold">{optionLabel(opt.num, usesAlphaOptions(q.category, q.question_subtype))}.</span> {opt.text}
                         </p>
                       ))}
                       <div className="flex items-center gap-3 mt-2">

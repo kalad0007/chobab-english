@@ -110,7 +110,7 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
     conversation: `TOEFL "Listen to a Conversation" 문제를 ${n}개 생성하세요.
 - 두 사람의 캠퍼스 일상 대화 (200-300단어 스크립트)
 - audio_script 필드에 전체 대화 스크립트를 넣으세요 (반드시 완전한 대화)
-- 대화에 관한 4-5개 MCQ 질문 세트를 생성하세요 (각 질문마다 questions 배열에 별도 항목으로)
+- 대화에 관한 정확히 ${qpp}개 MCQ 질문 세트를 생성하세요 (각 질문마다 questions 배열에 별도 항목으로, 반드시 ${qpp}개)
 - 모든 questions 항목은 동일한 audio_script를 공유합니다
 - options는 반드시 4개를 포함해야 합니다
 - answer는 정답 번호를 문자열로 (예: "1")
@@ -125,7 +125,7 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
     academic_talk: `TOEFL "Listen to an Academic Talk" 문제를 ${n}개 생성하세요.
 - 교수/강연자의 학술 강의 (400-500단어 스크립트)
 - audio_script 필드에 전체 강의 스크립트를 넣으세요 (반드시 완전한 강의)
-- 강의에 관한 4-5개 MCQ 질문 세트를 생성하세요 (각 질문마다 questions 배열에 별도 항목으로)
+- 강의에 관한 정확히 ${qpp}개 MCQ 질문 세트를 생성하세요 (각 질문마다 questions 배열에 별도 항목으로, 반드시 ${qpp}개)
 - 모든 questions 항목은 동일한 audio_script를 공유합니다
 - options는 반드시 4개를 포함해야 합니다
 - answer는 정답 번호를 문자열로 (예: "3")
