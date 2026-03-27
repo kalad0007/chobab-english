@@ -160,6 +160,13 @@ export default function EditQuestionPage() {
     setLoading(true)
     setError('')
 
+    // alpha-option 문제(리스닝·특정 리딩): A→1, B→2, C→3, D→4 정규화
+    let finalAnswer = answer
+    if (type === 'multiple_choice' && usesAlphaOptions(category, questionSubtype)) {
+      const letterMap: Record<string, string> = { A: '1', B: '2', C: '3', D: '4', E: '5' }
+      finalAnswer = letterMap[answer.trim().toUpperCase()] ?? answer.trim()
+    }
+
     let savedExplanation: string | null
     if (isFillBlank) {
       savedExplanation = JSON.stringify({
@@ -184,7 +191,7 @@ export default function EditQuestionPage() {
         content,
         passage: passage || null,
         options: type === 'multiple_choice' ? options.filter(o => o.text.trim()) : null,
-        answer,
+        answer: finalAnswer,
         explanation: savedExplanation,
         ...(isListening || isSpeaking ? {
           audio_script: audioScript || null,
@@ -418,7 +425,7 @@ export default function EditQuestionPage() {
             </label>
             <input
               value={answer} onChange={e => setAnswer(e.target.value)}
-              placeholder={isFillBlank ? '예: tend,believe,surface,recognize,...' : type === 'multiple_choice' ? '예: 2' : '정답을 입력하세요'}
+              placeholder={isFillBlank ? '예: tend,believe,surface,recognize,...' : type === 'multiple_choice' ? (usesAlphaOptions(category, questionSubtype) ? '예: B 또는 2' : '예: 2') : '정답을 입력하세요'}
               required
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
