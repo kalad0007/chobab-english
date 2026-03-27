@@ -10,17 +10,54 @@ interface AudioPlayerProps {
   onPlayed?: (count: number) => void
 }
 
+const AUDIO_CACHE = 'chobabsaem-audio-v1'
+
+// 캐시에서 오디오 가져오기 (없으면 백그라운드 캐싱 후 원본 URL 반환)
+async function resolveAudioSrc(url: string): Promise<string> {
+  try {
+    const cache = await caches.open(AUDIO_CACHE)
+    const cached = await cache.match(url)
+    if (cached) {
+      const blob = await cached.blob()
+      return URL.createObjectURL(blob)
+    }
+    // 백그라운드에서 캐시 저장 (현재 재생은 원본 URL로)
+    fetch(url).then(res => {
+      if (res.ok) cache.put(url, res)
+    }).catch(() => {})
+  } catch {
+    // Cache API 미지원 환경 (HTTP 등)
+  }
+  return url
+}
+
 export default function AudioPlayer({ audioUrl, script, playLimit = 3, onPlayed }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
+  const objectUrlRef = useRef<string | null>(null)
   const [playing, setPlaying] = useState(false)
   const [playCount, setPlayCount] = useState(0)
   const [progress, setProgress] = useState(0)
   const [supported, setSupported] = useState(true)
+  const [resolvedSrc, setResolvedSrc] = useState<string | null>(null)
 
   useEffect(() => {
     if (!audioUrl && typeof window !== 'undefined' && !window.speechSynthesis) {
       setSupported(false)
+    }
+  }, [audioUrl])
+
+  // 캐시 확인 후 src 설정
+  useEffect(() => {
+    if (!audioUrl) return
+    const prev = objectUrlRef.current
+    resolveAudioSrc(audioUrl).then(src => {
+      if (src !== audioUrl) objectUrlRef.current = src
+      setResolvedSrc(src)
+    })
+    return () => {
+      if (prev) URL.revokeObjectURL(prev)
+      objectUrlRef.current = null
     }
   }, [audioUrl])
 
@@ -124,7 +161,7 @@ export default function AudioPlayer({ audioUrl, script, playLimit = 3, onPlayed 
 
   return (
     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4">
-      {audioUrl && <audio ref={audioRef} src={audioUrl} preload="metadata" />}
+      {audioUrl && <audio ref={audioRef} src={resolvedSrc ?? audioUrl} preload="auto" />}
 
       <div className="flex items-center gap-4">
         <button
