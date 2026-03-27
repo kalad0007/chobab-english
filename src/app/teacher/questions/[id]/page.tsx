@@ -1,7 +1,7 @@
 import { createClient, getUserFromCookie } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { CATEGORY_LABELS, QUESTION_SUBTYPE_LABELS, getDiffInfo } from '@/lib/utils'
+import { CATEGORY_LABELS, QUESTION_SUBTYPE_LABELS, getDiffInfo, usesAlphaOptions, optionLabel } from '@/lib/utils'
 import { ArrowLeft, Pencil, Volume2 } from 'lucide-react'
 import type { Question } from '@/types/database'
 import BuildASentencePlayer from '@/components/ui/BuildASentencePlayer'
@@ -249,18 +249,21 @@ export default async function QuestionPreviewPage({
         )}
 
         {/* MCQ 보기 */}
-        {Array.isArray(question.options) && (question.options as { num: number; text: string }[]).length > 0 && (
+        {Array.isArray(question.options) && (question.options as { num: number; text: string }[]).length > 0 && (() => {
+          const alpha = usesAlphaOptions(question.category, question.question_subtype)
+          return (
           <div className="mt-4 space-y-2">
             {(question.options as { num: number; text: string }[]).map(opt => (
               <div key={opt.num} className="flex items-start gap-3 p-3 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50 transition cursor-default">
                 <span className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-gray-100 rounded-full text-xs font-bold text-gray-600">
-                  {opt.num}
+                  {optionLabel(opt.num, alpha)}
                 </span>
                 <span className="text-sm text-gray-800">{opt.text}</span>
               </div>
             ))}
           </div>
-        )}
+          )
+        })()}
 
         {/* Speaking 프롬프트 */}
         {question.speaking_prompt && (

@@ -13,6 +13,15 @@ export function formatDate(date: string | Date) {
   }).format(new Date(date))
 }
 
+// A/B/C/D 보기 표기 여부: 리스닝 전체 + 리딩 특정 서브타입
+const ALPHA_OPTION_SUBTYPES = new Set(['daily_life_email', 'daily_life_text_chain', 'academic_passage'])
+export function usesAlphaOptions(category: string, subtype?: string | null): boolean {
+  return category === 'listening' || ALPHA_OPTION_SUBTYPES.has(subtype ?? '')
+}
+export function optionLabel(num: number, alpha: boolean): string {
+  return alpha ? (['A', 'B', 'C', 'D', 'E'][num - 1] ?? String(num)) : String(num)
+}
+
 // TOEFL 섹션 한국어 변환
 export const CATEGORY_LABELS: Record<string, string> = {
   reading: 'Reading',

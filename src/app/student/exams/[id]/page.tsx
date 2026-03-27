@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ChevronLeft, ChevronRight, CheckSquare, Clock } from 'lucide-react'
-import { renderWithUnderlines } from '@/lib/utils'
+import { renderWithUnderlines, usesAlphaOptions, optionLabel } from '@/lib/utils'
 import AudioPlayer from '@/components/ui/AudioPlayer'
 import SpeakingRecorder from '@/components/ui/SpeakingRecorder'
 import BuildASentencePlayer from '@/components/ui/BuildASentencePlayer'
@@ -347,7 +347,7 @@ export default function ExamTakePage() {
                 ) : q.type === 'multiple_choice' && q.options ? (
                   /* 객관식 보기 */
                   <div className="space-y-2.5">
-                    {q.options.map(opt => (
+                    {(() => { const alpha = usesAlphaOptions(q.category, q.question_subtype); return q.options!.map(opt => (
                       <button
                         key={opt.num}
                         onClick={() => saveAnswer(q.id, String(opt.num))}
@@ -359,11 +359,10 @@ export default function ExamTakePage() {
                       >
                         <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
                           answers[q.id] === String(opt.num) ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600'
-                        }`}>{opt.num}</span>
+                        }`}>{optionLabel(opt.num, alpha)}</span>
                         <span className="text-sm">{opt.text}</span>
                       </button>
-                    ))}
-                  </div>
+                    ))})()}</div>
                 ) : (
                   /* 서술형/단답형 */
                   <textarea

@@ -1,6 +1,6 @@
 import { createClient, getUserFromCookie } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { CATEGORY_LABELS, getDiffInfo } from '@/lib/utils'
+import { CATEGORY_LABELS, getDiffInfo, usesAlphaOptions, optionLabel } from '@/lib/utils'
 import { CheckCircle, XCircle, Trophy, Star } from 'lucide-react'
 
 export default async function ExamResultPage({ params }: { params: Promise<{ id: string }> }) {
@@ -138,20 +138,23 @@ export default async function ExamResultPage({ params }: { params: Promise<{ id:
                         })}
                       </div>
                     )}
-                    {q.options && !isFillBlank && (
+                    {q.options && !isFillBlank && (() => {
+                      const alpha = usesAlphaOptions(q.category, q.question_subtype)
+                      return (
                       <div className="space-y-1 mb-2">
                         {q.options.map((opt: { num: number; text: string }) => (
                           <div key={opt.num} className={`flex items-center gap-2 text-xs p-1.5 rounded-lg ${
                             String(opt.num) === q.answer ? 'bg-green-50 text-green-700 font-semibold' :
                             String(opt.num) === a.student_answer && !a.is_correct ? 'bg-red-50 text-red-700' : 'text-gray-600'
                           }`}>
-                            <span className="font-bold">{opt.num}.</span> {opt.text}
+                            <span className="font-bold">{optionLabel(opt.num, alpha)}.</span> {opt.text}
                             {String(opt.num) === q.answer && <span className="ml-auto">✓ 정답</span>}
                             {String(opt.num) === a.student_answer && !a.is_correct && <span className="ml-auto text-red-500">내 답</span>}
                           </div>
                         ))}
                       </div>
-                    )}
+                      )
+                    })()}
                     {explanationText && (
                       <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-800">
                         💡 {explanationText}

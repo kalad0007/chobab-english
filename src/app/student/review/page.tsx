@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { CATEGORY_LABELS, renderWithUnderlines } from '@/lib/utils'
+import { CATEGORY_LABELS, renderWithUnderlines, usesAlphaOptions, optionLabel } from '@/lib/utils'
 import { RefreshCw, CheckCircle, XCircle, Sparkles, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import FillBlankPlayer from '@/components/ui/FillBlankPlayer'
@@ -239,7 +239,9 @@ export default function ReviewPage() {
         )}
 
         {/* MCQ */}
-        {!isFillBlank && q.options && (
+        {!isFillBlank && q.options && (() => {
+          const alpha = usesAlphaOptions(q.category, q.question_subtype)
+          return (
           <div className="space-y-2.5">
             {q.options.map(opt => {
               const isCorrectOpt = String(opt.num) === q.answer
@@ -261,7 +263,7 @@ export default function ReviewPage() {
                     !submitted ? (isSelectedOpt ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600') :
                     isCorrectOpt ? 'bg-green-500 text-white' :
                     isSelectedOpt ? 'bg-red-400 text-white' : 'bg-gray-100 text-gray-600'
-                  }`}>{opt.num}</span>
+                  }`}>{optionLabel(opt.num, alpha)}</span>
                   <span className="text-sm">{opt.text}</span>
                   {submitted && isCorrectOpt && <CheckCircle size={16} className="text-green-500 ml-auto flex-shrink-0 mt-0.5" />}
                   {submitted && isSelectedOpt && !isCorrectOpt && <XCircle size={16} className="text-red-400 ml-auto flex-shrink-0 mt-0.5" />}
@@ -269,7 +271,8 @@ export default function ReviewPage() {
               )
             })}
           </div>
-        )}
+          )
+        })()}
       </div>
 
       {/* 결과 + 해설 */}
@@ -280,7 +283,7 @@ export default function ReviewPage() {
           <div className="flex items-center gap-2 mb-2">
             {selectedAnswer === q.answer
               ? <><CheckCircle size={18} className="text-emerald-600" /><span className="font-bold text-emerald-800">정답입니다! 🎉</span></>
-              : <><XCircle size={18} className="text-red-500" /><span className="font-bold text-red-700">오답이에요. 정답은 {q.answer}번입니다.</span></>
+              : <><XCircle size={18} className="text-red-500" /><span className="font-bold text-red-700">오답이에요. 정답은 {usesAlphaOptions(q.category, q.question_subtype) ? optionLabel(Number(q.answer), true) : q.answer}번입니다.</span></>
             }
           </div>
           {explanationText && <p className="text-sm text-gray-700">{explanationText}</p>}
