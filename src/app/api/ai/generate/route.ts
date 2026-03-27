@@ -268,31 +268,17 @@ export async function POST(req: NextRequest) {
 - "summary": 지문·음성·시나리오를 한국어로 1-2문장 요약 (예: "환경오염이 기후변화에 미치는 영향을 논의하는 학술 지문", "도서관 연장 운영에 관한 두 학생의 캠퍼스 대화")
 - "subcategory": 주제 키워드 1-2개 (예: "환경", "IT", "경제", "캠퍼스생활", "과학"${topicValue ? ` — 입력된 주제 "${topicValue}"를 우선 사용` : ''})`
 
-  // 529 과부하 시 최대 3회 재시도 (지수 백오프)
   let message
-  const maxRetries = 3
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      message = await anthropic.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 8192,
-        messages: [{ role: 'user', content: prompt }],
-      })
-      break
-    } catch (apiErr: unknown) {
-      const isOverloaded =
-        (apiErr instanceof Error && apiErr.message.includes('529')) ||
-        (apiErr instanceof Error && apiErr.message.toLowerCase().includes('overload'))
-      if (isOverloaded && attempt < maxRetries) {
-        const delay = (attempt + 1) * 8000 // 8s, 16s, 24s
-        await new Promise(r => setTimeout(r, delay))
-        continue
-      }
-      const msg = apiErr instanceof Error ? apiErr.message : String(apiErr)
-      return NextResponse.json({ error: `AI API 오류: ${msg}` }, { status: 502 })
-    }
+  try {
+    message = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 8192,
+      messages: [{ role: 'user', content: prompt }],
+    })
+  } catch (apiErr: unknown) {
+    const msg = apiErr instanceof Error ? apiErr.message : String(apiErr)
+    return NextResponse.json({ error: `AI API 오류: ${msg}` }, { status: 502 })
   }
-  if (!message) return NextResponse.json({ error: 'AI API 응답 없음' }, { status: 502 })
 
   const text = message.content[0].type === 'text' ? message.content[0].text : ''
   const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) || text.match(/({[\s\S]*})/)
