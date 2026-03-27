@@ -2,8 +2,9 @@ export type Json = string | number | boolean | null | { [key: string]: Json } | 
 
 export type UserRole = 'teacher' | 'student'
 export type QuestionType = 'multiple_choice' | 'short_answer' | 'essay'
-export type QuestionCategory = 'grammar' | 'vocabulary' | 'reading' | 'writing' | 'cloze' | 'ordering' | 'listening' | 'speaking'
-export type QuestionSource = 'teacher' | 'ai_generated' | 'ksat'
+export type QuestionCategory = 'reading' | 'listening' | 'speaking' | 'writing'
+export type ToeflSection = 'reading' | 'listening' | 'speaking' | 'writing'
+export type QuestionSource = 'teacher' | 'ai_generated' | 'toefl_official'
 export type ExamStatus = 'draft' | 'published' | 'closed'
 export type SubmissionStatus = 'in_progress' | 'submitted' | 'graded'
 
@@ -24,6 +25,7 @@ export interface Class {
   grade: number | null
   invite_code: string
   description: string | null
+  target_band: number | null  // 기본 목표 Band (DB difficulty 1-5)
   created_at: string
 }
 
@@ -33,6 +35,12 @@ export interface ClassMember {
   student_id: string
   joined_at: string
 }
+
+// TOEFL 문제 세부 유형
+export type ReadingSubtype = 'factual' | 'negative_factual' | 'inference' | 'rhetorical_purpose' | 'vocabulary' | 'reference' | 'sentence_simplification' | 'insert_text' | 'prose_summary' | 'fill_table'
+export type ListeningSubtype = 'gist_content' | 'gist_purpose' | 'detail' | 'function' | 'attitude' | 'organization' | 'connecting_content' | 'inference'
+export type SpeakingSubtype = 'independent' | 'integrated_read_listen' | 'integrated_read_listen_academic' | 'integrated_listen'
+export type WritingSubtype = 'integrated_writing' | 'academic_discussion'
 
 export interface Question {
   id: string
@@ -57,6 +65,19 @@ export interface Question {
   audio_script: string | null
   audio_play_limit: number | null
   speaking_prompt: string | null
+  // TOEFL 전용 필드
+  question_subtype: string | null
+  preparation_time: number | null   // Speaking 준비시간(초)
+  response_time: number | null      // Speaking 응답시간(초)
+  word_limit: number | null         // Writing 최소 단어수
+  task_number: number | null        // Speaking Task 1-4, Writing Task 1-2
+  // 스마트 테스트 빌더용
+  passage_id: string | null         // 같은 지문 문제 그룹핑 (Reading)
+  audio_id: string | null           // 같은 오디오 문제 그룹핑 (Listening)
+  passage_group_id: string | null   // 지문 세트 그룹 ID
+  // 검색/분류용
+  summary: string | null            // 지문/음성 내용 요약 (교사 검색용)
+  // subcategory = topic (환경, IT, 경제 등 주제 키워드)
 }
 
 export interface Exam {
@@ -71,6 +92,8 @@ export interface Exam {
   status: ExamStatus
   show_result_immediately: boolean
   total_points: number
+  exam_type: 'full_test' | 'section_test' | 'practice'
+  sections: ToeflSection[] | null
   created_at: string
   updated_at: string
 }

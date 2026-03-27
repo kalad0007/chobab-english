@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, BookOpen, Sparkles, FileText, ClipboardList,
-  Users, School, BarChart3, BookMarked, LogOut, Menu, X
+  Users, School, BarChart3, BookMarked, LogOut, Menu, X, Zap
 } from 'lucide-react'
 
 const navItems = [
@@ -15,21 +15,22 @@ const navItems = [
     section: '메인',
     items: [
       { href: '/teacher/dashboard', label: '대시보드', icon: LayoutDashboard },
-      { href: '/teacher/analytics', label: '통계 분석', icon: BarChart3 },
+      { href: '/teacher/analytics', label: '성적 분석', icon: BarChart3 },
     ],
   },
   {
-    section: '문제 관리',
+    section: 'TOEFL 문제',
     items: [
       { href: '/teacher/questions', label: '문제은행', icon: BookOpen },
       { href: '/teacher/questions/generate', label: 'AI 문제 생성', icon: Sparkles },
     ],
   },
   {
-    section: '시험',
+    section: '모의고사',
     items: [
+      { href: '/teacher/exams/smart', label: '토플 스마트 빌더', icon: Zap },
       { href: '/teacher/exams', label: '시험 관리', icon: FileText },
-      { href: '/teacher/grading', label: '채점/결과', icon: ClipboardList },
+      { href: '/teacher/grading', label: 'Speaking/Writing 채점', icon: ClipboardList },
     ],
   },
   {
@@ -42,7 +43,7 @@ const navItems = [
   {
     section: '콘텐츠',
     items: [
-      { href: '/teacher/contents', label: '학습 자료', icon: BookMarked },
+      { href: '/teacher/contents', label: 'TOEFL 학습 자료', icon: BookMarked },
     ],
   },
 ]
@@ -88,8 +89,8 @@ export default function TeacherSidebar({ teacherName }: { teacherName: string })
             <div className="flex items-center gap-2">
               <span className="text-2xl">🍣</span>
               <div>
-                <p className="font-extrabold text-gray-900 leading-tight">초밥샘의</p>
-                <p className="font-extrabold text-blue-600 leading-tight">영어공부</p>
+                <p className="font-extrabold text-gray-900 leading-tight">초밥샘</p>
+                <p className="font-extrabold text-blue-600 leading-tight">TOEFL</p>
               </div>
             </div>
             <p className="text-xs text-gray-400 mt-2">선생님 패널 · {teacherName}</p>

@@ -50,8 +50,8 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4 shadow-lg">
             <span className="text-3xl">🍣</span>
           </div>
-          <h1 className="text-2xl font-extrabold text-gray-900">초밥샘의 영어공부</h1>
-          <p className="text-gray-500 mt-1 text-sm">로그인하여 학습을 시작하세요</p>
+          <h1 className="text-2xl font-extrabold text-gray-900">초밥샘 TOEFL</h1>
+          <p className="text-gray-500 mt-1 text-sm">TOEFL iBT 학습을 시작하세요</p>
         </div>
 
         {/* 폼 카드 */}

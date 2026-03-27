@@ -69,7 +69,7 @@ export default async function TeacherDashboard() {
           <h1 className="text-xl md:text-2xl font-extrabold text-gray-900">
             안녕하세요, {profile?.name ?? '선생님'}샘! 👋
           </h1>
-          <p className="text-gray-500 text-sm mt-1">오늘도 좋은 수업 되세요.</p>
+          <p className="text-gray-500 text-sm mt-1">TOEFL 수업을 관리하세요.</p>
         </div>
         <div className="flex gap-2">
           <Link
@@ -82,7 +82,7 @@ export default async function TeacherDashboard() {
             href="/teacher/exams/new"
             className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition"
           >
-            <Plus size={15} /> 시험 만들기
+            <Plus size={15} /> 모의고사 만들기
           </Link>
         </div>
       </div>
@@ -123,12 +123,12 @@ export default async function TeacherDashboard() {
         {/* 최근 시험 */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
-            <h2 className="font-bold text-gray-900">📝 최근 시험</h2>
+            <h2 className="font-bold text-gray-900">📝 최근 모의고사</h2>
             <Link href="/teacher/exams" className="text-xs text-blue-600 hover:underline font-medium">전체 보기</Link>
           </div>
           <div className="divide-y divide-gray-50">
             {(recentExams ?? []).length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-8">아직 출제한 시험이 없어요</p>
+              <p className="text-sm text-gray-400 text-center py-8">아직 출제한 모의고사가 없어요</p>
             ) : (
               (recentExams ?? []).map(exam => {
                 const status = statusLabel[exam.status] ?? statusLabel.draft
@@ -158,7 +158,7 @@ export default async function TeacherDashboard() {
         {/* 유형별 정답률 */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
-            <h2 className="font-bold text-gray-900">📊 유형별 정답률</h2>
+            <h2 className="font-bold text-gray-900">📊 섹션별 정답률</h2>
             <Link href="/teacher/analytics" className="text-xs text-blue-600 hover:underline font-medium">상세 분석</Link>
           </div>
           <div className="px-5 py-4 space-y-3.5">

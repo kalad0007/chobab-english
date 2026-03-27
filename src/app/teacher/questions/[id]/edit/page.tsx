@@ -3,8 +3,17 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { CATEGORY_LABELS } from '@/lib/utils'
+import { CATEGORY_LABELS, DIFFICULTY_LEVELS, QUESTION_SUBTYPE_LABELS, getDiffInfo } from '@/lib/utils'
+
+const CATEGORY_COLORS: Record<string, string> = {
+  reading:   'bg-blue-100 text-blue-700',
+  listening: 'bg-emerald-100 text-emerald-700',
+  speaking:  'bg-orange-100 text-orange-700',
+  writing:   'bg-purple-100 text-purple-700',
+}
 import UnderlineTextarea from '@/components/ui/UnderlineTextarea'
+
+const FILL_BLANK_SUBTYPES = ['complete_the_words', 'sentence_completion']
 
 export default function EditQuestionPage() {
   const router = useRouter()
@@ -12,10 +21,12 @@ export default function EditQuestionPage() {
   const id = params.id as string
   const supabase = createClient()
 
+  const [questionSubtype, setQuestionSubtype] = useState('')
   const [type, setType] = useState<'multiple_choice' | 'short_answer' | 'essay'>('multiple_choice')
   const [category, setCategory] = useState('grammar')
-  const [subcategory, setSubcategory] = useState('')
-  const [difficulty, setDifficulty] = useState(3)
+  const [subcategory, setSubcategory] = useState('')  // topic
+  const [summary, setSummary] = useState('')
+  const [difficulty, setDifficulty] = useState(3.0)
   const [content, setContent] = useState('')
   const [passage, setPassage] = useState('')
   const [options, setOptions] = useState([
@@ -24,9 +35,16 @@ export default function EditQuestionPage() {
   ])
   const [answer, setAnswer] = useState('')
   const [explanation, setExplanation] = useState('')
+
+  // fill-blank specific fields (parsed from explanation JSON)
+  const [fbTitle, setFbTitle] = useState('')
+  const [fbTimeLimit, setFbTimeLimit] = useState(10)
+
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
   const [error, setError] = useState('')
+
+  const isFillBlank = FILL_BLANK_SUBTYPES.includes(questionSubtype)
 
   useEffect(() => {
     async function fetchQuestion() {
@@ -42,14 +60,53 @@ export default function EditQuestionPage() {
         return
       }
 
+      setQuestionSubtype(data.question_subtype ?? '')
       setType(data.type)
       setCategory(data.category)
       setSubcategory(data.subcategory ?? '')
+      setSummary((data as typeof data & { summary?: string | null }).summary ?? '')
       setDifficulty(data.difficulty)
       setContent(data.content)
       setPassage(data.passage ?? '')
-      setAnswer(data.answer ?? '')
-      setExplanation(data.explanation ?? '')
+
+      const subtype = data.question_subtype ?? ''
+      if (FILL_BLANK_SUBTYPES.includes(subtype)) {
+        const rawExp = data.explanation ?? ''
+        let isWizardMeta = false
+        if (rawExp.startsWith('{')) {
+          try {
+            const meta = JSON.parse(rawExp)
+            if (meta.format !== undefined) {
+              // 위저드 저장 포맷 — JSON 메타데이터
+              setFbTitle(meta.title ?? '')
+              setFbTimeLimit(meta.timeLimit ?? 10)
+              setExplanation(meta.explanation ?? '')
+              isWizardMeta = true
+            }
+          } catch { /* not JSON */ }
+        }
+        if (!isWizardMeta) {
+          // AI 생성 등 일반 텍스트 해설
+          setFbTitle('')
+          setFbTimeLimit(10)
+          setExplanation(rawExp)
+        }
+        // answer may be old JSON format {"answers":[...],...} or new comma-separated
+        const rawAnswer = data.answer ?? ''
+        if (rawAnswer.startsWith('{')) {
+          try {
+            const parsed = JSON.parse(rawAnswer)
+            setAnswer(Array.isArray(parsed.answers) ? parsed.answers.join(',') : rawAnswer)
+          } catch {
+            setAnswer(rawAnswer)
+          }
+        } else {
+          setAnswer(rawAnswer)
+        }
+      } else {
+        setAnswer(data.answer ?? '')
+        setExplanation(data.explanation ?? '')
+      }
 
       if (data.type === 'multiple_choice' && Array.isArray(data.options)) {
         const loaded = data.options as { num: number; text: string }[]
@@ -71,19 +128,33 @@ export default function EditQuestionPage() {
     setLoading(true)
     setError('')
 
+    let savedExplanation: string | null
+    if (isFillBlank) {
+      savedExplanation = JSON.stringify({
+        title: fbTitle,
+        difficulty,
+        timeLimit: fbTimeLimit,
+        format: questionSubtype === 'complete_the_words' ? 'paragraph' : 'sentences',
+        explanation,
+      })
+    } else {
+      savedExplanation = explanation || null
+    }
+
     const { error: dbError } = await supabase
       .from('questions')
       .update({
         type,
         category,
         subcategory: subcategory || null,
+        summary: summary || null,
         difficulty,
         content,
         passage: passage || null,
         options: type === 'multiple_choice' ? options.filter(o => o.text.trim()) : null,
         answer,
-        explanation: explanation || null,
-      })
+        explanation: savedExplanation,
+      } as Record<string, unknown>)
       .eq('id', id)
 
     if (dbError) {
@@ -108,7 +179,19 @@ export default function EditQuestionPage() {
     <div className="p-7 max-w-3xl">
       <div className="mb-6">
         <h1 className="text-2xl font-extrabold text-gray-900">✏️ 문제 수정</h1>
-        <p className="text-gray-500 text-sm mt-1">문제 내용을 수정합니다</p>
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
+          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${CATEGORY_COLORS[category] ?? 'bg-gray-100 text-gray-600'}`}>
+            {CATEGORY_LABELS[category] ?? category}
+          </span>
+          {questionSubtype && (
+            <span className="text-xs font-bold px-2.5 py-1 bg-gray-100 text-gray-700 rounded-full">
+              {QUESTION_SUBTYPE_LABELS[category]?.[questionSubtype] ?? questionSubtype}
+            </span>
+          )}
+          {(() => { const d = getDiffInfo(difficulty); return (
+            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${d.color}`}>{d.cefr} {d.label}</span>
+          )})()}
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -117,95 +200,134 @@ export default function EditQuestionPage() {
         {/* 기본 설정 */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
           <h2 className="font-bold text-gray-900">기본 설정</h2>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">문제 유형</label>
-              <select value={type} onChange={e => setType(e.target.value as typeof type)}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="multiple_choice">객관식</option>
-                <option value="short_answer">단답형</option>
-                <option value="essay">서술형</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">영역</label>
-              <select value={category} onChange={e => setCategory(e.target.value)}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                {Object.entries(CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">난이도</label>
-              <div className="flex gap-1 mt-1">
-                {[1, 2, 3, 4, 5].map(d => (
-                  <button key={d} type="button" onClick={() => setDifficulty(d)}
-                    className={`flex-1 py-2 rounded-lg text-sm font-bold transition ${d <= difficulty ? 'bg-amber-400 text-white' : 'bg-gray-100 text-gray-400'}`}>
-                    ★
-                  </button>
-                ))}
+
+          {isFillBlank ? (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">제목</label>
+                <input value={fbTitle} onChange={e => setFbTitle(e.target.value)}
+                  placeholder="문제 세트 제목"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">제한 시간 (분)</label>
+                <input type="number" min={1} max={60} value={fbTimeLimit} onChange={e => setFbTimeLimit(Number(e.target.value))}
+                  className="w-full max-w-xs px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">주제 키워드</label>
+                <input value={subcategory} onChange={e => setSubcategory(e.target.value)}
+                  placeholder="예: 환경, IT, 경제, 캠퍼스생활..."
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">요약 내용</label>
+                <textarea value={summary} onChange={e => setSummary(e.target.value)}
+                  placeholder="예: 환경오염이 기후변화에 미치는 영향을 다룬 학술 지문"
+                  rows={2}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+              </div>
+            </div>
+          )}
+
+          {/* 난이도 — 11-level grid */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">세부 유형 (선택)</label>
-            <input value={subcategory} onChange={e => setSubcategory(e.target.value)}
-              placeholder="예: tense, synonym, main_idea..."
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-        </div>
-
-        {/* 지문 */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-          <h2 className="font-bold text-gray-900">지문 (선택)</h2>
-          <UnderlineTextarea
-            value={passage}
-            onChange={setPassage}
-            placeholder="독해 지문이 있으면 여기에 입력하세요..."
-            rows={5}
-          />
-        </div>
-
-        {/* 문제 본문 */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-          <h2 className="font-bold text-gray-900">문제</h2>
-          <textarea value={content} onChange={e => setContent(e.target.value)}
-            placeholder="문제를 입력하세요..."
-            rows={4} required
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
-
-          {type === 'multiple_choice' && (
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">보기</label>
-              {options.map((opt, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <span className="w-6 h-6 flex items-center justify-center bg-gray-100 rounded-full text-xs font-bold text-gray-600 flex-shrink-0">
-                    {opt.num}
-                  </span>
-                  <input
-                    value={opt.text}
-                    onChange={e => {
-                      const next = [...options]
-                      next[i] = { ...next[i], text: e.target.value }
-                      setOptions(next)
-                    }}
-                    placeholder={`보기 ${opt.num}`}
-                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">난이도</label>
+            <div className="flex flex-wrap gap-1.5">
+              {DIFFICULTY_LEVELS.map(d => (
+                <button key={d.value} type="button" onClick={() => setDifficulty(d.value)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition border ${
+                    difficulty === d.value
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-500 border-gray-200 hover:border-blue-300'
+                  }`}>
+                  {d.label} <span className="font-normal opacity-70">{d.name}</span>
+                </button>
               ))}
             </div>
+          </div>
+        </div>
+
+        {/* 지문 (fill-blank: 단락/문장 내용) */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+          <h2 className="font-bold text-gray-900">
+            {isFillBlank
+              ? questionSubtype === 'complete_the_words' ? '단락 (빈칸 포함)' : '문장 목록 (빈칸 포함)'
+              : '지문 (선택)'}
+          </h2>
+          {isFillBlank ? (
+            <textarea value={content} onChange={e => setContent(e.target.value)}
+              placeholder={questionSubtype === 'complete_the_words'
+                ? '빈칸이 포함된 학술 단락을 입력하세요. 예: te__, bel____'
+                : '빈칸이 있는 문장을 한 줄씩 입력하세요. 예: The scientist ___ to work late.'}
+              rows={8} required
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono" />
+          ) : (
+            <UnderlineTextarea
+              value={passage}
+              onChange={setPassage}
+              placeholder="독해 지문이 있으면 여기에 입력하세요..."
+              rows={5}
+            />
+          )}
+        </div>
+
+        {/* 문제 본문 (non-fill-blank only) / 정답 */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+          <h2 className="font-bold text-gray-900">
+            {isFillBlank ? '정답 목록' : '문제'}
+          </h2>
+
+          {!isFillBlank && (
+            <>
+              <textarea value={content} onChange={e => setContent(e.target.value)}
+                placeholder="문제를 입력하세요..."
+                rows={4} required
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+
+              {type === 'multiple_choice' && (
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-gray-700">보기</label>
+                  {options.map((opt, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="w-6 h-6 flex items-center justify-center bg-gray-100 rounded-full text-xs font-bold text-gray-600 flex-shrink-0">
+                        {opt.num}
+                      </span>
+                      <input
+                        value={opt.text}
+                        onChange={e => {
+                          const next = [...options]
+                          next[i] = { ...next[i], text: e.target.value }
+                          setOptions(next)
+                        }}
+                        placeholder={`보기 ${opt.num}`}
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              {type === 'multiple_choice' ? '정답 번호' : '정답'}
+              {isFillBlank
+                ? '정답 (쉼표로 구분, 빈칸 순서대로)'
+                : type === 'multiple_choice' ? '정답 번호' : '정답'}
             </label>
             <input
               value={answer} onChange={e => setAnswer(e.target.value)}
-              placeholder={type === 'multiple_choice' ? '예: 2' : '정답을 입력하세요'}
+              placeholder={isFillBlank ? '예: tend,believe,surface,recognize,...' : type === 'multiple_choice' ? '예: 2' : '정답을 입력하세요'}
               required
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            {isFillBlank && (
+              <p className="text-xs text-gray-400 mt-1">빈칸에 들어갈 완성된 단어를 순서대로 쉼표로 구분하여 입력하세요</p>
+            )}
           </div>
         </div>
 
@@ -213,7 +335,7 @@ export default function EditQuestionPage() {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <h2 className="font-bold text-gray-900 mb-3">해설 (선택)</h2>
           <textarea value={explanation} onChange={e => setExplanation(e.target.value)}
-            placeholder="정답 해설을 입력하면 학생들에게 도움이 돼요..."
+            placeholder={isFillBlank ? '각 빈칸의 정답 근거나 문법 포인트를 설명해주세요...' : '정답 해설을 입력하면 학생들에게 도움이 돼요...'}
             rows={3}
             className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
         </div>

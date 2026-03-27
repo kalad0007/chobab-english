@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2, Sparkles, CheckCircle } from 'lucide-react'
@@ -21,6 +21,7 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
   const router = useRouter()
   const supabase = createClient()
   const [score, setScore] = useState<string>('')
+  const [maxPoints, setMaxPoints] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [evaluating, setEvaluating] = useState(false)
   const [evalResult, setEvalResult] = useState<EvalResult | null>(null)
@@ -34,6 +35,19 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
   const profile = sub?.profiles as any
 
   const audioUrl = answer.student_answer // URL stored as student_answer
+
+  useEffect(() => {
+    async function loadMaxPoints() {
+      const { data } = await supabase
+        .from('exam_questions')
+        .select('points')
+        .eq('exam_id', sub?.exam_id ?? '')
+        .eq('question_id', q?.id ?? '')
+        .single()
+      if (data) setMaxPoints(data.points)
+    }
+    loadMaxPoints()
+  }, [])
 
   async function aiEvaluate() {
     if (!audioUrl?.startsWith('http')) return
@@ -149,8 +163,8 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
           <audio controls src={audioUrl} className="w-full rounded-xl" />
         </div>
       ) : (
-        <div className="mb-4 bg-gray-50 rounded-xl p-3 text-sm text-gray-400 text-center">
-          아직 녹음이 제출되지 않았습니다
+        <div className="mb-4 bg-amber-50 border border-amber-100 rounded-xl p-3 text-sm text-amber-700 text-center">
+          녹음이 제출되지 않았습니다 — 점수를 직접 입력하여 채점할 수 있습니다
         </div>
       )}
 
@@ -198,14 +212,19 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
             }
           </button>
         )}
-        <input
-          type="number"
-          value={score}
-          onChange={e => setScore(e.target.value)}
-          placeholder="점수 입력"
-          min={0} max={100}
-          className="w-28 px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-center font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+        <div className="flex items-center gap-1">
+          <input
+            type="number"
+            value={score}
+            onChange={e => setScore(e.target.value)}
+            placeholder="점수"
+            min={0} max={maxPoints ?? 100}
+            className="w-20 px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-center font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {maxPoints !== null && (
+            <span className="text-sm font-bold text-gray-400">/ {maxPoints}점</span>
+          )}
+        </div>
         <button onClick={saveGrade} disabled={saving || !score}
           className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white rounded-xl text-sm font-bold transition">
           {saving ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={16} />}

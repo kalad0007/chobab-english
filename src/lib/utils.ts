@@ -13,16 +13,269 @@ export function formatDate(date: string | Date) {
   }).format(new Date(date))
 }
 
-// 카테고리 한국어 변환
+// TOEFL 섹션 한국어 변환
 export const CATEGORY_LABELS: Record<string, string> = {
-  grammar: '문법',
-  vocabulary: '어휘',
-  reading: '독해',
-  writing: '쓰기',
-  cloze: '빈칸',
-  ordering: '순서/삽입',
-  listening: '리스닝',
-  speaking: '스피킹',
+  reading: 'Reading',
+  listening: 'Listening',
+  writing: 'Writing',
+  speaking: 'Speaking',
+}
+
+// TOEFL 섹션별 시간 (분)
+export const TOEFL_SECTION_TIME: Record<string, number> = {
+  reading: 35,
+  listening: 36,
+  speaking: 16,
+  writing: 29,
+}
+
+// ─── 신 토플 (2026~) 밴드 스코어 시스템 ───────────────────────────────────────
+
+// 10단계 정밀 난이도 그리드 (DB difficulty = FLOAT 1.0~6.0)
+export const DIFFICULTY_LEVELS = [
+  { level: 'L1',  value: 1.0, label: '1.0', name: '기초',       cefr: 'A1',  color: 'bg-slate-100  text-slate-600'  },
+  { level: 'L2',  value: 1.5, label: '1.5', name: '기초 완성',  cefr: 'A2',  color: 'bg-gray-100   text-gray-600'   },
+  { level: 'L3',  value: 2.0, label: '2.0', name: '중급 입문',  cefr: 'A2+', color: 'bg-lime-100   text-lime-700'   },
+  { level: 'L4',  value: 2.5, label: '2.5', name: '중급 중간',  cefr: 'B1',  color: 'bg-green-100  text-green-700'  },
+  { level: 'L5',  value: 3.0, label: '3.0', name: '중급 완성',  cefr: 'B1+', color: 'bg-teal-100   text-teal-700'   },
+  { level: 'L6',  value: 3.5, label: '3.5', name: '중급 심화',  cefr: 'B2',  color: 'bg-blue-100   text-blue-700'   },
+  { level: 'L7',  value: 4.0, label: '4.0', name: '고급 입문',  cefr: 'B2+', color: 'bg-indigo-100  text-indigo-700' },
+  { level: 'L8',  value: 4.5, label: '4.5', name: '고급 중간',  cefr: 'C1',  color: 'bg-violet-100  text-violet-700' },
+  { level: 'L9',  value: 5.0, label: '5.0', name: '고급 완성',  cefr: 'C1+', color: 'bg-purple-100  text-purple-700' },
+  { level: 'L10', value: 5.5, label: '5.5', name: '전문가',     cefr: 'C2',  color: 'bg-orange-100  text-orange-700' },
+  { level: 'MAX', value: 6.0, label: '6.0', name: 'Mastery',    cefr: 'C2+', color: 'bg-red-100    text-red-700'    },
+] as const
+
+export type DifficultyValue = typeof DIFFICULTY_LEVELS[number]['value']
+
+// 난이도 값 → DIFFICULTY_LEVELS 항목 조회 (가장 가까운 값으로 반올림)
+export function getDiffInfo(d: number) {
+  const snap = Math.round(d * 2) / 2   // 0.5 단위 스냅
+  return DIFFICULTY_LEVELS.find(l => l.value === snap) ?? DIFFICULTY_LEVELS[4] // 기본 3.0
+}
+
+// 구버전 호환: 구 INT(1~5) → Band FLOAT 변환 (DB 마이그레이션 전 데이터용)
+export const LEGACY_DIFFICULTY_TO_BAND: Record<number, number> = {
+  1: 2.0, 2: 3.0, 3: 4.0, 4: 5.0, 5: 6.0,
+}
+
+// 문제 결과 타입
+export interface QuestionResult {
+  questionId: string
+  difficulty: number   // DB difficulty FLOAT 1.0~6.0
+  isCorrect: boolean
+}
+
+// ── 가중치 기반 최종 밴드 산출 (v1.1) ──────────────────────────────────────
+// Final Score = Σ(correct × difficulty) / total_possible_weighted × MaxBand
+export function calculateWeightedBand(results: QuestionResult[], maxBand: number): number {
+  if (results.length === 0) return 1.0
+  const totalPossible = results.reduce((s, r) => s + r.difficulty, 0)
+  if (totalPossible === 0) return 1.0
+  const earnedWeighted = results.filter(r => r.isCorrect).reduce((s, r) => s + r.difficulty, 0)
+  const raw = (earnedWeighted / totalPossible) * maxBand
+  const clamped = Math.max(1.0, Math.min(6.0, raw))
+  return Math.round(clamped * 2) / 2
+}
+
+// 구버전 호환: 단순 평균 밴드 계산
+export function calculateObjectiveBand(results: QuestionResult[]): number {
+  if (results.length === 0) return 1.0
+  const correct = results.filter(r => r.isCorrect)
+  if (correct.length === 0) return 1.0
+  // difficulty가 이미 FLOAT Band값이므로 직접 평균
+  const avgBand = correct.reduce((s, r) => s + r.difficulty, 0) / correct.length
+  const accuracy = correct.length / results.length
+  const penalized = accuracy < 0.5 ? avgBand - 0.5 : avgBand
+  return Math.round(Math.max(1.0, Math.min(6.0, penalized)) * 2) / 2
+}
+
+// Speaking 0~4점 → Band 1.0~6.0 변환
+export function speakingScoreToBand(score: number): number {
+  const map: Record<number, number> = { 0: 1.0, 1: 2.0, 2: 3.5, 3: 5.0, 4: 6.0 }
+  return map[Math.round(score)] ?? 1.0
+}
+
+// Writing 0~5점 → Band 1.0~6.0 변환
+export function writingScoreToBand(score: number): number {
+  const map: Record<number, number> = { 0: 1.0, 1: 2.0, 2: 3.0, 3: 4.0, 4: 5.0, 5: 6.0 }
+  return map[Math.round(score)] ?? 1.0
+}
+
+// 구 토플(0~120점) 환산 — 학생 참고용
+export function mapToOldToeflScore(bandScore: number): string {
+  if (bandScore >= 6.0) return '118~120점'
+  if (bandScore >= 5.5) return '110~117점'
+  if (bandScore >= 5.0) return '95~109점'
+  if (bandScore >= 4.5) return '84~94점'
+  if (bandScore >= 4.0) return '72~83점'
+  if (bandScore >= 3.0) return '42~71점'
+  return '41점 이하'
+}
+
+// 신 토플 종합 성적표 산출
+export interface ToeflScoreReport {
+  readingBand: number
+  listeningBand: number
+  speakingBand: number
+  writingBand: number
+  totalBandScore: number
+  estimatedOldScore: string  // 구 토플 환산 참고값
+}
+
+export function generateToeflReport(
+  readingResults: QuestionResult[],
+  listeningResults: QuestionResult[],
+  speakingAiScore: number,  // AI 채점 결과 0~4
+  writingAiScore: number,   // AI 채점 결과 0~5
+): ToeflScoreReport {
+  const rBand = calculateObjectiveBand(readingResults)
+  const lBand = calculateObjectiveBand(listeningResults)
+  const sBand = speakingScoreToBand(speakingAiScore)
+  const wBand = writingScoreToBand(writingAiScore)
+
+  const avg = (rBand + lBand + sBand + wBand) / 4
+  const totalBandScore = Math.round(avg * 2) / 2
+
+  return {
+    readingBand: rBand,
+    listeningBand: lBand,
+    speakingBand: sBand,
+    writingBand: wBand,
+    totalBandScore,
+    estimatedOldScore: mapToOldToeflScore(totalBandScore),
+  }
+}
+
+// 정답률(%) → 밴드 추정 (대시보드 개요용 근사치)
+export function accuracyToBand(accuracy: number): number {
+  if (accuracy >= 90) return 6.0
+  if (accuracy >= 80) return 5.0
+  if (accuracy >= 70) return 4.5
+  if (accuracy >= 60) return 4.0
+  if (accuracy >= 50) return 3.5
+  if (accuracy >= 40) return 3.0
+  if (accuracy >= 30) return 2.5
+  if (accuracy >= 20) return 2.0
+  return 1.0
+}
+
+// 밴드 스코어 → 레벨 설명
+export function bandToLevel(band: number): string {
+  if (band >= 6.0) return 'C2 (Mastery)'
+  if (band >= 5.5) return 'C1+ (Advanced+)'
+  if (band >= 5.0) return 'C1 (Advanced)'
+  if (band >= 4.5) return 'B2+ (Upper-Int+)'
+  if (band >= 4.0) return 'B2 (Upper-Intermediate)'
+  if (band >= 3.5) return 'B1+ (Intermediate+)'
+  if (band >= 3.0) return 'B1 (Intermediate)'
+  if (band >= 2.0) return 'A2 (Elementary)'
+  return 'A1 (Beginner)'
+}
+
+// 구 토플 호환 — 섹션별 만점 (참고용으로만 유지)
+export const TOEFL_SECTION_MAX: Record<string, number> = {
+  reading: 30,
+  listening: 30,
+  speaking: 30,
+  writing: 30,
+}
+
+// 구 토플 총점 계산 (구형 호환)
+export function toeflTotalScore(sectionScores: Record<string, number>) {
+  return Object.values(sectionScores).reduce((a, b) => a + b, 0)
+}
+
+// 구 토플 등급 (구형 호환)
+export function toeflLevel(total: number) {
+  if (total >= 110) return 'Advanced (C1)'
+  if (total >= 87) return 'Upper Intermediate (B2)'
+  if (total >= 57) return 'Intermediate (B1)'
+  if (total >= 30) return 'Basic (A2)'
+  return 'Below Basic (A1)'
+}
+
+// TOEFL 문제 세부유형 라벨
+export const QUESTION_SUBTYPE_LABELS: Record<string, Record<string, string>> = {
+  reading: {
+    // 기본 10가지 유형 (현행)
+    factual: 'Factual Information',
+    negative_factual: 'Negative Factual',
+    inference: 'Inference',
+    rhetorical_purpose: 'Rhetorical Purpose',
+    vocabulary: 'Vocabulary',
+    reference: 'Reference',
+    sentence_simplification: 'Sentence Simplification',
+    insert_text: 'Insert Text',
+    prose_summary: 'Prose Summary (3개 선택)',
+    fill_table: 'Fill in a Table (카테고리 분류)',
+    // 2026 신규 유형
+    complete_the_words:    'Complete the Words (단락 빈칸)',
+    sentence_completion:   'Sentence Completion (독립 문장)',
+    daily_life_email:      'Daily Life — Email (이메일)',
+    daily_life_text_chain: 'Daily Life — Text Chain (채팅)',
+    academic_passage:      'Academic Passage (학술 지문)',
+    // 구형 호환 보관
+    read_in_daily_life: 'Read in Daily Life (구형)',
+  },
+  listening: {
+    // 2026 유형
+    choose_response: 'Choose a Response',
+    conversation:    'Conversation (일상 대화)',
+    academic_talk:   'Academic Talk (학술 강연)',
+    // 기본 유형 (구형 호환)
+    gist_content: 'Gist-Content',
+    gist_purpose: 'Gist-Purpose',
+    detail: 'Detail',
+    function: 'Function',
+    attitude: 'Attitude',
+    organization: 'Organization',
+    connecting_content: 'Connecting Content',
+    inference: 'Inference',
+    announcement: 'Announcement',
+  },
+  speaking: {
+    // 기본 4가지 과제 (현행)
+    independent: 'Task 1: Independent',
+    integrated_read_listen: 'Task 2: Campus (Read+Listen)',
+    integrated_read_listen_academic: 'Task 3: Academic (Read+Listen)',
+    integrated_listen: 'Task 4: Lecture Summary',
+    // 2026 신규 유형
+    listen_and_repeat: 'Listen and Repeat ★NEW 2026',
+    take_an_interview: 'Take an Interview ★NEW 2026',
+  },
+  writing: {
+    integrated_writing: 'Task 1: Integrated Writing',
+    academic_discussion: 'Task 2: Academic Discussion',
+    // 2026 신규 유형
+    sentence_reordering: 'Sentence Reordering (문장 배열) ★NEW 2026',
+    email_writing: 'Email Writing (이메일 작성) ★NEW 2026',
+  },
+}
+
+// 특수 렌더링이 필요한 문제 유형
+export const SPECIAL_QUESTION_SUBTYPES = {
+  prose_summary: true,    // 6지선다, 3개 선택
+  fill_table: true,        // 카테고리 분류
+  complete_the_words: true, // 빈칸 채우기 (서술형)
+} as const
+
+// TOEFL Speaking 시간 설정 (초)
+export const SPEAKING_TASK_TIMES: Record<string, { prep: number; response: number }> = {
+  independent: { prep: 15, response: 45 },
+  integrated_read_listen: { prep: 30, response: 60 },
+  integrated_read_listen_academic: { prep: 30, response: 60 },
+  integrated_listen: { prep: 20, response: 60 },
+  listen_and_repeat: { prep: 0, response: 15 },
+  take_an_interview: { prep: 15, response: 45 },
+}
+
+// TOEFL 섹션별 실제 문제 구성
+export const TOEFL_SECTION_STRUCTURE = {
+  reading: { passages: 2, questionsPerPassage: 10, totalQuestions: 20 },
+  listening: { lectures: 3, conversations: 2, questionsPerLecture: 6, questionsPerConversation: 5, totalQuestions: 28 },
+  speaking: { tasks: 4 },
+  writing: { tasks: 2 },
 }
 
 // 난이도 별 표시
@@ -54,12 +307,12 @@ export function renderWithUnderlines(text: string): React.ReactNode {
   })
 }
 
-// 레벨 타이틀
+// 레벨 타이틀 (TOEFL)
 export function levelTitle(level: number) {
   const titles = [
-    'Beginner', 'Word Learner', 'Grammar Student', 'Reading Rookie',
-    'Sentence Builder', 'Vocabulary Seeker', 'Grammar Warrior',
-    'Reading Expert', 'Writing Master', 'English Champion',
+    'TOEFL Beginner', 'Vocabulary Builder', 'Reading Explorer',
+    'Listening Learner', 'Speaking Starter', 'Writing Apprentice',
+    'Section Master', 'Score Climber', 'Test Strategist', 'TOEFL Champion',
   ]
   return titles[Math.min(level - 1, titles.length - 1)]
 }

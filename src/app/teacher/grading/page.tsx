@@ -93,10 +93,10 @@ export default async function GradingPage() {
         )}
       </div>
 
-      {/* 서술형 채점 대기 */}
+      {/* Writing 채점 대기 */}
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-4">
-          <h2 className="font-bold text-gray-900">서술형 채점 대기</h2>
+          <h2 className="font-bold text-gray-900">Writing 채점 대기</h2>
           {filtered.length > 0 && (
             <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{filtered.length}</span>
           )}
@@ -105,7 +105,7 @@ export default async function GradingPage() {
         {filtered.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
             <Clock size={40} className="mx-auto text-gray-200 mb-3" />
-            <p className="font-semibold text-gray-500">채점 대기 중인 서술형 답안이 없어요</p>
+            <p className="font-semibold text-gray-500">채점 대기 중인 Writing 답안이 없어요</p>
           </div>
         ) : (
           <div className="space-y-4">

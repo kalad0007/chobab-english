@@ -5,22 +5,31 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { LayoutDashboard, FileText, RefreshCw, BookOpen, BarChart3, Trophy, LogOut, Menu, X } from 'lucide-react'
+import { LayoutDashboard, FileText, RefreshCw, BookOpen, BarChart3, Trophy, LogOut, Menu, X, Headphones, Mic, PenTool } from 'lucide-react'
 
 const navItems = [
   {
-    section: '학습',
+    section: 'TOEFL 학습',
     items: [
       { href: '/student/dashboard', label: '내 대시보드', icon: LayoutDashboard },
-      { href: '/student/exams', label: '시험 보기', icon: FileText },
-      { href: '/student/review', label: '오답 다시 풀기', icon: RefreshCw },
+      { href: '/student/exams', label: '모의고사', icon: FileText },
+      { href: '/student/review', label: '오답 복습', icon: RefreshCw },
       { href: '/student/learn', label: '학습 자료', icon: BookOpen },
+    ],
+  },
+  {
+    section: '섹션별 연습',
+    items: [
+      { href: '/student/practice/reading', label: 'Reading', icon: BookOpen },
+      { href: '/student/practice/listening', label: 'Listening', icon: Headphones },
+      { href: '/student/practice/speaking', label: 'Speaking', icon: Mic },
+      { href: '/student/practice/writing', label: 'Writing', icon: PenTool },
     ],
   },
   {
     section: '내 기록',
     items: [
-      { href: '/student/results', label: '성적 확인', icon: BarChart3 },
+      { href: '/student/results', label: '성적 분석', icon: BarChart3 },
       { href: '/student/badges', label: '내 뱃지', icon: Trophy },
     ],
   },
@@ -79,8 +88,8 @@ export default function StudentSidebar({ studentName, className, pendingReviews 
             <div className="flex items-center gap-2">
               <span className="text-2xl">🍣</span>
               <div>
-                <p className="font-extrabold text-gray-900 leading-tight">초밥샘의</p>
-                <p className="font-extrabold text-purple-600 leading-tight">영어공부</p>
+                <p className="font-extrabold text-gray-900 leading-tight">초밥샘</p>
+                <p className="font-extrabold text-blue-600 leading-tight">TOEFL</p>
               </div>
             </div>
             <p className="text-xs text-gray-400 mt-2">

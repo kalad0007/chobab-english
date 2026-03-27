@@ -14,13 +14,13 @@ export const viewport = {
 const geist = Geist({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "초밥샘의 영어공부",
-  description: "중고등학교 영어 교육 및 모의고사 플랫폼",
+  title: "초밥샘 TOEFL",
+  description: "TOEFL iBT 대비 학습 플랫폼",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "초밥샘영어",
+    title: "초밥샘TOEFL",
   },
   icons: {
     icon: "/icons/icon-32x32.png",
@@ -35,7 +35,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" className="h-full">
-      <body className={`${geist.className} min-h-full antialiased`}>
+      <body className={`${geist.className} min-h-full antialiased`} suppressHydrationWarning>
         <TopLoader />
         <ServiceWorkerRegister />
         {children}

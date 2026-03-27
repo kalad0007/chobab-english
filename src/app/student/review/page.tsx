@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { CATEGORY_LABELS, renderWithUnderlines } from '@/lib/utils'
 import { RefreshCw, CheckCircle, XCircle, Sparkles, Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import FillBlankPlayer from '@/components/ui/FillBlankPlayer'
 
 interface ReviewItem {
   id: string
@@ -20,6 +21,7 @@ interface ReviewItem {
     explanation: string | null
     category: string
     type: string
+    question_subtype: string | null
   }
 }
 
@@ -29,6 +31,7 @@ export default function ReviewPage() {
   const [loading, setLoading] = useState(true)
   const [current, setCurrent] = useState(0)
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null)
+  const [fillAnswer, setFillAnswer] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [generating, setGenerating] = useState(false)
 
@@ -42,7 +45,7 @@ export default function ReviewPage() {
         .select(`
           id, original_question_id, generated_question_id, retry_count,
           questions!wrong_answer_queue_original_question_id_fkey(
-            id, content, passage, options, answer, explanation, category, type
+            id, content, passage, options, answer, explanation, category, type, question_subtype
           )
         `)
         .eq('student_id', user.id)
@@ -97,8 +100,17 @@ export default function ReviewPage() {
     if (current < items.length - 1) {
       setCurrent(c => c + 1)
       setSelectedAnswer(null)
+      setFillAnswer('')
       setSubmitted(false)
     }
+  }
+
+  function handleFillSubmit() {
+    const item = items[current]
+    const correct = (item.question.answer ?? '').split(',').map(a => a.trim().toLowerCase())
+    const student = fillAnswer.split(',').map(a => a.trim().toLowerCase())
+    const isCorrect = correct.length > 0 && correct.every((c, i) => c === student[i])
+    handleAnswer(isCorrect ? item.question.answer : fillAnswer)
   }
 
   async function generateSimilar() {
@@ -153,6 +165,22 @@ export default function ReviewPage() {
 
   const item = items[current]
   const q = item.question
+  const isFillBlank = q.question_subtype === 'complete_the_words' || q.question_subtype === 'sentence_completion'
+    || (q.passage?.trimStart().startsWith('[') ?? false)
+    || q.content.trimStart().startsWith('[')
+
+  // explanation이 JSON이면 파싱
+  let explanationText = q.explanation ?? ''
+  if (explanationText.trimStart().startsWith('{')) {
+    try { explanationText = JSON.parse(explanationText).explanation ?? '' } catch { explanationText = '' }
+  }
+
+  // fill-blank 토큰 파싱
+  let fillTokens: unknown[] | null = null
+  if (isFillBlank) {
+    const raw = q.passage || q.content
+    try { fillTokens = JSON.parse(raw ?? '') } catch { fillTokens = null }
+  }
 
   return (
     <div className="p-7 max-w-2xl">
@@ -179,15 +207,39 @@ export default function ReviewPage() {
           <span className="text-xs text-gray-400">재시도 {item.retry_count}회</span>
         </div>
 
-        {q.passage && (
+        {/* 지문 (fill-blank JSON은 건너뜀) */}
+        {q.passage && !isFillBlank && (
           <div className="bg-blue-50 border-l-4 border-blue-400 rounded-r-xl p-4 text-sm text-gray-700 leading-7 mb-5">
             {renderWithUnderlines(q.passage)}
           </div>
         )}
 
-        <p className="text-base font-semibold text-gray-900 leading-7 mb-5">{renderWithUnderlines(q.content)}</p>
+        {/* 문제 본문 (fill-blank JSON은 건너뜀) */}
+        {!isFillBlank && (
+          <p className="text-base font-semibold text-gray-900 leading-7 mb-5">{renderWithUnderlines(q.content)}</p>
+        )}
 
-        {q.options && (
+        {/* fill-blank: 빈칸 채우기 */}
+        {isFillBlank && fillTokens && (
+          <div className="bg-gray-50 rounded-xl p-4 mb-4">
+            <FillBlankPlayer
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              tokens={fillTokens as any}
+              subtype={q.question_subtype}
+              value={submitted ? q.answer : fillAnswer}
+              onChange={setFillAnswer}
+            />
+          </div>
+        )}
+        {isFillBlank && !submitted && (
+          <button onClick={handleFillSubmit}
+            className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold transition mb-2">
+            제출하기
+          </button>
+        )}
+
+        {/* MCQ */}
+        {!isFillBlank && q.options && (
           <div className="space-y-2.5">
             {q.options.map(opt => {
               const isCorrectOpt = String(opt.num) === q.answer
@@ -231,7 +283,22 @@ export default function ReviewPage() {
               : <><XCircle size={18} className="text-red-500" /><span className="font-bold text-red-700">오답이에요. 정답은 {q.answer}번입니다.</span></>
             }
           </div>
-          {q.explanation && <p className="text-sm text-gray-700">{q.explanation}</p>}
+          {explanationText && <p className="text-sm text-gray-700">{explanationText}</p>}
+          {isFillBlank && submitted && (
+            <div className="mt-2 space-y-1">
+              {q.answer.split(',').map((correct: string, ci: number) => {
+                const studentWord = fillAnswer.split(',')[ci]?.trim() ?? ''
+                const isWordCorrect = correct.trim().toLowerCase() === studentWord.toLowerCase()
+                return (
+                  <div key={ci} className={`text-xs px-2 py-1 rounded-lg flex gap-2 ${isWordCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    <span className="font-bold">{ci + 1}.</span>
+                    <span>정답: <strong>{correct.trim()}</strong></span>
+                    {!isWordCorrect && studentWord && <span className="text-red-500">내 답: {studentWord}</span>}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 

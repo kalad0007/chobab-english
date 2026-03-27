@@ -7,6 +7,8 @@ import { ChevronLeft, ChevronRight, CheckSquare, Clock } from 'lucide-react'
 import { renderWithUnderlines } from '@/lib/utils'
 import AudioPlayer from '@/components/ui/AudioPlayer'
 import SpeakingRecorder from '@/components/ui/SpeakingRecorder'
+import BuildASentencePlayer from '@/components/ui/BuildASentencePlayer'
+import FillBlankPlayer from '@/components/ui/FillBlankPlayer'
 
 interface Question {
   id: string
@@ -16,8 +18,10 @@ interface Question {
   options: { num: number; text: string }[] | null
   answer: string
   category: string
+  difficulty: number          // 난이도 가중치 기반 채점에 사용
   points: number
   order_num: number
+  question_subtype?: string | null
   // 리스닝/스피킹
   audio_url?: string | null
   audio_script?: string | null
@@ -31,7 +35,8 @@ export default function ExamTakePage() {
   const examId = params.id as string
   const supabase = createClient()
 
-  const [exam, setExam] = useState<{ title: string; time_limit: number | null } | null>(null)
+  const [exam, setExam] = useState<{ title: string; time_limit: number | null; description: string | null } | null>(null)
+  const [maxBand, setMaxBand] = useState<number>(6.0)  // 시험의 최고 밴드
   const [questions, setQuestions] = useState<Question[]>([])
   const [current, setCurrent] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>({})
@@ -51,7 +56,7 @@ export default function ExamTakePage() {
       }
 
       const [{ data: examData }, { data: examQuestions }] = await Promise.all([
-        supabase.from('exams').select('title, time_limit').eq('id', examId).single(),
+        supabase.from('exams').select('title, time_limit, description').eq('id', examId).single(),
         supabase.from('exam_questions')
           .select('question_id, order_num, points, questions(*)')
           .eq('exam_id', examId)
@@ -59,6 +64,14 @@ export default function ExamTakePage() {
       ])
 
       setExam(examData)
+
+      // description에서 maxBand 파싱 (일반 시험 & 적응형 공통)
+      if (examData?.description) {
+        try {
+          const cfg = JSON.parse(examData.description)
+          if (cfg.maxBand) setMaxBand(cfg.maxBand)
+        } catch { /* JSON 파싱 실패 시 기본값 6.0 유지 */ }
+      }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const qs: Question[] = (examQuestions ?? []).map((eq: any) => ({
@@ -127,18 +140,40 @@ export default function ExamTakePage() {
     if (!submissionId || submitting) return
     setSubmitting(true)
 
-    // 객관식 + 단답형 자동 채점
-    let score = 0
     const { data: { user } } = await supabase.auth.getUser()
+
+    // ── 난이도 가중 채점 ─────────────────────────────────
+    // W_q = difficulty (K=1, 비율 계산이므로 상수 소거됨)
+    // Score = (Σ W_q of correct) / (Σ W_q of all) × 100
+    let rawScore = 0                // 단순 맞은 문항 수 (표시용)
+    let weightedCorrect = 0        // 맞힌 문항 난이도 합
+    let weightedTotal = 0          // 전체 문항 난이도 합
     const updates = []
+
     for (const q of questions) {
       const studentAns = answers[q.id] ?? ''
-      // 객관식 또는 단답형(완전일치, 대소문자 무시)은 자동 채점
-      const isAutoGraded = (q.type === 'multiple_choice' || q.type === 'short_answer') && q.category !== 'speaking'
+      const isFillBlank = q.question_subtype === 'complete_the_words' || q.question_subtype === 'sentence_completion'
+      const isWordTile = q.question_subtype === 'sentence_reordering'
+      const isAutoGraded = (q.type === 'multiple_choice' || q.type === 'short_answer' || isFillBlank || isWordTile) && q.category !== 'speaking'
       const isCorrect = isAutoGraded
-        ? q.answer?.trim().toLowerCase() === studentAns.trim().toLowerCase()
+        ? isFillBlank
+          // fill-blank: 각 빈칸 단어 비교 (순서 유지, 대소문자 무시)
+          ? (() => {
+              const correct = (q.answer ?? '').split(',').map(a => a.trim().toLowerCase())
+              const student = studentAns.split(',').map(a => a.trim().toLowerCase())
+              return correct.length > 0 && correct.every((c, i) => c === student[i])
+            })()
+          : q.answer?.trim().toLowerCase() === studentAns.trim().toLowerCase()
         : false
-      if (isCorrect) score += q.points
+
+      const diffWeight = q.difficulty ?? 3.0   // fallback 3.0
+      if (isAutoGraded) {
+        weightedTotal += diffWeight
+        if (isCorrect) {
+          rawScore += 1
+          weightedCorrect += diffWeight
+        }
+      }
 
       updates.push(supabase.from('submission_answers').upsert({
         submission_id: submissionId,
@@ -159,6 +194,16 @@ export default function ExamTakePage() {
     }
 
     await Promise.all(updates)
+
+    // 가중 성취도 (0~100)
+    const weightedPct = weightedTotal > 0
+      ? Math.round((weightedCorrect / weightedTotal) * 100)
+      : 0
+
+    // 밴드 점수: (가중성취도 / 100) × maxBand → 0.5 단위 반올림
+    const rawBand = (weightedPct / 100) * maxBand
+    const bandScore = Math.round(rawBand * 2) / 2   // 0.5 단위
+
     const totalPoints = questions.reduce((s, q) => s + q.points, 0)
 
     // 영역별 실력 통계 업데이트 (객관식 + 단답형)
@@ -173,16 +218,18 @@ export default function ExamTakePage() {
       })
     }
 
-    // essay만 선생님 채점 대기 (short_answer, 객관식, 스피킹 제외)
-    const hasNonAutoGraded = questions.some(q =>
-      q.type === 'essay' && q.category !== 'speaking'
-    )
+    // writing essay만 선생님 채점 대기 (word tile, fill-blank, 객관식, 단답형, 스피킹 제외)
+    const hasNonAutoGraded = questions.some(q => {
+      const sub = q.question_subtype
+      const isAutoSub = sub === 'sentence_reordering' || sub === 'complete_the_words' || sub === 'sentence_completion'
+      return q.type === 'essay' && q.category !== 'speaking' && !isAutoSub
+    })
 
     await supabase.from('submissions').update({
       status: hasNonAutoGraded ? 'submitted' : 'graded',
-      score,
-      total_points: totalPoints,
-      percentage: totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0,
+      score: Math.round(bandScore * 10),  // 밴드 점수 × 10 저장 (3.5 → 35)
+      total_points: Math.round(maxBand * 10),  // 최고 밴드 × 10 (5.5 → 55)
+      percentage: weightedPct,                  // 난이도 가중 성취도 %
       submitted_at: new Date().toISOString(),
     }).eq('id', submissionId)
 
@@ -245,17 +292,19 @@ export default function ExamTakePage() {
                   </div>
                 )}
 
-                {/* 지문 */}
-                {q.passage && (
+                {/* 지문 (fill-blank JSON 타입은 별도 렌더링) */}
+                {q.passage && q.question_subtype !== 'complete_the_words' && q.question_subtype !== 'sentence_completion' && (
                   <div className="bg-blue-50 border-l-4 border-blue-400 rounded-r-xl p-4 text-sm text-gray-700 leading-7 mb-5">
                     {renderWithUnderlines(q.passage)}
                   </div>
                 )}
 
-                {/* 문제 본문 */}
-                <p className="text-base font-semibold text-gray-900 leading-7 mb-5">
-                  {renderWithUnderlines(q.content)}
-                </p>
+                {/* 문제 본문 (sentence_reordering / fill-blank는 별도 처리) */}
+                {q.question_subtype !== 'sentence_reordering' && q.question_subtype !== 'complete_the_words' && q.question_subtype !== 'sentence_completion' && (
+                  <p className="text-base font-semibold text-gray-900 leading-7 mb-5">
+                    {renderWithUnderlines(q.content)}
+                  </p>
+                )}
 
                 {/* 스피킹: 녹음 컴포넌트 */}
                 {isSpeaking ? (
@@ -267,6 +316,34 @@ export default function ExamTakePage() {
                       saveAnswer(q.id, audioUrl)
                     }}
                   />
+                ) : q.question_subtype === 'sentence_reordering' && q.options ? (
+                  /* Build a Sentence — 워드 타일 클릭 UI */
+                  <BuildASentencePlayer
+                    personAQuestion={q.content}
+                    wordTiles={q.options}
+                    value={answers[q.id] ?? ''}
+                    onChange={(answer) => saveAnswer(q.id, answer)}
+                  />
+                ) : (q.question_subtype === 'complete_the_words' || q.question_subtype === 'sentence_completion') ? (
+                  /* Fill-blank — 빈칸 채우기 */
+                  (() => {
+                    const raw = q.passage || q.content
+                    try {
+                      const tokens = JSON.parse(raw)
+                      return (
+                        <div className="bg-gray-50 rounded-xl p-4">
+                          <FillBlankPlayer
+                            tokens={tokens}
+                            subtype={q.question_subtype}
+                            value={answers[q.id] ?? ''}
+                            onChange={(v) => saveAnswer(q.id, v)}
+                          />
+                        </div>
+                      )
+                    } catch {
+                      return <textarea value={answers[q.id] ?? ''} onChange={e => saveAnswer(q.id, e.target.value)} rows={4} className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                    }
+                  })()
                 ) : q.type === 'multiple_choice' && q.options ? (
                   /* 객관식 보기 */
                   <div className="space-y-2.5">
