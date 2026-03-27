@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { CATEGORY_LABELS, DIFFICULTY_LEVELS, QUESTION_SUBTYPE_LABELS, getDiffInfo } from '@/lib/utils'
+import { CATEGORY_LABELS, DIFFICULTY_LEVELS, QUESTION_SUBTYPE_LABELS, getDiffInfo, usesAlphaOptions, optionLabel } from '@/lib/utils'
 import { Loader2, Volume2 } from 'lucide-react'
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -391,7 +391,7 @@ export default function EditQuestionPage() {
                   {options.map((opt, i) => (
                     <div key={i} className="flex items-center gap-2">
                       <span className="w-6 h-6 flex items-center justify-center bg-gray-100 rounded-full text-xs font-bold text-gray-600 flex-shrink-0">
-                        {opt.num}
+                        {optionLabel(opt.num, usesAlphaOptions(category, questionSubtype))}
                       </span>
                       <input
                         value={opt.text}

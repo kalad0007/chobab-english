@@ -1,8 +1,8 @@
 import { createClient, getUserFromCookie } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { CATEGORY_LABELS, QUESTION_SUBTYPE_LABELS, getDiffInfo } from '@/lib/utils'
-import { ArrowLeft, Pencil } from 'lucide-react'
+import { CATEGORY_LABELS, QUESTION_SUBTYPE_LABELS, getDiffInfo, usesAlphaOptions, optionLabel } from '@/lib/utils'
+import { ArrowLeft, Pencil, Volume2 } from 'lucide-react'
 import type { Question } from '@/types/database'
 import DeleteButton from '../../DeleteButton'
 import SetDeleteButton from './SetDeleteButton'
@@ -29,11 +29,13 @@ export default async function SetPreviewPage({
     .select('*')
     .eq('passage_group_id', groupId)
     .eq('teacher_id', user.id)
+    .eq('is_active', true)
     .order('created_at', { ascending: true })
 
   if (!qs || qs.length === 0) notFound()
 
-  const questions = qs as (Question & { passage_group_id?: string })[]
+  type QRow = Question & { passage_group_id?: string; audio_script?: string | null; audio_url?: string | null }
+  const questions = qs as QRow[]
   const rep = questions[0]
   const diff = getDiffInfo(rep.difficulty)
   const subtypeLabel = QUESTION_SUBTYPE_LABELS[rep.category]?.[rep.question_subtype ?? '']
@@ -47,8 +49,12 @@ export default async function SetPreviewPage({
             <ArrowLeft size={18} />
           </Link>
           <div>
-            <h1 className="text-xl font-extrabold text-gray-900">지문 세트 미리보기</h1>
-            <p className="text-xs text-gray-400 mt-0.5">지문 1개 + 문제 {questions.length}개</p>
+            <h1 className="text-xl font-extrabold text-gray-900">
+              {rep.category === 'listening' ? '리스닝 세트 미리보기' : '지문 세트 미리보기'}
+            </h1>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {rep.category === 'listening' ? '음성 1개 + 문제 ' : '지문 1개 + 문제 '}{questions.length}개
+            </p>
           </div>
         </div>
         <SetDeleteButton groupId={groupId} questionIds={questions.map(q => q.id)} />
@@ -75,8 +81,43 @@ export default async function SetPreviewPage({
         </span>
       </div>
 
-      {/* 지문 */}
-      {rep.passage && (
+      {/* 리스닝: 음성 스크립트 + 플레이어 (공유) */}
+      {rep.category === 'listening' && (rep.audio_script || rep.audio_url) && (
+        <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 mb-6 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Volume2 size={16} className="text-emerald-600" />
+              <p className="text-sm font-bold text-emerald-700">음성 스크립트 (공유)</p>
+            </div>
+            {!rep.audio_url && (
+              <Link href={`/teacher/questions/${rep.id}/edit`}
+                className="text-xs text-emerald-700 bg-emerald-100 px-3 py-1 rounded-lg font-semibold hover:bg-emerald-200 transition">
+                + AI 음성 생성
+              </Link>
+            )}
+          </div>
+          {rep.audio_url && (
+            <audio controls src={rep.audio_url} className="w-full rounded-xl" />
+          )}
+          {rep.audio_script && (
+            <p className="text-sm text-emerald-900 whitespace-pre-wrap leading-7">{rep.audio_script}</p>
+          )}
+        </div>
+      )}
+
+      {/* 리스닝 없음 알림 */}
+      {rep.category === 'listening' && !rep.audio_script && !rep.audio_url && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 flex items-center justify-between">
+          <p className="text-sm text-amber-700">음성 스크립트가 없습니다. 수정에서 스크립트를 입력하고 AI 음성을 생성하세요.</p>
+          <Link href={`/teacher/questions/${rep.id}/edit`}
+            className="text-xs text-amber-700 bg-amber-100 px-3 py-1 rounded-lg font-semibold hover:bg-amber-200 transition whitespace-nowrap ml-3">
+            수정하기
+          </Link>
+        </div>
+      )}
+
+      {/* 지문 (리딩) */}
+      {rep.category !== 'listening' && rep.passage && (
         <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5 mb-6">
           <p className="text-xs font-bold text-amber-700 mb-3 uppercase tracking-wide">지문 (공유)</p>
           <p className="text-gray-800 text-sm leading-7 whitespace-pre-wrap">{rep.passage}</p>
@@ -113,7 +154,7 @@ export default async function SetPreviewPage({
                   {(q.options as { num: number; text: string }[]).map(opt => (
                     <div key={opt.num} className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100">
                       <span className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-gray-100 rounded-full text-xs font-bold text-gray-600">
-                        {opt.num}
+                        {optionLabel(opt.num, usesAlphaOptions(q.category, q.question_subtype))}
                       </span>
                       <span className="text-sm text-gray-800">{opt.text}</span>
                     </div>
