@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ChevronLeft, ChevronRight, CheckSquare, Clock } from 'lucide-react'
-import { renderWithUnderlines, usesAlphaOptions, optionLabel } from '@/lib/utils'
+import { renderWithUnderlines, usesAlphaOptions, optionLabel, DEFAULT_TIME_LIMITS } from '@/lib/utils'
 import AudioPlayer from '@/components/ui/AudioPlayer'
 import SpeakingRecorder from '@/components/ui/SpeakingRecorder'
 import BuildASentencePlayer from '@/components/ui/BuildASentencePlayer'
@@ -27,6 +27,7 @@ interface Question {
   audio_script?: string | null
   audio_play_limit?: number | null
   speaking_prompt?: string | null
+  time_limit?: number | null
 }
 
 export default function ExamTakePage() {
@@ -39,9 +40,10 @@ export default function ExamTakePage() {
   const [maxBand, setMaxBand] = useState<number>(6.0)  // 시험의 최고 밴드
   const [questions, setQuestions] = useState<Question[]>([])
   const [current, setCurrent] = useState(0)
+  const [timeLeft, setTimeLeft] = useState<number | null>(null)       // 시험 전체 타이머
+  const [questionTimeLeft, setQuestionTimeLeft] = useState<number | null>(null) // 문제별 타이머
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [submissionId, setSubmissionId] = useState<string | null>(null)
-  const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   // 리스닝 재생 횟수 추적
@@ -118,13 +120,32 @@ export default function ExamTakePage() {
     load().catch(() => setLoading(false))
   }, [examId])
 
-  // 타이머
+  // 시험 전체 타이머
   useEffect(() => {
     if (timeLeft === null) return
     if (timeLeft <= 0) { handleSubmit(); return }
     const t = setTimeout(() => setTimeLeft(t => (t ?? 1) - 1), 1000)
     return () => clearTimeout(t)
   }, [timeLeft])
+
+  // 문제별 타이머 — 문제 변경 시 리셋
+  useEffect(() => {
+    if (questions.length === 0) return
+    const q = questions[current]
+    const limit = q.time_limit ?? DEFAULT_TIME_LIMITS[q.question_subtype ?? ''] ?? null
+    setQuestionTimeLeft(limit)
+  }, [current, questions])
+
+  useEffect(() => {
+    if (questionTimeLeft === null || questionTimeLeft <= 0) {
+      if (questionTimeLeft === 0 && current < questions.length - 1) {
+        setCurrent(c => c + 1)
+      }
+      return
+    }
+    const t = setTimeout(() => setQuestionTimeLeft(t => (t ?? 1) - 1), 1000)
+    return () => clearTimeout(t)
+  }, [questionTimeLeft])
 
   const saveAnswer = useCallback(async (questionId: string, answer: string) => {
     if (!submissionId) return
@@ -268,15 +289,32 @@ export default function ExamTakePage() {
           <div className="flex-1">
             {q && (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="text-xs font-bold text-purple-600 uppercase tracking-widest">
-                    문제 {q.order_num} / {questions.length} · {q.points}점
-                  </span>
-                  {isListening && (
-                    <span className="text-xs font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">🎧 리스닝</span>
-                  )}
-                  {isSpeaking && (
-                    <span className="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">🎤 스피킹</span>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-purple-600 uppercase tracking-widest">
+                      문제 {q.order_num} / {questions.length} · {q.points}점
+                    </span>
+                    {isListening && (
+                      <span className="text-xs font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">🎧 리스닝</span>
+                    )}
+                    {isSpeaking && (
+                      <span className="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">🎤 스피킹</span>
+                    )}
+                  </div>
+                  {/* 문제별 카운트다운 타이머 */}
+                  {questionTimeLeft !== null && (
+                    <div className={`flex items-center gap-1 text-sm font-extrabold tabular-nums px-3 py-1 rounded-xl ${
+                      questionTimeLeft <= 10
+                        ? 'bg-red-100 text-red-600 animate-pulse'
+                        : questionTimeLeft <= 30
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      <Clock size={13} />
+                      {questionTimeLeft >= 60
+                        ? `${Math.floor(questionTimeLeft / 60)}:${String(questionTimeLeft % 60).padStart(2, '0')}`
+                        : `${questionTimeLeft}초`}
+                    </div>
                   )}
                 </div>
 

@@ -13,6 +13,37 @@ export function formatDate(date: string | Date) {
   }).format(new Date(date))
 }
 
+// 문제 유형별 기본 제한시간 (초)
+export const DEFAULT_TIME_LIMITS: Record<string, number> = {
+  // Reading
+  complete_the_words:     300,  // 5분
+  sentence_completion:    300,  // 5분
+  daily_life_email:        60,  // 1분
+  daily_life_text_chain:   60,  // 1분
+  academic_passage:        70,  // 1분 10초
+  // Listening
+  choose_response:         30,
+  conversation:            30,
+  academic_talk:           30,
+  // Writing
+  sentence_reordering:     35,
+  email_writing:          420,  // 7분
+  academic_discussion:    600,  // 10분
+  // Speaking
+  listen_and_repeat:       10,
+  take_an_interview:       45,
+}
+
+// 초 → "X분 Y초" 또는 "Y초" 포맷
+export function formatSeconds(sec: number): string {
+  if (sec >= 60) {
+    const m = Math.floor(sec / 60)
+    const s = sec % 60
+    return s > 0 ? `${m}분 ${s}초` : `${m}분`
+  }
+  return `${sec}초`
+}
+
 // A/B/C/D 보기 표기 여부: 리스닝 전체 + 리딩 특정 서브타입
 const ALPHA_OPTION_SUBTYPES = new Set(['daily_life_email', 'daily_life_text_chain', 'academic_passage'])
 export function usesAlphaOptions(category: string, subtype?: string | null): boolean {

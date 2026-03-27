@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { CATEGORY_LABELS, DIFFICULTY_LEVELS, QUESTION_SUBTYPE_LABELS, getDiffInfo } from '@/lib/utils'
+import { CATEGORY_LABELS, DIFFICULTY_LEVELS, QUESTION_SUBTYPE_LABELS, getDiffInfo, DEFAULT_TIME_LIMITS, formatSeconds } from '@/lib/utils'
 import { Search, Check, X, Clock, BookOpen, ChevronDown, ChevronUp, Trophy } from 'lucide-react'
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -28,6 +28,7 @@ interface Question {
   source: string
   created_at: string
   passage_group_id: string | null
+  time_limit: number | null
 }
 
 interface Class {
@@ -62,7 +63,7 @@ export default function NewExamPage() {
       const [{ data: cls }, { data: qs }] = await Promise.all([
         supabase.from('classes').select('id, name').eq('teacher_id', user.id),
         supabase.from('questions')
-          .select('id, content, category, difficulty, type, options, answer, subcategory, summary, question_subtype, source, created_at, passage_group_id')
+          .select('id, content, category, difficulty, type, options, answer, subcategory, summary, question_subtype, source, created_at, passage_group_id, time_limit')
           .eq('teacher_id', user.id).eq('is_active', true).order('created_at', { ascending: false }),
       ])
       setClasses(cls ?? [])
@@ -132,6 +133,10 @@ export default function NewExamPage() {
   }
 
   const selectedQuestions = questions.filter(q => selected.has(q.id))
+  // 문제당 제한시간 합산 (저장된 time_limit → 없으면 subtype 기본값 → fallback 30초)
+  const totalEstimatedSeconds = selectedQuestions.reduce((acc, q) => {
+    return acc + (q.time_limit ?? DEFAULT_TIME_LIMITS[q.question_subtype ?? ''] ?? 30)
+  }, 0)
 
   return (
     <div className="p-7 max-w-5xl">
@@ -236,8 +241,16 @@ export default function NewExamPage() {
                 ))}
               </div>
             )}
-            <div className="mt-3 pt-3 border-t border-blue-200 text-xs text-blue-600 font-semibold">
-              총점: {selected.size * 5}점 ({selected.size}문제 × 5점)
+            <div className="mt-3 pt-3 border-t border-blue-200 space-y-1">
+              <div className="text-xs text-blue-600 font-semibold">
+                총점: {selected.size * 5}점 ({selected.size}문제 × 5점)
+              </div>
+              {selected.size > 0 && (
+                <div className="flex items-center gap-1.5 text-xs text-blue-500">
+                  <Clock size={11} />
+                  예상 소요 시간: <span className="font-bold text-blue-700">{formatSeconds(totalEstimatedSeconds)}</span>
+                </div>
+              )}
             </div>
           </div>
 

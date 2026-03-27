@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { CATEGORY_LABELS, DIFFICULTY_LEVELS, QUESTION_SUBTYPE_LABELS, getDiffInfo, usesAlphaOptions, optionLabel } from '@/lib/utils'
+import { CATEGORY_LABELS, DIFFICULTY_LEVELS, QUESTION_SUBTYPE_LABELS, getDiffInfo, usesAlphaOptions, optionLabel, DEFAULT_TIME_LIMITS, formatSeconds } from '@/lib/utils'
 import { Loader2, Volume2 } from 'lucide-react'
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -48,6 +48,8 @@ export default function EditQuestionPage() {
   const [generatingAudio, setGeneratingAudio] = useState(false)
   const [voiceGender, setVoiceGender] = useState<'yw' | 'ym' | 'ow' | 'om'>('yw')
 
+  const [timeLimit, setTimeLimit] = useState<number>(30)
+
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
   const [error, setError] = useState('')
@@ -85,6 +87,9 @@ export default function EditQuestionPage() {
       setAudioScript(d.audio_script ?? '')
       setAudioUrl(d.audio_url ?? '')
       setSpeakingPrompt(d.speaking_prompt ?? '')
+      // 제한시간: 저장된 값 → 없으면 subtype 기본값 → fallback 30
+      const subtype2 = data.question_subtype ?? ''
+      setTimeLimit(d.time_limit ?? DEFAULT_TIME_LIMITS[subtype2] ?? 30)
 
       const subtype = data.question_subtype ?? ''
       if (FILL_BLANK_SUBTYPES.includes(subtype)) {
@@ -211,6 +216,7 @@ export default function EditQuestionPage() {
           audio_url: audioUrl || null,
         } : {}),
         ...(isSpeaking ? { speaking_prompt: speakingPrompt || null } : {}),
+        time_limit: timeLimit,
       } as Record<string, unknown>)
       .eq('id', id)
 
@@ -305,6 +311,33 @@ export default function EditQuestionPage() {
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+
+        {/* 제한 시간 */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <label className="block text-sm font-semibold text-gray-700 mb-3">제한 시간</label>
+          <div className="flex items-center gap-3">
+            <button type="button"
+              onClick={() => setTimeLimit(t => Math.max(5, t - 5))}
+              className="w-9 h-9 rounded-xl border border-gray-200 bg-white text-gray-600 text-lg font-bold hover:bg-gray-50 transition flex items-center justify-center">
+              −
+            </button>
+            <div className="text-center min-w-[80px]">
+              <span className="text-xl font-extrabold text-gray-900">{formatSeconds(timeLimit)}</span>
+            </div>
+            <button type="button"
+              onClick={() => setTimeLimit(t => t + 5)}
+              className="w-9 h-9 rounded-xl border border-gray-200 bg-white text-gray-600 text-lg font-bold hover:bg-gray-50 transition flex items-center justify-center">
+              +
+            </button>
+            {questionSubtype && DEFAULT_TIME_LIMITS[questionSubtype] && (
+              <button type="button"
+                onClick={() => setTimeLimit(DEFAULT_TIME_LIMITS[questionSubtype])}
+                className="ml-2 text-xs text-blue-600 hover:underline">
+                기본값 ({formatSeconds(DEFAULT_TIME_LIMITS[questionSubtype])})
+              </button>
+            )}
           </div>
         </div>
 

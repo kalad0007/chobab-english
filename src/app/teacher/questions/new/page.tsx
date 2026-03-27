@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { CATEGORY_LABELS, QUESTION_SUBTYPE_LABELS, SPEAKING_TASK_TIMES, DIFFICULTY_LEVELS } from '@/lib/utils'
+import { CATEGORY_LABELS, QUESTION_SUBTYPE_LABELS, SPEAKING_TASK_TIMES, DIFFICULTY_LEVELS, DEFAULT_TIME_LIMITS, formatSeconds } from '@/lib/utils'
 import { Volume2, Loader2, Plus, Trash2, ChevronDown, ChevronUp, Info, Wand2, Check } from 'lucide-react'
 import UnderlineTextarea from '@/components/ui/UnderlineTextarea'
 import Link from 'next/link'
@@ -401,6 +401,7 @@ export default function NewQuestionPage() {
 
   const [category, setCategory] = useState<string>('reading')
   const [difficulty, setDifficulty] = useState(3.0)
+  const [timeLimit, setTimeLimit] = useState<number>(30)
   const [topic, setTopic] = useState('')
   const [summary, setSummary] = useState('')
   const [passage, setPassage] = useState('')
@@ -461,6 +462,11 @@ export default function NewQuestionPage() {
     if (newCat === 'speaking') setTaskNumber(1)
     if (newCat === 'writing') setWritingTaskNumber(1)
     setWordChips([''])
+    setTimeLimit(30)
+  }
+
+  function applyDefaultTimeLimit(subtype: string) {
+    if (DEFAULT_TIME_LIMITS[subtype]) setTimeLimit(DEFAULT_TIME_LIMITS[subtype])
   }
 
   // MC 문제 관리
@@ -604,6 +610,7 @@ export default function NewQuestionPage() {
             word_limit: null,
             question_subtype: q.questionSubtype || null,
             task_number: null,
+            time_limit: timeLimit,
           }
         })
 
@@ -643,6 +650,7 @@ export default function NewQuestionPage() {
         word_limit: isWriting ? wordLimit : null,
         question_subtype: questionSubtype || null,
         task_number: isSpeaking ? taskNumber : isWriting ? writingTaskNumber : null,
+        time_limit: timeLimit,
       })
       if (dbError) { setError('저장 실패: ' + dbError.message); setLoading(false); return }
     }
@@ -711,6 +719,7 @@ export default function NewQuestionPage() {
                         ...q,
                         questionSubtype: t.value === 'academic_passage' ? '' : t.value,
                       })))
+                      applyDefaultTimeLimit(t.value)
                     }}
                     className={`text-left p-3 rounded-xl border-2 transition ${readingType === t.value ? 'border-blue-500 bg-blue-50' : 'border-gray-100 hover:border-blue-200 bg-white'}`}>
                     <div className="flex items-center gap-2">
@@ -734,6 +743,7 @@ export default function NewQuestionPage() {
                     onClick={() => {
                       setListeningType(t.value)
                       setMcQuestions(prev => prev.map(q => ({ ...q, questionSubtype: t.value })))
+                      applyDefaultTimeLimit(t.value)
                     }}
                     className={`text-left p-3 rounded-xl border-2 transition ${listeningType === t.value ? 'border-emerald-500 bg-emerald-50' : 'border-gray-100 hover:border-emerald-200 bg-white'}`}>
                     <div className="flex items-center gap-2">
@@ -758,7 +768,7 @@ export default function NewQuestionPage() {
                   { value: 'academic_discussion',   label: '3-3 · Academic Discussion',       desc: '교수 질문 + 학생 의견 읽고 100단어+ 답변', badge: 'bg-rose-100 text-rose-700' },
                 ].map(t => (
                   <button key={t.value} type="button"
-                    onClick={() => { setQuestionSubtype(t.value); setWritingTaskNumber(t.value === 'email_writing' || t.value === 'academic_discussion' ? 2 : 1) }}
+                    onClick={() => { setQuestionSubtype(t.value); setWritingTaskNumber(t.value === 'email_writing' || t.value === 'academic_discussion' ? 2 : 1); applyDefaultTimeLimit(t.value) }}
                     className={`text-left p-3 rounded-xl border-2 transition ${questionSubtype === t.value ? 'border-purple-500 bg-purple-50' : 'border-gray-100 hover:border-purple-200 bg-white'}`}>
                     <div className="flex items-center gap-1.5">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${t.badge}`}>{t.label}</span>
@@ -781,7 +791,7 @@ export default function NewQuestionPage() {
                   { value: 'take_an_interview', label: '4-2 · Take an Interview', desc: '면접관 질문 → 논리적 답변하기', badge: 'bg-amber-100 text-amber-700' },
                 ].map(t => (
                   <button key={t.value} type="button"
-                    onClick={() => { setQuestionSubtype(t.value); setTaskNumber(t.value === 'listen_and_repeat' ? 5 : 6) }}
+                    onClick={() => { setQuestionSubtype(t.value); setTaskNumber(t.value === 'listen_and_repeat' ? 5 : 6); applyDefaultTimeLimit(t.value) }}
                     className={`text-left p-3 rounded-xl border-2 transition ${questionSubtype === t.value ? 'border-orange-500 bg-orange-50' : 'border-gray-100 hover:border-orange-200 bg-white'}`}>
                     <div className="flex items-center gap-1.5">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${t.badge}`}>{t.label}</span>
@@ -813,6 +823,26 @@ export default function NewQuestionPage() {
                   <span className={`text-[9px] font-normal ${l.value === difficulty ? '' : 'text-gray-400'}`}>{l.label}</span>
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* 제한 시간 */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">제한 시간</label>
+            <div className="flex items-center gap-3">
+              <button type="button"
+                onClick={() => setTimeLimit(t => Math.max(5, t - 5))}
+                className="w-9 h-9 rounded-xl border border-gray-200 bg-white text-gray-600 text-lg font-bold hover:bg-gray-50 transition flex items-center justify-center">
+                −
+              </button>
+              <div className="text-center min-w-[80px]">
+                <span className="text-xl font-extrabold text-gray-900">{formatSeconds(timeLimit)}</span>
+              </div>
+              <button type="button"
+                onClick={() => setTimeLimit(t => t + 5)}
+                className="w-9 h-9 rounded-xl border border-gray-200 bg-white text-gray-600 text-lg font-bold hover:bg-gray-50 transition flex items-center justify-center">
+                +
+              </button>
             </div>
           </div>
 

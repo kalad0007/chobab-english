@@ -78,6 +78,8 @@ export interface Question {
   // 검색/분류용
   summary: string | null            // 지문/음성 내용 요약 (교사 검색용)
   // subcategory = topic (환경, IT, 경제 등 주제 키워드)
+  // 시간 제한
+  time_limit: number | null         // 문제당 제한시간(초)
 }
 
 export interface Exam {
