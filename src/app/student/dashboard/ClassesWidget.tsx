@@ -18,8 +18,19 @@ export default function ClassesWidget({ classes }: { classes: ClassInfo[] }) {
   const [isPending, startTransition] = useTransition()
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
-  function copyCode(classId: string, inviteCode: string) {
-    navigator.clipboard.writeText(inviteCode)
+  async function copyCode(classId: string, inviteCode: string) {
+    try {
+      await navigator.clipboard.writeText(inviteCode)
+    } catch {
+      const el = document.createElement('textarea')
+      el.value = inviteCode
+      el.style.position = 'fixed'
+      el.style.opacity = '0'
+      document.body.appendChild(el)
+      el.select()
+      document.execCommand('copy')
+      document.body.removeChild(el)
+    }
     setCopiedId(classId)
     setTimeout(() => setCopiedId(null), 2000)
   }

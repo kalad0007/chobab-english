@@ -7,7 +7,18 @@ export default function CopyCodeButton({ code }: { code: string }) {
   const [copied, setCopied] = useState(false)
 
   async function copy() {
-    await navigator.clipboard.writeText(code)
+    try {
+      await navigator.clipboard.writeText(code)
+    } catch {
+      const el = document.createElement('textarea')
+      el.value = code
+      el.style.position = 'fixed'
+      el.style.opacity = '0'
+      document.body.appendChild(el)
+      el.select()
+      document.execCommand('copy')
+      document.body.removeChild(el)
+    }
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
