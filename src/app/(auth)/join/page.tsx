@@ -121,17 +121,17 @@ export default function JoinPage() {
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">이름</label>
                 <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="홍길동" required
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition" />
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">이메일</label>
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="student@email.com" required
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition" />
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">비밀번호</label>
                 <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="6자 이상" required
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition" />
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition" />
               </div>
               <button type="submit" disabled={loading}
                 className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white font-bold py-3 rounded-xl transition text-sm">
