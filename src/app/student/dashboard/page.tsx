@@ -39,7 +39,7 @@ export default async function StudentDashboard() {
 
   const [classMemberships, completedSubmissions] = await Promise.all([
     supabase.from('class_members')
-      .select('class_id, classes(id, name, invite_code, profiles:teacher_id(name))')
+      .select('class_id, feature_level, classes(id, name, invite_code, profiles:teacher_id(name))')
       .eq('student_id', user.id),
     supabase.from('submissions').select('exam_id').eq('student_id', user.id).in('status', ['submitted', 'graded']),
   ])
@@ -52,6 +52,8 @@ export default async function StudentDashboard() {
     teacherName: m.classes?.profiles?.name ?? '알 수 없음',
     inviteCode: m.classes?.invite_code ?? '',
   }))
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const featureLevel = (classMemberships.data ?? []).reduce((max: number, m: any) => Math.max(max, m.feature_level ?? 1), 1)
   const submittedIds = (completedSubmissions.data ?? []).map(s => s.exam_id)
 
   let pendingExamsQuery = classIds.length > 0
@@ -177,29 +179,31 @@ export default async function StudentDashboard() {
         </div>
       </div>
 
-      {/* ── 섹션별 연습 카드 ── */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
-        {Object.keys(CATEGORY_LABELS).map(cat => {
-          const Icon  = SECTION_ICONS[cat]
-          const colors = SECTION_COLORS[cat]
-          const band  = sectionBands[cat]
-          return (
-            <Link key={cat} href={`/student/practice/${cat}`}
-              className={`${colors.bg} hover:opacity-90 text-white rounded-2xl p-4 flex flex-col items-center gap-2 text-center transition`}>
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                <Icon size={20} />
-              </div>
-              <p className="font-bold text-sm">{CATEGORY_LABELS[cat]}</p>
-              <p className="text-white/80 text-xs font-semibold">
-                {band > 0 ? `Band ${band.toFixed(1)}` : '미측정'}
-              </p>
-            </Link>
-          )
-        })}
-      </div>
+      {/* ── 섹션별 연습 카드 (feature_level 3 이상만) ── */}
+      {featureLevel >= 3 ? (
+        <div className="grid grid-cols-4 gap-3 mb-6">
+          {Object.keys(CATEGORY_LABELS).map(cat => {
+            const Icon  = SECTION_ICONS[cat]
+            const colors = SECTION_COLORS[cat]
+            const band  = sectionBands[cat]
+            return (
+              <Link key={cat} href={`/student/practice/${cat}`}
+                className={`${colors.bg} hover:opacity-90 text-white rounded-2xl p-4 flex flex-col items-center gap-2 text-center transition`}>
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Icon size={20} />
+                </div>
+                <p className="font-bold text-sm">{CATEGORY_LABELS[cat]}</p>
+                <p className="text-white/80 text-xs font-semibold">
+                  {band > 0 ? `Band ${band.toFixed(1)}` : '미측정'}
+                </p>
+              </Link>
+            )
+          })}
+        </div>
+      ) : null}
 
       {/* ── 퀵 액션 ── */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className={`grid gap-3 mb-6 ${featureLevel >= 2 ? 'grid-cols-3' : 'grid-cols-2'}`}>
         <Link href="/student/exams"
           className="bg-white border border-gray-200 hover:border-blue-300 hover:bg-blue-50 rounded-xl p-3 flex items-center gap-2 transition">
           <FileText size={18} className="text-blue-600" />
@@ -208,6 +212,7 @@ export default async function StudentDashboard() {
             <p className="text-[10px] text-gray-500">{(pendingExams ?? []).length}개 대기</p>
           </div>
         </Link>
+        {featureLevel >= 2 && (
         <Link href="/student/review"
           className="bg-white border border-gray-200 hover:border-purple-300 hover:bg-purple-50 rounded-xl p-3 flex items-center gap-2 transition">
           <RefreshCw size={18} className="text-purple-600" />
@@ -216,6 +221,7 @@ export default async function StudentDashboard() {
             <p className="text-[10px] text-gray-500">{reviewCount ?? 0}개 필요</p>
           </div>
         </Link>
+        )}
         <Link href="/student/learn"
           className="bg-white border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 rounded-xl p-3 flex items-center gap-2 transition">
           <BookOpen size={18} className="text-emerald-600" />

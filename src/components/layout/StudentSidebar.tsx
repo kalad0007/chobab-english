@@ -40,9 +40,10 @@ interface StudentSidebarProps {
   className?: string
   pendingReviews?: number
   pendingExams?: number
+  featureLevel?: number
 }
 
-export default function StudentSidebar({ studentName, className, pendingReviews = 0, pendingExams = 0 }: StudentSidebarProps) {
+export default function StudentSidebar({ studentName, className, pendingReviews = 0, pendingExams = 0, featureLevel = 1 }: StudentSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -106,42 +107,46 @@ export default function StudentSidebar({ studentName, className, pendingReviews 
 
         {/* 네비게이션 */}
         <nav className="flex-1 py-4 px-3 space-y-5 overflow-y-auto">
-          {navItems.map(group => (
-            <div key={group.section}>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 mb-1.5">
-                {group.section}
-              </p>
-              <ul className="space-y-0.5">
-                {group.items.map(item => {
-                  const Icon = item.icon
-                  const active = pathname === item.href || pathname.startsWith(item.href + '/')
-                  const badge = badges[item.href]
-                  return (
-                    <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        onClick={() => setMobileOpen(false)}
-                        className={cn(
-                          'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                          active
-                            ? 'bg-purple-50 text-purple-700 font-semibold'
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                        )}
-                      >
-                        <Icon size={16} className={active ? 'text-purple-600' : 'text-gray-400'} />
-                        <span className="flex-1">{item.label}</span>
-                        {badge > 0 && (
-                          <span className="bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
-                            {badge}
-                          </span>
-                        )}
-                      </Link>
-                    </li>
-                  )
-                })}
-              </ul>
-            </div>
-          ))}
+          {navItems
+            .filter(group => !(group.section === '섹션별 연습' && featureLevel < 3))
+            .map(group => (
+              <div key={group.section}>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 mb-1.5">
+                  {group.section}
+                </p>
+                <ul className="space-y-0.5">
+                  {group.items
+                    .filter(item => item.href !== '/student/review' || featureLevel >= 2)
+                    .map(item => {
+                      const Icon = item.icon
+                      const active = pathname === item.href || pathname.startsWith(item.href + '/')
+                      const badge = badges[item.href]
+                      return (
+                        <li key={item.href}>
+                          <Link
+                            href={item.href}
+                            onClick={() => setMobileOpen(false)}
+                            className={cn(
+                              'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                              active
+                                ? 'bg-purple-50 text-purple-700 font-semibold'
+                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                            )}
+                          >
+                            <Icon size={16} className={active ? 'text-purple-600' : 'text-gray-400'} />
+                            <span className="flex-1">{item.label}</span>
+                            {badge > 0 && (
+                              <span className="bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                                {badge}
+                              </span>
+                            )}
+                          </Link>
+                        </li>
+                      )
+                    })}
+                </ul>
+              </div>
+            ))}
         </nav>
 
         {/* 로그아웃 */}

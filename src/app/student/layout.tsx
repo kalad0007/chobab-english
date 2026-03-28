@@ -15,12 +15,13 @@ export default async function StudentLayout({ children }: { children: React.Reac
 
   if (profile?.role !== 'student') redirect('/teacher/dashboard')
 
-  const [classMemberResult, reviewsResult, classIdsResult, completedResult] = await Promise.all([
+  const [classMemberResult, reviewsResult, classIdsResult, completedResult, featureLevelResult] = await Promise.all([
     supabase.from('class_members').select('classes(name)').eq('student_id', user.id).limit(1).single(),
     supabase.from('wrong_answer_queue').select('*', { count: 'exact', head: true })
       .eq('student_id', user.id).eq('mastered', false).lte('next_review_at', new Date().toISOString()),
     supabase.from('class_members').select('class_id').eq('student_id', user.id),
     supabase.from('submissions').select('exam_id').eq('student_id', user.id).in('status', ['submitted', 'graded']),
+    supabase.from('class_members').select('feature_level').eq('student_id', user.id),
   ])
 
   const classIds = (classIdsResult.data ?? []).map(m => m.class_id)
@@ -40,6 +41,12 @@ export default async function StudentLayout({ children }: { children: React.Reac
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const className = (classMemberResult.data?.classes as any)?.name as string | undefined
 
+  // 여러 반 중 가장 높은 feature_level 사용 (구독한 만큼 최대 혜택)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const featureLevel = (featureLevelResult.data ?? []).reduce((max: number, m: any) => {
+    return Math.max(max, m.feature_level ?? 1)
+  }, 1)
+
   return (
     <div className="flex min-h-screen bg-slate-50">
       <StudentSidebar
@@ -47,6 +54,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
         className={className}
         pendingReviews={reviewsResult.count ?? 0}
         pendingExams={pendingExamsCount}
+        featureLevel={featureLevel}
       />
       <main className="flex-1 overflow-auto pt-14 md:pt-0">
         {children}

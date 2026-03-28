@@ -1,7 +1,8 @@
 import { createClient, getUserFromCookie } from '@/lib/supabase/server'
-import { Users, Copy, Plus } from 'lucide-react'
+import { Users } from 'lucide-react'
 import NewClassButton from './NewClassButton'
 import CopyCodeButton from './CopyCodeButton'
+import FeatureLevelSelect from './FeatureLevelSelect'
 
 export default async function ClassesPage() {
   const supabase = await createClient()
@@ -18,11 +19,11 @@ export default async function ClassesPage() {
 
   const { data: members } = classIds.length > 0
     ? await supabase.from('class_members')
-        .select('class_id, student_id, joined_at, profiles(name)')
+        .select('class_id, student_id, joined_at, feature_level, profiles(name)')
         .in('class_id', classIds)
     : { data: [] }
 
-  const memberMap: Record<string, Array<{ id: string; name: string; joinedAt: string }>> = {}
+  const memberMap: Record<string, Array<{ id: string; name: string; joinedAt: string; featureLevel: number }>> = {}
   for (const m of members ?? []) {
     if (!memberMap[m.class_id]) memberMap[m.class_id] = []
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -31,6 +32,7 @@ export default async function ClassesPage() {
       id: m.student_id,
       name: profile?.name ?? '알 수 없음',
       joinedAt: m.joined_at,
+      featureLevel: (m as any).feature_level ?? 1,
     })
   }
 
@@ -83,11 +85,18 @@ export default async function ClassesPage() {
                           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
                             {m.name.charAt(0)}
                           </div>
-                          <span className="text-sm font-semibold text-gray-800">{m.name}</span>
+                          <div>
+                            <span className="text-sm font-semibold text-gray-800">{m.name}</span>
+                            <p className="text-[10px] text-gray-400">
+                              {new Date(m.joinedAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })} 가입
+                            </p>
+                          </div>
                         </div>
-                        <span className="text-xs text-gray-400">
-                          {new Date(m.joinedAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })} 가입
-                        </span>
+                        <FeatureLevelSelect
+                          classId={cls.id}
+                          studentId={m.id}
+                          current={m.featureLevel}
+                        />
                       </div>
                     ))}
                   </div>
