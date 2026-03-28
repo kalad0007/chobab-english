@@ -56,12 +56,12 @@ function StudentRow({ m, color, stats, classColorMap }: {
 
   function handleLevelChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const level = Number(e.target.value)
-    startTransition(() => updateFeatureLevel(m.class_id, m.student_id, level))
+    startTransition(() => { updateFeatureLevel(m.class_id, m.student_id, level) })
   }
 
   function handleRemove() {
     if (!confirm(`"${name}" 학생을 "${className}" 반에서 제외하시겠습니까?`)) return
-    startTransition(() => removeStudentFromClass(m.class_id, m.student_id))
+    startTransition(() => { removeStudentFromClass(m.class_id, m.student_id) })
   }
 
   return (

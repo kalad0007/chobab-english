@@ -53,7 +53,7 @@ export default async function SetStudyPage({
     .order('order_num')
 
   const allWords = (setWords ?? [])
-    .map(r => r.vocab_words as Record<string, unknown>)
+    .map(r => r.vocab_words as unknown as Record<string, unknown>)
     .filter(Boolean) as {
       id: string; word: string; part_of_speech: string;
       definition_ko: string; definition_en: string;

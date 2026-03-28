@@ -6,7 +6,6 @@ import {
   Wand2, Loader2, Check, X, ChevronRight, ChevronLeft,
   RefreshCw, BookA, Sparkles, Send
 } from 'lucide-react'
-import { createAdminClient } from '@/lib/supabase/client'
 import { createVocabSet } from '../set-actions'
 import { TOEFL_TOPICS } from '../constants'
 import { getCustomTopics } from '../topic-actions'

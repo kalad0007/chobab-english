@@ -45,7 +45,7 @@ export default async function VocabSetsPage() {
     if (!classMap[sc.set_id]) classMap[sc.set_id] = []
     classMap[sc.set_id].push({
       classId: sc.class_id,
-      className: (sc.classes as { name: string } | null)?.name ?? '',
+      className: (sc.classes as unknown as { name: string } | null)?.name ?? '',
     })
   }
 

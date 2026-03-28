@@ -20,7 +20,7 @@ export default function FeatureLevelSelect({ classId, studentId, current }: Prop
 
   function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const level = Number(e.target.value)
-    startTransition(() => updateFeatureLevel(classId, studentId, level))
+    startTransition(() => { updateFeatureLevel(classId, studentId, level) })
   }
 
   return (
