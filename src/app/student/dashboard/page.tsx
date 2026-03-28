@@ -6,6 +6,7 @@ import {
   xpToLevel, levelTitle,
 } from '@/lib/utils'
 import { FileText, RefreshCw, BookOpen, Flame, Star, Headphones, Mic, PenTool } from 'lucide-react'
+import ClassesWidget from './ClassesWidget'
 
 const SECTION_ICONS: Record<string, typeof BookOpen> = {
   reading: BookOpen, listening: Headphones, speaking: Mic, writing: PenTool,
@@ -37,11 +38,19 @@ export default async function StudentDashboard() {
     .lte('next_review_at', new Date().toISOString())
 
   const [classMemberships, completedSubmissions] = await Promise.all([
-    supabase.from('class_members').select('class_id').eq('student_id', user.id),
+    supabase.from('class_members')
+      .select('class_id, classes(id, name, profiles:teacher_id(name))')
+      .eq('student_id', user.id),
     supabase.from('submissions').select('exam_id').eq('student_id', user.id).in('status', ['submitted', 'graded']),
   ])
 
   const classIds   = (classMemberships.data ?? []).map(m => m.class_id)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const enrolledClasses = (classMemberships.data ?? []).map((m: any) => ({
+    id: m.classes?.id ?? m.class_id,
+    name: m.classes?.name ?? '알 수 없음',
+    teacherName: m.classes?.profiles?.name ?? '알 수 없음',
+  }))
   const submittedIds = (completedSubmissions.data ?? []).map(s => s.exam_id)
 
   let pendingExamsQuery = classIds.length > 0
@@ -214,6 +223,10 @@ export default async function StudentDashboard() {
             <p className="text-[10px] text-gray-500">TOEFL 팁</p>
           </div>
         </Link>
+      </div>
+
+      <div className="mb-5">
+        <ClassesWidget classes={enrolledClasses} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
