@@ -28,7 +28,6 @@ interface Question {
   source: string
   created_at: string
   passage_group_id: string | null
-  time_limit: number | null
 }
 
 interface Class {
@@ -63,7 +62,7 @@ export default function NewExamPage() {
       const [{ data: cls }, { data: qs }] = await Promise.all([
         supabase.from('classes').select('id, name').eq('teacher_id', user.id),
         supabase.from('questions')
-          .select('id, content, category, difficulty, type, options, answer, subcategory, summary, question_subtype, source, created_at, passage_group_id, time_limit')
+          .select('id, content, category, difficulty, type, options, answer, subcategory, summary, question_subtype, source, created_at, passage_group_id')
           .eq('teacher_id', user.id).eq('is_active', true).order('created_at', { ascending: false }),
       ])
       setClasses(cls ?? [])
@@ -133,9 +132,9 @@ export default function NewExamPage() {
   }
 
   const selectedQuestions = questions.filter(q => selected.has(q.id))
-  // 문제당 제한시간 합산 (저장된 time_limit → 없으면 subtype 기본값 → fallback 30초)
+  // 문제당 제한시간 합산 (subtype 기본값 → fallback 30초)
   const totalEstimatedSeconds = selectedQuestions.reduce((acc, q) => {
-    return acc + (q.time_limit ?? DEFAULT_TIME_LIMITS[q.question_subtype ?? ''] ?? 30)
+    return acc + (DEFAULT_TIME_LIMITS[q.question_subtype ?? ''] ?? 30)
   }, 0)
 
   return (
