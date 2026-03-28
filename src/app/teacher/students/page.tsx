@@ -20,7 +20,7 @@ export default async function StudentsPage() {
   const { data: members } = classIds.length > 0
     ? await supabase
         .from('class_members')
-        .select('student_id, class_id, classes(name), profiles:student_id(name, email)')
+        .select('student_id, class_id, feature_level, classes(name), profiles:student_id(name, email)')
         .in('class_id', classIds)
     : { data: [] }
 
