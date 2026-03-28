@@ -7,9 +7,9 @@ import {
   Zap, X, ChevronRight, Save, Info,
   BookOpen, AlignLeft, Globe, ArrowUp, ArrowDown,
   Loader2, CheckCircle2, AlertCircle, Headphones, FileText,
-  PenLine, Mic, Plus, Minus,
+  PenLine, Mic, Plus, Minus, Clock,
 } from 'lucide-react'
-import { DIFFICULTY_LEVELS, getDiffInfo } from '@/lib/utils'
+import { DIFFICULTY_LEVELS, getDiffInfo, DEFAULT_TIME_LIMITS, formatSeconds } from '@/lib/utils'
 import ListeningCanvas, {
   type ListeningModSlots, emptyListeningMod,
 } from './ListeningCanvas'
@@ -527,23 +527,16 @@ export default function SmartBuilderPage() {
     ...m2up.fillBlank, ...m2up.deep,
     ...m2down.fillBlank, ...m2down.deep,
   ]
-  const totalSlots = (
-    m1.fillBlank.length + (m1.dailyLife?.length ?? 0) + m1.deep.length +
-    m2up.fillBlank.length + m2up.deep.length +
-    m2down.fillBlank.length + m2down.deep.length
-  )
   const filledCount = allFilled.filter(Boolean).length
-  // 난이도별 카운트 (FLOAT 값 기준)
-  const diffCounts: Record<number, number> = {}
-  DIFFICULTY_LEVELS.forEach(l => { diffCounts[l.value] = 0 })
-  allFilled.filter(Boolean).forEach(q => {
-    const snap = snapBand(q!.difficulty)
-    diffCounts[snap] = (diffCounts[snap] ?? 0) + 1
-  })
 
   const m1FilledCount  = [...m1.fillBlank, ...(m1.dailyLife ?? []), ...m1.deep].filter(Boolean).length
   const m2upFilledCount  = [...m2up.fillBlank, ...m2up.deep].filter(Boolean).length
   const m2downFilledCount = [...m2down.fillBlank, ...m2down.deep].filter(Boolean).length
+
+  // 예상 소요 시간 (채워진 슬롯의 DEFAULT_TIME_LIMITS 합산)
+  const totalEstimatedSeconds = allFilled.filter(Boolean).reduce((sum, q) => {
+    return sum + (DEFAULT_TIME_LIMITS[q!.question_subtype ?? ''] ?? 30)
+  }, 0)
 
   // ── 공통: SlotGroup props 빌더 ────────────────────
   const slotGroupProps = (
@@ -677,6 +670,80 @@ export default function SmartBuilderPage() {
         </div>
       </div>
 
+      {/* ── 실시간 분석 (가로) ── */}
+      {(activeTab === 'reading') && (
+        <div className="flex items-center gap-4 px-6 py-2 bg-blue-50/60 border-b border-blue-100 flex-shrink-0 flex-wrap text-xs">
+          <span className="font-extrabold text-blue-700 text-[11px]">실시간 분석</span>
+
+          {/* 채움 현황 */}
+          <div className="flex items-center gap-2.5">
+            {[
+              { label: 'M1',   filled: m1FilledCount,   total: m1.fillBlank.length + (m1.dailyLife?.length ?? 0) + m1.deep.length,   color: 'text-gray-700' },
+              { label: 'M2↑',  filled: m2upFilledCount,  total: m2up.fillBlank.length + m2up.deep.length,   color: 'text-blue-600' },
+              { label: 'M2↓',  filled: m2downFilledCount, total: m2down.fillBlank.length + m2down.deep.length, color: 'text-amber-600' },
+            ].map(r => (
+              <div key={r.label} className="flex items-center gap-1">
+                <span className={`font-bold ${r.color}`}>{r.label}</span>
+                <span className="text-gray-500">{r.filled}/{r.total}</span>
+                {r.filled === r.total
+                  ? <CheckCircle2 size={11} className="text-green-500" />
+                  : <AlertCircle size={11} className="text-gray-300" />}
+              </div>
+            ))}
+          </div>
+
+          <div className="h-3 w-px bg-blue-200" />
+
+          {/* 예상 소요 시간 */}
+          <div className="flex items-center gap-1">
+            <Clock size={11} className="text-blue-400" />
+            <span className="text-gray-500">예상 시간:</span>
+            <span className="font-bold text-gray-700">
+              {totalEstimatedSeconds > 0 ? formatSeconds(totalEstimatedSeconds) : '—'}
+            </span>
+          </div>
+
+          {filledCount > 0 && (
+            <>
+              <div className="h-3 w-px bg-blue-200" />
+
+              {/* 균형 체크 */}
+              {(() => {
+                const overMax = allFilled.filter(Boolean).some(q => q!.difficulty > maxBand)
+                const m2upAvg = m2up.fillBlank.concat(m2up.deep).filter(Boolean)
+                  .reduce((s, q) => s + q!.difficulty, 0) / Math.max(1, m2upFilledCount)
+                const m2downAvg = m2down.fillBlank.concat(m2down.deep).filter(Boolean)
+                  .reduce((s, q) => s + q!.difficulty, 0) / Math.max(1, m2downFilledCount)
+                const spread = m2upAvg - m2downAvg
+                const idx = m2upFilledCount > 0 && m2downFilledCount > 0
+                  ? Math.round(Math.min(100, ((m2upAvg - m2downAvg) / 4) * 100))
+                  : null
+
+                return (
+                  <div className="flex items-center gap-3">
+                    {overMax
+                      ? <span className="flex items-center gap-1 text-amber-600 font-semibold"><AlertCircle size={11} /> Max Band 초과</span>
+                      : <span className="flex items-center gap-1 text-green-600 font-semibold"><CheckCircle2 size={11} /> Max Band 내</span>
+                    }
+                    {idx !== null && (
+                      <span className="text-gray-500">
+                        변별력: <strong className={idx >= 50 ? 'text-blue-600' : 'text-amber-500'}>{idx}%</strong>
+                        <span className="ml-1 text-gray-400">{idx >= 75 ? '우수' : idx >= 50 ? '양호' : '부족'}</span>
+                      </span>
+                    )}
+                    {spread >= 0 && m2upFilledCount > 0 && m2downFilledCount > 0 && (
+                      <span className={`font-semibold ${spread >= 1.5 ? 'text-green-600' : 'text-amber-500'}`}>
+                        {spread < 1 ? '상/하 난이도 차이 작음' : spread >= 2 ? '변별력 우수 ✓' : '적절한 구분 ✓'}
+                      </span>
+                    )}
+                  </div>
+                )
+              })()}
+            </>
+          )}
+        </div>
+      )}
+
       {/* ── 섹션 탭 ── */}
       <div className="flex items-center gap-1 px-6 py-2 border-b border-gray-100 bg-white flex-shrink-0">
         {([
@@ -733,11 +800,11 @@ export default function SmartBuilderPage() {
                 </div>
               </div>
               <div className="p-3">
-                <SlotGroup label="빈칸 채우기" icon={<AlignLeft size={12} />}
+                <SlotGroup label="Fill in the Blank" icon={<AlignLeft size={12} />}
                   {...slotGroupProps('M1', 'fillBlank')} />
-                <SlotGroup label="생활 영어" icon={<Globe size={12} />}
+                <SlotGroup label="Daily Life" icon={<Globe size={12} />}
                   {...slotGroupProps('M1', 'dailyLife')} />
-                <SlotGroup label="심도 지문" icon={<BookOpen size={12} />}
+                <SlotGroup label="Deep Reading" icon={<BookOpen size={12} />}
                   {...slotGroupProps('M1', 'deep')} />
               </div>
             </div>
@@ -771,9 +838,9 @@ export default function SmartBuilderPage() {
                 </div>
               </div>
               <div className="p-3">
-                <SlotGroup label="빈칸 채우기 (심화)" icon={<AlignLeft size={12} />}
+                <SlotGroup label="Fill in the Blank (Advanced)" icon={<AlignLeft size={12} />}
                   {...slotGroupProps('M2up', 'fillBlank')} />
-                <SlotGroup label="심도 지문 (심화)" icon={<BookOpen size={12} />}
+                <SlotGroup label="Deep Reading (Advanced)" icon={<BookOpen size={12} />}
                   {...slotGroupProps('M2up', 'deep')} />
               </div>
             </div>
@@ -807,9 +874,9 @@ export default function SmartBuilderPage() {
                 </div>
               </div>
               <div className="p-3">
-                <SlotGroup label="빈칸 채우기 (보완)" icon={<AlignLeft size={12} />}
+                <SlotGroup label="Fill in the Blank (Remedial)" icon={<AlignLeft size={12} />}
                   {...slotGroupProps('M2down', 'fillBlank')} />
-                <SlotGroup label="심도 지문 (보완)" icon={<BookOpen size={12} />}
+                <SlotGroup label="Deep Reading (Remedial)" icon={<BookOpen size={12} />}
                   {...slotGroupProps('M2down', 'deep')} />
               </div>
             </div>
@@ -862,118 +929,6 @@ export default function SmartBuilderPage() {
           />
         )}
 
-        {/* ── 우측 분석 사이드바 (Reading/Listening 전용) ── */}
-        {(activeTab === 'reading' || activeTab === 'listening') && (
-        <div className="w-56 border-l border-gray-100 bg-white flex-shrink-0 overflow-y-auto p-4 space-y-5">
-          <h3 className="font-extrabold text-gray-900 text-sm">실시간 분석</h3>
-
-          {/* 채움 현황 */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs font-semibold text-gray-600">채움 현황</span>
-              <span className="text-xs font-bold text-blue-700">{filledCount}/{totalSlots}</span>
-            </div>
-            <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-500 rounded-full transition-all"
-                style={{ width: `${(filledCount / totalSlots) * 100}%` }} />
-            </div>
-            <div className="mt-2 space-y-1 text-xs">
-              {[
-                { label: 'M1', filled: m1FilledCount, total: 20, color: 'bg-gray-500' },
-                { label: 'M2-Up', filled: m2upFilledCount, total: 15, color: 'bg-blue-500' },
-                { label: 'M2-Down', filled: m2downFilledCount, total: 15, color: 'bg-amber-500' },
-              ].map(r => (
-                <div key={r.label} className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${r.color}`} />
-                  <span className="text-gray-500 w-14">{r.label}</span>
-                  <span className="font-bold text-gray-700">{r.filled}/{r.total}</span>
-                  {r.filled === r.total
-                    ? <CheckCircle2 size={11} className="text-green-500 ml-auto" />
-                    : <AlertCircle size={11} className="text-gray-300 ml-auto" />}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 난이도 분포 */}
-          <div>
-            <p className="text-xs font-semibold text-gray-600 mb-2">난이도 분포</p>
-            <div className="space-y-1">
-              {DIFFICULTY_LEVELS.map(l => {
-                const cnt = diffCounts[l.value] ?? 0
-                const pct = filledCount > 0 ? (cnt / filledCount) * 100 : 0
-                if (cnt === 0 && pct === 0) return null
-                return (
-                  <div key={l.value} className="flex items-center gap-1.5">
-                    <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${l.color} w-11 text-center flex-shrink-0`}>
-                      {l.level}·{l.label}
-                    </span>
-                    <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-400 rounded-full transition-all"
-                        style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="text-[10px] text-gray-400 w-3 text-right">{cnt}</span>
-                  </div>
-                )
-              })}
-              {filledCount === 0 && <p className="text-xs text-gray-400">문제를 채우면 표시됩니다.</p>}
-            </div>
-          </div>
-
-          {/* 균형 체크 */}
-          <div>
-            <p className="text-xs font-semibold text-gray-600 mb-2">균형 체크</p>
-            <div className="space-y-1.5 text-xs">
-              {filledCount === 0 ? (
-                <p className="text-gray-400">문제를 채우면 분석됩니다.</p>
-              ) : (() => {
-                const msgs: { ok: boolean; msg: string }[] = []
-                // M1 채움 여부
-                msgs.push({ ok: m1FilledCount === 20, msg: m1FilledCount === 20 ? 'M1 완성' : `M1 ${20 - m1FilledCount}개 부족` })
-                // 상위/하위 균형
-                const m2upAvg = m2up.fillBlank.concat(m2up.deep).filter(Boolean).reduce((s, q) => s + q!.difficulty, 0) /
-                  Math.max(1, m2upFilledCount)
-                const m2downAvg = m2down.fillBlank.concat(m2down.deep).filter(Boolean).reduce((s, q) => s + q!.difficulty, 0) /
-                  Math.max(1, m2downFilledCount)
-                const spread = m2upAvg - m2downAvg
-                msgs.push({
-                  ok: spread >= 1.5,
-                  msg: spread < 1 ? '상/하 난이도 차이가 작습니다' : spread >= 2 ? '변별력 우수 ✓' : '적절한 난이도 구분 ✓',
-                })
-                // maxBand 초과 여부
-                const overMax = allFilled.filter(Boolean).some(q => q!.difficulty > maxBand)
-                msgs.push({ ok: !overMax, msg: overMax ? 'Max Band 초과 문제 있음' : 'Max Band 범위 내 ✓' })
-                return msgs.map((m, i) => (
-                  <div key={i} className={`flex items-start gap-1.5 ${m.ok ? 'text-green-700' : 'text-amber-600'}`}>
-                    {m.ok ? <CheckCircle2 size={11} className="mt-0.5 flex-shrink-0" /> : <AlertCircle size={11} className="mt-0.5 flex-shrink-0" />}
-                    <span>{m.msg}</span>
-                  </div>
-                ))
-              })()}
-            </div>
-          </div>
-
-          {/* 변별력 지수 */}
-          {m2upFilledCount > 0 && m2downFilledCount > 0 && (() => {
-            const upAvg  = m2up.fillBlank.concat(m2up.deep).filter(Boolean).reduce((s, q) => s + q!.difficulty, 0) / m2upFilledCount
-            const downAvg = m2down.fillBlank.concat(m2down.deep).filter(Boolean).reduce((s, q) => s + q!.difficulty, 0) / m2downFilledCount
-            const idx = Math.round(Math.min(100, ((upAvg - downAvg) / 4) * 100))
-            return (
-              <div>
-                <p className="text-xs font-semibold text-gray-600 mb-1.5">변별력 지수</p>
-                <div className="flex items-end gap-2">
-                  <span className={`text-2xl font-extrabold ${idx >= 50 ? 'text-blue-600' : 'text-amber-500'}`}>{idx}%</span>
-                  <span className="text-xs text-gray-400 mb-1">{idx >= 75 ? '우수' : idx >= 50 ? '양호' : '부족'}</span>
-                </div>
-                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden mt-1">
-                  <div className={`h-full rounded-full transition-all ${idx >= 50 ? 'bg-blue-500' : 'bg-amber-400'}`}
-                    style={{ width: `${idx}%` }} />
-                </div>
-              </div>
-            )
-          })()}
-        </div>
-        )}
       </div>
 
       {/* ── Smart Swap 팝업 ── */}

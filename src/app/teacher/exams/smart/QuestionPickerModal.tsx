@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Search, X, ChevronLeft, ChevronRight, Check, Layers } from 'lucide-react'
-import { DIFFICULTY_LEVELS, QUESTION_SUBTYPE_LABELS, getDiffInfo } from '@/lib/utils'
+import { Search, X, ChevronLeft, ChevronRight, Check, Layers, Clock } from 'lucide-react'
+import { DIFFICULTY_LEVELS, QUESTION_SUBTYPE_LABELS, getDiffInfo, DEFAULT_TIME_LIMITS, formatSeconds } from '@/lib/utils'
 
 export interface PickedQuestion {
   id: string
@@ -11,6 +11,7 @@ export interface PickedQuestion {
   question_subtype: string | null
   type: string
   category: string
+  time_limit?: number | null
 }
 
 interface PassageSet {
@@ -62,7 +63,12 @@ export default function QuestionPickerModal({
     setLoading(true)
     try {
       const params = new URLSearchParams({ category, page: String(p) })
-      if (subtype)    params.set('subtype', subtype)
+      if (subtype) {
+        params.set('subtype', subtype)
+      } else if (allowedSubtypes?.length) {
+        // 슬롯 타입에 맞는 subtype만 기본 필터로 적용
+        params.set('subtypes', allowedSubtypes.join(','))
+      }
       if (diffFilter) params.set('difficulty', diffFilter)
       if (keyword)    params.set('q', keyword)
       const res  = await fetch(`/api/teacher/question-search?${params}`)
@@ -73,7 +79,7 @@ export default function QuestionPickerModal({
     } finally {
       setLoading(false)
     }
-  }, [category, subtype, diffFilter, keyword])
+  }, [category, subtype, diffFilter, keyword, allowedSubtypes])
 
   // ── 세트 검색 ────────────────────────────────────────
   const doFetchSets = useCallback(async () => {
@@ -241,6 +247,7 @@ export default function QuestionPickerModal({
             ) : displayList.map(q => {
               const info = getDiffInfo(q.difficulty)
               const isSel = selected?.id === q.id
+              const qTimeSec = q.time_limit ?? DEFAULT_TIME_LIMITS[q.question_subtype ?? ''] ?? 30
               return (
                 <button key={q.id}
                   onClick={() => setSelected(isSel ? null : q)}
@@ -251,7 +258,12 @@ export default function QuestionPickerModal({
                     {isSel && <Check size={10} className="text-white" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-800 line-clamp-2 leading-snug">{q.content}</p>
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-xs text-gray-800 line-clamp-2 leading-snug flex-1">{q.content}</p>
+                      <span className="flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 flex-shrink-0 whitespace-nowrap">
+                        <Clock size={9} /> {formatSeconds(qTimeSec)}
+                      </span>
+                    </div>
                     <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${info.color}`}>
                         {info.level}·{info.label}
@@ -284,6 +296,9 @@ export default function QuestionPickerModal({
               const info = getDiffInfo(s.difficulty)
               const isSel = selectedSet?.passage_group_id === s.passage_group_id
               const passagePreview = s.passage.replace(/\n/g, ' ').slice(0, 100)
+              const setTotalSec = s.questions.reduce((sum, q) => {
+                return sum + (q.time_limit ?? DEFAULT_TIME_LIMITS[q.question_subtype ?? ''] ?? 30)
+              }, 0)
               return (
                 <button key={s.passage_group_id}
                   onClick={() => setSelectedSet(isSel ? null : s)}
@@ -295,17 +310,22 @@ export default function QuestionPickerModal({
                   </div>
                   <div className="flex-1 min-w-0">
                     {/* 배지 */}
-                    <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${info.color}`}>
-                        {info.level}·{info.label}
-                      </span>
-                      {s.question_subtype && (
-                        <span className="text-[10px] text-gray-400">
-                          {(subtypeMap[s.question_subtype] ?? s.question_subtype.replace(/_/g, ' ')).replace(/ ★NEW.*/, '')}
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${info.color}`}>
+                          {info.level}·{info.label}
                         </span>
-                      )}
-                      <span className="flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
-                        <Layers size={9} /> {s.questions.length}문제 세트
+                        {s.question_subtype && (
+                          <span className="text-[10px] text-gray-400">
+                            {(subtypeMap[s.question_subtype] ?? s.question_subtype.replace(/_/g, ' ')).replace(/ ★NEW.*/, '')}
+                          </span>
+                        )}
+                        <span className="flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                          <Layers size={9} /> {s.questions.length}문제 세트
+                        </span>
+                      </div>
+                      <span className="flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 flex-shrink-0 whitespace-nowrap">
+                        <Clock size={9} /> {formatSeconds(setTotalSec)}
                       </span>
                     </div>
                     {/* 지문 미리보기 */}

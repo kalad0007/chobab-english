@@ -14,7 +14,7 @@ export async function GET(req: Request) {
 
   let query = supabase
     .from('questions')
-    .select('id, content, difficulty, question_subtype, type, category, passage, passage_group_id, audio_url')
+    .select('id, content, difficulty, question_subtype, type, category, passage, passage_group_id, audio_url, time_limit')
     .eq('teacher_id', user.id)
     .eq('category', category)
     .eq('is_active', true)
@@ -53,6 +53,7 @@ export async function GET(req: Request) {
         question_subtype: q.question_subtype,
         type: q.type,
         category: q.category,
+        time_limit: (q as { time_limit?: number | null }).time_limit ?? null,
       })),
     }
   })
