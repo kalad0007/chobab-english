@@ -39,7 +39,7 @@ export default async function StudentDashboard() {
 
   const [classMemberships, completedSubmissions] = await Promise.all([
     supabase.from('class_members')
-      .select('class_id, classes(id, name, profiles:teacher_id(name))')
+      .select('class_id, classes(id, name, invite_code, profiles:teacher_id(name))')
       .eq('student_id', user.id),
     supabase.from('submissions').select('exam_id').eq('student_id', user.id).in('status', ['submitted', 'graded']),
   ])
@@ -50,6 +50,7 @@ export default async function StudentDashboard() {
     id: m.classes?.id ?? m.class_id,
     name: m.classes?.name ?? '알 수 없음',
     teacherName: m.classes?.profiles?.name ?? '알 수 없음',
+    inviteCode: m.classes?.invite_code ?? '',
   }))
   const submittedIds = (completedSubmissions.data ?? []).map(s => s.exam_id)
 

@@ -2,12 +2,13 @@
 
 import { useState, useTransition } from 'react'
 import { joinClass, leaveClass } from '../actions'
-import { Plus, LogOut, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, LogOut, ChevronDown, ChevronUp, Copy, Check } from 'lucide-react'
 
 interface ClassInfo {
   id: string
   name: string
   teacherName: string
+  inviteCode: string
 }
 
 export default function ClassesWidget({ classes }: { classes: ClassInfo[] }) {
@@ -15,6 +16,13 @@ export default function ClassesWidget({ classes }: { classes: ClassInfo[] }) {
   const [code, setCode] = useState('')
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  function copyCode(classId: string, inviteCode: string) {
+    navigator.clipboard.writeText(inviteCode)
+    setCopiedId(classId)
+    setTimeout(() => setCopiedId(null), 2000)
+  }
 
   function handleJoin(e: React.FormEvent) {
     e.preventDefault()
@@ -71,15 +79,30 @@ export default function ClassesWidget({ classes }: { classes: ClassInfo[] }) {
                     <p className="text-sm font-semibold text-gray-800">{cls.name}</p>
                     <p className="text-xs text-gray-400">{cls.teacherName} 선생님</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleLeave(cls.id, cls.name)}
-                    disabled={isPending}
-                    className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition disabled:opacity-50"
-                  >
-                    <LogOut size={13} />
-                    나가기
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {cls.inviteCode && (
+                      <button
+                        type="button"
+                        onClick={() => copyCode(cls.id, cls.inviteCode)}
+                        className="flex items-center gap-1 text-xs text-gray-400 hover:text-blue-500 transition"
+                        title="초대코드 복사"
+                      >
+                        {copiedId === cls.id
+                          ? <><Check size={13} className="text-emerald-500" /><span className="text-emerald-500">복사됨</span></>
+                          : <><Copy size={13} /><span className="font-mono">{cls.inviteCode}</span></>
+                        }
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleLeave(cls.id, cls.name)}
+                      disabled={isPending}
+                      className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition disabled:opacity-50"
+                    >
+                      <LogOut size={13} />
+                      나가기
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
