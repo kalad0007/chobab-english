@@ -27,9 +27,10 @@ const SUBTYPE_OPTIONS: Record<string, { value: string; label: string; desc: stri
     { value: 'academic_passage', label: 'Academic Passage', desc: '200-300단어 학술 지문 + 여러 문제 세트', badge: 'bg-indigo-100 text-indigo-700' },
   ],
   listening: [
-    { value: 'choose_response', label: 'Choose a Response', desc: '짧은 한마디 듣고 적절한 대답 선택', badge: 'bg-emerald-100 text-emerald-700' },
-    { value: 'conversation', label: 'Conversation', desc: '두 사람의 캠퍼스 일상 대화 + 문제 세트', badge: 'bg-green-100 text-green-700' },
-    { value: 'academic_talk', label: 'Academic Talk', desc: '교수/강연자 학술 강의 + 문제 세트', badge: 'bg-lime-100 text-lime-700' },
+    { value: 'choose_response',    label: 'Choose a Response',  desc: '짧은 한마디 듣고 적절한 대답 선택',       badge: 'bg-emerald-100 text-emerald-700' },
+    { value: 'conversation',       label: 'Conversation',        desc: '두 사람의 캠퍼스 일상 대화 + 문제 세트', badge: 'bg-green-100 text-green-700' },
+    { value: 'academic_talk',      label: 'Academic Talk',       desc: '교수/강연자 학술 강의 + 문제 세트',     badge: 'bg-lime-100 text-lime-700' },
+    { value: 'campus_announcement', label: 'Campus Announcement', desc: '캠퍼스 공지 형식 리스닝 + 문제 세트',   badge: 'bg-teal-100 text-teal-700' },
   ],
   writing: [
     { value: 'sentence_reordering', label: 'Build a Sentence', desc: '단어 칩 배열 → 올바른 문장 완성', badge: 'bg-purple-100 text-purple-700' },
@@ -42,7 +43,21 @@ const SUBTYPE_OPTIONS: Record<string, { value: string; label: string; desc: stri
   ],
 }
 
-const MULTI_QPP_SUBTYPES = ['daily_life_email', 'daily_life_text_chain', 'academic_passage', 'conversation', 'academic_talk']
+const MULTI_QPP_SUBTYPES = ['daily_life_email', 'daily_life_text_chain', 'academic_passage', 'conversation', 'academic_talk', 'campus_announcement']
+
+// Per-subtype word/message count config for teacher-adjustable stepper
+const WORD_COUNT_CONFIG: Record<string, { default: number; step: number; min: number; max: number; unit: string }> = {
+  complete_the_words:    { default: 100, step: 5,  min: 50,  max: 300, unit: '단어' },
+  daily_life_email:      { default: 80,  step: 5,  min: 40,  max: 200, unit: '단어' },
+  daily_life_text_chain: { default: 8,   step: 1,  min: 4,   max: 30,  unit: '메시지' },
+  academic_passage:      { default: 220, step: 5,  min: 100, max: 400, unit: '단어' },
+  conversation:          { default: 80,  step: 5,  min: 40,  max: 200, unit: '단어' },
+  academic_talk:         { default: 150, step: 5,  min: 80,  max: 400, unit: '단어' },
+  campus_announcement:   { default: 150, step: 5,  min: 80,  max: 400, unit: '단어' },
+  sentence_reordering:   { default: 10,  step: 1,  min: 5,   max: 15,  unit: '단어' },
+  email_writing:         { default: 150, step: 5,  min: 100, max: 300, unit: '단어' },
+  academic_discussion:   { default: 100, step: 5,  min: 80,  max: 250, unit: '단어' },
+}
 
 export default function GenerateQuestionsPage() {
   const router = useRouter()
@@ -52,6 +67,7 @@ export default function GenerateQuestionsPage() {
   const [count, setCount] = useState(3)
   const [questionsPerPassage, setQuestionsPerPassage] = useState(3)
   const [topic, setTopic] = useState('')
+  const [wordCount, setWordCount] = useState(0)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [questions, setQuestions] = useState<GeneratedQuestion[]>([])
@@ -61,12 +77,15 @@ export default function GenerateQuestionsPage() {
   function handleCategoryChange(newCat: string) {
     setCategory(newCat)
     setSubtype(null)
+    setWordCount(0)
     setQuestions([])
     setSelected(new Set())
   }
 
   function handleSubtypeToggle(val: string) {
-    setSubtype(prev => (prev === val ? null : val))
+    const next = subtype === val ? null : val
+    setSubtype(next)
+    setWordCount(next && WORD_COUNT_CONFIG[next] ? WORD_COUNT_CONFIG[next].default : 0)
   }
 
   async function handleGenerate(e: React.FormEvent) {
@@ -80,7 +99,7 @@ export default function GenerateQuestionsPage() {
       const res = await fetch('/api/ai/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, subtype, difficulty, count, topic, questionsPerPassage: isMultiQpp ? questionsPerPassage : 1 }),
+        body: JSON.stringify({ category, subtype, difficulty, count, topic, questionsPerPassage: isMultiQpp ? questionsPerPassage : 1, wordCount: wordCount > 0 ? wordCount : undefined }),
       })
 
       if (!res.ok) throw new Error(await res.text())
@@ -199,6 +218,44 @@ export default function GenerateQuestionsPage() {
             )}
           </div>
         )}
+
+        {/* 단어 수 조절 (subtype에 config 있을 때만) */}
+        {subtype && WORD_COUNT_CONFIG[subtype] && (() => {
+          const cfg = WORD_COUNT_CONFIG[subtype]
+          const cur = wordCount > 0 ? wordCount : cfg.default
+          return (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                생성 길이
+                <span className="ml-2 text-xs font-normal text-gray-400">기본값: {cfg.default}{cfg.unit}</span>
+              </label>
+              <div className="flex items-center gap-3">
+                <button type="button"
+                  onClick={() => setWordCount(Math.max(cfg.min, cur - cfg.step))}
+                  disabled={cur <= cfg.min}
+                  className="w-9 h-9 rounded-lg border border-gray-200 bg-white text-gray-600 font-bold text-lg hover:bg-gray-100 disabled:opacity-40 transition flex items-center justify-center">
+                  −
+                </button>
+                <span className="text-sm font-bold text-gray-800 min-w-[60px] text-center">
+                  {cur} {cfg.unit}
+                </span>
+                <button type="button"
+                  onClick={() => setWordCount(Math.min(cfg.max, cur + cfg.step))}
+                  disabled={cur >= cfg.max}
+                  className="w-9 h-9 rounded-lg border border-gray-200 bg-white text-gray-600 font-bold text-lg hover:bg-gray-100 disabled:opacity-40 transition flex items-center justify-center">
+                  +
+                </button>
+                {cur !== cfg.default && (
+                  <button type="button"
+                    onClick={() => setWordCount(cfg.default)}
+                    className="text-xs text-gray-400 hover:text-gray-600 underline ml-1">
+                    초기화
+                  </button>
+                )}
+              </div>
+            </div>
+          )
+        })()}
 
         {/* 난이도 */}
         <div>

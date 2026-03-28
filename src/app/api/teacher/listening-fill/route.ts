@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 // 슬롯 유형별 question_subtype 매핑 (2026 기준)
 const RESPONSE_SUBTYPES = ['choose_response']
 const CONV_SUBTYPES     = ['conversation']
-const TALK_SUBTYPES     = ['academic_talk']
+const TALK_SUBTYPES     = ['academic_talk', 'campus_announcement']
 
 // 모듈별 난이도 창 (FLOAT ±0.5)
 function getDiffWindow(target: number, module: string) {

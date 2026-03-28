@@ -25,6 +25,7 @@ export const DEFAULT_TIME_LIMITS: Record<string, number> = {
   choose_response:         30,
   conversation:            30,
   academic_talk:           30,
+  campus_announcement:     30,
   // Writing
   sentence_reordering:     35,
   email_writing:          420,  // 7분
@@ -261,9 +262,10 @@ export const QUESTION_SUBTYPE_LABELS: Record<string, Record<string, string>> = {
   },
   listening: {
     // ── 2026 신규 유형 ──
-    choose_response: 'Choose a Response',
-    conversation:    'Conversation',
-    academic_talk:   'Academic Talk',
+    choose_response:      'Choose a Response',
+    conversation:         'Conversation',
+    academic_talk:        'Academic Talk',
+    campus_announcement:  'Campus Announcement',
     // ── 구형 유형 (호환) ──
     gist_content:       'Gist-Content',
     gist_purpose:       'Gist-Purpose',

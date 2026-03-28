@@ -25,15 +25,26 @@ function getDiffDesc(d: number): string {
   return 'A1 수준 (TOEFL 30-45점)'
 }
 
-function buildPrompt(category: string, subtype: string, difficulty: number, count: number, topic: string, questionsPerPassage: number = 1): string {
+function buildPrompt(category: string, subtype: string, difficulty: number, count: number, topic: string, questionsPerPassage: number = 1, wordCount: number = 0): string {
   const diffDesc = getDiffDesc(difficulty)
   const topicNote = topic ? `주제/소재: ${topic}` : ''
   const n = count
   const qpp = questionsPerPassage
 
+  // Per-subtype word/message count defaults (teacher-adjustable via wordCount param)
+  const wc1  = wordCount > 0 ? wordCount : 100   // complete_the_words passage
+  const wc3  = wordCount > 0 ? wordCount : 80    // daily_life_email body
+  const mc4  = wordCount > 0 ? wordCount : 8     // daily_life_text_chain messages
+  const wc5  = wordCount > 0 ? wordCount : 220   // academic_passage
+  const wc7  = wordCount > 0 ? wordCount : 80    // conversation script
+  const wc8  = wordCount > 0 ? wordCount : 150   // academic_talk / campus_announcement script
+  const wc9  = wordCount > 0 ? wordCount : 10    // sentence_reordering answer words
+  const wc10 = wordCount > 0 ? wordCount : 150   // email_writing model answer
+  const wc11 = wordCount > 0 ? wordCount : 100   // academic_discussion model answer
+
   const subtypePrompts: Record<string, string> = {
     complete_the_words: `TOEFL "Complete the Words" (단락형 빈칸) 문제를 ${n}개 생성하세요.
-- 70-100 단어의 학술 단락, 두번째 문장부터 특정 단어의 앞 2-4글자를 보여주고 나머지를 언더스코어로 마스킹 (예: te___, bel____, sur_____)
+- ${wc1}단어의 학술 단락, 두번째 문장부터 특정 단어의 앞 2-4글자를 보여주고 나머지를 언더스코어로 마스킹 (예: te___, bel____, sur_____)
 - 빈칸 8-12개 골고루 배치
 - content 필드에 빈칸이 포함된 단락 전체를 넣으세요
 - answer 필드에는 빈칸에 들어갈 완성된 단어들을 쉼표로 구분하여 순서대로 나열하세요 (예: "tends,believe,surface,...")
@@ -62,7 +73,7 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
 - 격식체 이메일 ${n}개를 생성하고, 각 이메일마다 ${qpp}개의 독해 문제를 만드세요
 - 총 ${n * qpp}개의 문제 객체를 questions 배열에 포함하세요
 - 같은 이메일에 대한 ${qpp}개 문제는 동일한 passage 값을 사용하세요
-- passage 필드에 이메일 전체를 실제 줄바꿈(\\n)을 사용하여 넣으세요 (이메일 본문 150-200단어)
+- passage 필드에 이메일 전체를 실제 줄바꿈(\\n)을 사용하여 넣으세요 (이메일 본문 ${wc3}단어)
 - 이메일 형식: "From: name@email.com\\nTo: name@email.com\\nDate: [날짜]\\nSubject: [제목]\\n\\n[본문]"
 - 각 이메일에 대해 다양한 질문 유형: 이메일 목적, 특정 정보, 어조/태도, 추론 등
 - options는 반드시 4개를 포함해야 합니다
@@ -79,7 +90,7 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
 - 스마트폰 그룹 채팅 ${n}개를 생성하고, 각 채팅마다 ${qpp}개의 독해 문제를 만드세요
 - 총 ${n * qpp}개의 문제 객체를 questions 배열에 포함하세요
 - 같은 채팅에 대한 ${qpp}개 문제는 동일한 passage 값을 사용하세요
-- 스마트폰 그룹 채팅 형식 (3-4명, 12-18개 메시지)
+- 스마트폰 그룹 채팅 형식 (3-4명, ${mc4}개 메시지)
 - 반드시 "[HH:MM AM/PM] 이름: 메시지" 형식 사용
 - passage 필드에 채팅 전체를 실제 줄바꿈(\\n)으로 구분하여 넣으세요
 - 각 채팅에 대해 다양한 질문 유형: 특정 화자의 의도, 다음 행동, 채팅의 목적, 세부 정보 등
@@ -107,44 +118,52 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
 반드시 다음 JSON 형식으로만 응답 (마크다운 코드블록 없이 순수 JSON):
 {"questions":[{"content":"What is the best response to the statement?","passage":null,"options":[{"num":1,"text":"That sounds terrible."},{"num":2,"text":"You should take a break."},{"num":3,"text":"I already finished mine."},{"num":4,"text":"The library is closed today."}],"answer":"2","explanation":"해설...","category":"listening","difficulty":${difficulty},"question_subtype":"choose_response","audio_script":"I can't believe how much homework we have tonight.","speaking_prompt":null}]}`,
 
-    conversation: `TOEFL "Listen to a Conversation" 문제 세트 ${n}개를 생성하세요.
-- 대화 ${n}개 × 각 ${qpp}문제 = 반드시 정확히 ${n * qpp}개의 문제 객체를 questions 배열에 넣으세요
-- 대화 1개당 questions 배열에 정확히 ${qpp}개 문제가 있어야 합니다
-- 같은 대화에 속한 ${qpp}개 문제는 동일한 audio_script를 공유하세요
-- 각 대화 스크립트는 200-300단어 (두 사람의 캠퍼스 일상 대화)
-- audio_script 필드에 전체 대화 스크립트를 넣으세요
-- 대화 스크립트는 반드시 "A:" 와 "B:" 레이블로 시작하는 형식을 사용하세요 (A: 는 여성, B: 는 남성 목소리로 TTS 생성됩니다)
-- 예시 형식: "A: Excuse me, do you have a moment?\\nB: Sure, what's up?\\nA: I wanted to ask about..."
-- options는 반드시 4개를 포함해야 합니다
-- answer는 정답 번호를 문자열로 (예: "1")
-- 난이도: ${diffDesc} ${topicNote}
-- difficulty 값은 반드시 ${difficulty}를 사용하세요
-- 모든 항목의 question_subtype은 반드시 "conversation"으로 설정하세요
-- 모든 항목의 category는 반드시 "listening"으로 설정하세요
+    conversation: `Role: You are an expert TOEFL iBT listening test developer.
+Task: Create ${n} campus conversation listening sets (${n} × ${qpp} questions = exactly ${n * qpp} question objects).
+Constraints:
+- Each dialogue script is exactly ${wc7} words (two people, campus daily life)
+- Scripts use "A:" (female voice) and "B:" (male voice) labels, one turn per line
+- Each set shares the same audio_script across its ${qpp} questions
+- options: exactly 4 choices; answer: correct option number as string (e.g. "1")
+- Difficulty: ${diffDesc} ${topicNote}
+- difficulty value must be ${difficulty}
+- All question_subtype: "conversation", category: "listening"
 
-반드시 다음 JSON 형식으로만 응답 (마크다운 코드블록 없이 순수 JSON):
-{"questions":[{"content":"What is the conversation mainly about?","passage":null,"options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"1","explanation":"해설...","category":"listening","difficulty":${difficulty},"question_subtype":"conversation","audio_script":"A: Excuse me, Professor Johnson. Do you have a moment?\\nB: Sure, come on in. What can I help you with?\\nA: [full dialogue continues in A:/B: format, 200-300 words total]","speaking_prompt":null},{"content":"두 번째 질문 (같은 대화)...","passage":null,"options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"2","explanation":"해설...","category":"listening","difficulty":${difficulty},"question_subtype":"conversation","audio_script":"A: Excuse me, Professor Johnson. Do you have a moment?\\nB: Sure, come on in. What can I help you with?\\nA: [same full dialogue in A:/B: format]","speaking_prompt":null}]}`,
+Respond with pure JSON only (no markdown):
+{"questions":[{"content":"What is the conversation mainly about?","passage":null,"options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"1","explanation":"해설...","category":"listening","difficulty":${difficulty},"question_subtype":"conversation","audio_script":"A: Excuse me, Professor Johnson. Do you have a moment?\\nB: Sure, come on in. What can I help you with?\\nA: [dialogue continues in A:/B: format, ${wc7} words total]","speaking_prompt":null},{"content":"두 번째 질문 (같은 대화)...","passage":null,"options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"2","explanation":"해설...","category":"listening","difficulty":${difficulty},"question_subtype":"conversation","audio_script":"A: Excuse me, Professor Johnson. Do you have a moment?\\nB: Sure, come on in. What can I help you with?\\nA: [same full dialogue]","speaking_prompt":null}]}`,
 
-    academic_talk: `TOEFL "Listen to an Academic Talk" 문제 세트 ${n}개를 생성하세요.
-- 강의 ${n}개 × 각 ${qpp}문제 = 반드시 정확히 ${n * qpp}개의 문제 객체를 questions 배열에 넣으세요
-- 강의 1개당 questions 배열에 정확히 ${qpp}개 문제가 있어야 합니다
-- 같은 강의에 대한 ${qpp}개 문제는 동일한 audio_script 값을 사용하세요
-- 각 강의 스크립트는 400-500단어 (교수/강연자 학술 강의)
-- audio_script 필드에 전체 강의 스크립트를 넣으세요
-- options는 반드시 4개를 포함해야 합니다
-- answer는 정답 번호를 문자열로 (예: "3")
-- 난이도: ${diffDesc} ${topicNote}
-- difficulty 값은 반드시 ${difficulty}를 사용하세요
-- 모든 항목의 question_subtype은 반드시 "academic_talk"으로 설정하세요
-- 모든 항목의 category는 반드시 "listening"으로 설정하세요
+    academic_talk: `Role: You are an expert TOEFL iBT listening test developer.
+Task: Create ${n} academic lecture listening sets (${n} × ${qpp} questions = exactly ${n * qpp} question objects).
+Constraints:
+- Each lecture script is exactly ${wc8} words (professor's monologue on an academic topic)
+- Scripts are written in natural spoken English with "Today we're going to talk about..." style opening
+- Each set shares the same audio_script across its ${qpp} questions
+- options: exactly 4 choices; answer: correct option number as string (e.g. "3")
+- Difficulty: ${diffDesc} ${topicNote}
+- difficulty value must be ${difficulty}
+- All question_subtype: "academic_talk", category: "listening"
 
-반드시 다음 JSON 형식으로만 응답 (마크다운 코드블록 없이 순수 JSON):
-{"questions":[{"content":"What is the main topic of the lecture?","passage":null,"options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"3","explanation":"해설...","category":"listening","difficulty":${difficulty},"question_subtype":"academic_talk","audio_script":"Today we're going to talk about... [full lecture script 400-500 words]","speaking_prompt":null},{"content":"두 번째 질문 (같은 강의)...","passage":null,"options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"1","explanation":"해설...","category":"listening","difficulty":${difficulty},"question_subtype":"academic_talk","audio_script":"Today we're going to talk about... [same full lecture script]","speaking_prompt":null}]}`,
+Respond with pure JSON only (no markdown):
+{"questions":[{"content":"What is the main topic of the lecture?","passage":null,"options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"3","explanation":"해설...","category":"listening","difficulty":${difficulty},"question_subtype":"academic_talk","audio_script":"Today we're going to talk about... [full lecture script, ${wc8} words]","speaking_prompt":null},{"content":"두 번째 질문 (같은 강의)...","passage":null,"options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"1","explanation":"해설...","category":"listening","difficulty":${difficulty},"question_subtype":"academic_talk","audio_script":"Today we're going to talk about... [same full lecture script]","speaking_prompt":null}]}`,
+
+    campus_announcement: `Role: You are an expert TOEFL iBT listening test developer.
+Task: Create ${n} campus announcement listening sets (${n} × ${qpp} questions = exactly ${n * qpp} question objects).
+Constraints:
+- Each announcement script is exactly ${wc8} words (campus official, staff, or student making a campus-life announcement — e.g. events, facilities, policies, deadlines)
+- Scripts are written in natural spoken English as a single speaker monologue
+- Each set shares the same audio_script across its ${qpp} questions
+- options: exactly 4 choices; answer: correct option number as string (e.g. "2")
+- Difficulty: ${diffDesc} ${topicNote}
+- difficulty value must be ${difficulty}
+- All question_subtype: "campus_announcement", category: "listening"
+
+Respond with pure JSON only (no markdown):
+{"questions":[{"content":"What is the announcement mainly about?","passage":null,"options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"2","explanation":"해설...","category":"listening","difficulty":${difficulty},"question_subtype":"campus_announcement","audio_script":"Good afternoon, everyone. I'd like to make an announcement about... [full announcement script, ${wc8} words]","speaking_prompt":null},{"content":"두 번째 질문 (같은 공지)...","passage":null,"options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"3","explanation":"해설...","category":"listening","difficulty":${difficulty},"question_subtype":"campus_announcement","audio_script":"Good afternoon, everyone. I'd like to make an announcement about... [same full script]","speaking_prompt":null}]}`,
 
     sentence_reordering: `TOEFL "Build a Sentence" (단어 배열) 문제를 ${n}개 생성하세요.
 - 두 사람의 대화 형식: Person A가 질문하고 Person B가 답하는 구조
 - content 필드에 Person A의 질문만 입력하세요 (자연스러운 일상 대화 질문, 1문장)
-- options 필드에 Person B의 답변 단어들을 뒤섞인 순서로 넣으세요 (단어 1개씩, 6-10개)
+- options 필드에 Person B의 답변 단어들을 뒤섞인 순서로 넣으세요 (단어 1개씩, ${wc9}개)
 - answer 필드에는 Person B의 올바른 완성 문장을 넣으세요
 - 단어 순서가 실제로 뒤섞여 있어야 합니다 (정답 순서로 나열하지 마세요)
 - 난이도: ${diffDesc} ${topicNote}
@@ -157,7 +176,7 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
 
     email_writing: `TOEFL "Write an Email" 문제를 ${n}개 생성하세요.
 - content 필드에 특정 상황과 반드시 포함할 조건 3가지를 제시하세요
-- answer 필드에 150단어 이상의 모범 이메일 답안을 넣으세요
+- answer 필드에 ${wc10}단어 이상의 모범 이메일 답안을 넣으세요
 - options는 null로 설정하세요
 - 난이도: ${diffDesc} ${topicNote}
 - difficulty 값은 반드시 ${difficulty}를 사용하세요
@@ -172,8 +191,8 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
   1) 교수가 제시한 수업 주제와 토론 질문
   2) 학생 Claire의 의견 (2-3문장)
   3) 학생 Kevin의 의견 (2-3문장)
-  4) 지시사항: "Write a post responding to the professor's question. Express and support your opinion. Make a contribution to the discussion in your own words. An effective response will contain at least 100 words."
-- answer 필드에 100단어 이상의 모범 토론 참여 답안을 넣으세요
+  4) 지시사항: "Write a post responding to the professor's question. Express and support your opinion. Make a contribution to the discussion in your own words. An effective response will contain at least ${wc11} words."
+- answer 필드에 ${wc11}단어 이상의 모범 토론 참여 답안을 넣으세요
 - options는 null로 설정하세요
 - 난이도: ${diffDesc} ${topicNote}
 - difficulty 값은 반드시 ${difficulty}를 사용하세요
@@ -200,7 +219,7 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
     academic_passage: `TOEFL "Read an Academic Passage" 문제 세트 ${n}개를 생성하세요.
 - 자연과학/역사/사회과학 학술 지문 ${n}개를 생성하고, 각 지문마다 ${qpp}개의 문제를 만드세요
 - 총 ${n * qpp}개의 문제 객체를 questions 배열에 포함하세요
-- 각 지문은 200~300단어로 작성하세요
+- 각 지문은 ${wc5}단어로 작성하세요
 - 각 지문에 대한 ${qpp}개 문제 중 첫 번째 문제의 passage 필드에만 지문 전체를 넣으세요
 - 같은 지문의 나머지 문제들은 passage 필드에 "__SAME__" 라고만 입력하세요 (API가 자동으로 채웁니다)
 - 각 지문에 대해 다양한 질문 유형: 사실확인(factual), 추론(inference), 어휘(vocabulary), 목적(purpose), 문장삽입(insert) 등
@@ -264,10 +283,10 @@ export async function POST(req: NextRequest) {
 
   const anthropic = new Anthropic({ apiKey })
 
-  const { category, subtype, difficulty, count, topic, questionsPerPassage } = await req.json()
+  const { category, subtype, difficulty, count, topic, questionsPerPassage, wordCount } = await req.json()
 
   const topicValue = topic ?? ''
-  const prompt = buildPrompt(category, subtype ?? '', difficulty, count, topicValue, questionsPerPassage ?? 1)
+  const prompt = buildPrompt(category, subtype ?? '', difficulty, count, topicValue, questionsPerPassage ?? 1, wordCount ?? 0)
     + `\n\n【필수 추가 필드】위 JSON의 각 문제 객체에 반드시 다음 두 필드를 포함하세요:
 - "summary": 지문·음성·시나리오를 한국어로 1-2문장 요약 (예: "환경오염이 기후변화에 미치는 영향을 논의하는 학술 지문", "도서관 연장 운영에 관한 두 학생의 캠퍼스 대화")
 - "subcategory": 주제 키워드 1-2개 (예: "환경", "IT", "경제", "캠퍼스생활", "과학"${topicValue ? ` — 입력된 주제 "${topicValue}"를 우선 사용` : ''})`
