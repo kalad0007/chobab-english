@@ -22,7 +22,6 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
   const router = useRouter()
   const supabase = createClient()
   const [score, setScore] = useState<string>('')
-  const maxPoints = getMaxScore(q?.question_subtype)
   const [saving, setSaving] = useState(false)
   const [evaluating, setEvaluating] = useState(false)
   const [evalResult, setEvalResult] = useState<EvalResult | null>(null)
@@ -30,6 +29,7 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const q = answer.questions as any
+  const maxPoints = getMaxScore(q?.question_subtype)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sub = answer.submissions as any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
