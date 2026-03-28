@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { LayoutDashboard, FileText, RefreshCw, BookOpen, BarChart3, Trophy, LogOut, Menu, X, Headphones, Mic, PenTool } from 'lucide-react'
+import { LayoutDashboard, FileText, RefreshCw, BookOpen, BarChart3, Trophy, LogOut, Menu, X, Headphones, Mic, PenTool, BookA, ScrollText } from 'lucide-react'
 
 const navItems = [
   {
@@ -14,7 +14,9 @@ const navItems = [
       { href: '/student/dashboard', label: '내 대시보드', icon: LayoutDashboard },
       { href: '/student/exams', label: '모의고사', icon: FileText },
       { href: '/student/review', label: '오답 복습', icon: RefreshCw },
-      { href: '/student/learn', label: '학습 자료', icon: BookOpen },
+      { href: '/student/learn',  label: '학습 자료', icon: BookOpen },
+      { href: '/student/vocab',    label: '어휘 학습',  icon: BookA },
+      { href: '/student/passages', label: '독해 지문',  icon: ScrollText },
     ],
   },
   {
