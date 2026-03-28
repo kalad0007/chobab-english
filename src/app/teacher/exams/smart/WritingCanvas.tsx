@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, Dispatch, SetStateAction } from 'react'
-import { Zap, X, Loader2, AlignLeft, Mail, MessageSquare, Plus, Minus } from 'lucide-react'
+import { Zap, X, Loader2, AlignLeft, Mail, MessageSquare, Plus, Minus, Clock, CheckCircle2, AlertCircle } from 'lucide-react'
+import { DEFAULT_TIME_LIMITS, formatSeconds } from '@/lib/utils'
 import QuestionPickerModal, { type PickedQuestion } from './QuestionPickerModal'
 
 // Writing 슬롯 범위 (±2)
@@ -153,11 +154,9 @@ function SlotSection({
             </button>
           </div>
           <span className="text-xs font-bold text-gray-500">{filled}개 채움</span>
-          <button onClick={onFill} disabled={filling}
-            className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1
-              bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white rounded-lg transition">
-            {filling ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} />}
-            Magic Fill
+          <button onClick={onFill} disabled={filling} title="Magic Fill"
+            className="inline-flex items-center justify-center w-7 h-7 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white rounded-lg transition">
+            {filling ? <Loader2 size={11} className="animate-spin" /> : <Zap size={11} />}
           </button>
         </div>
       </div>
@@ -284,8 +283,40 @@ export default function WritingCanvas({
     })
   }
 
+  const wReorderingSec = slots.reordering.filter(Boolean).length * (DEFAULT_TIME_LIMITS['sentence_reordering'] ?? 35)
+  const wEmailSec = slots.email.filter(Boolean).length * (DEFAULT_TIME_LIMITS['email_writing'] ?? 420)
+  const wDiscussionSec = slots.discussion.filter(Boolean).length * (DEFAULT_TIME_LIMITS['academic_discussion'] ?? 600)
+  const wTotalSec = wReorderingSec + wEmailSec + wDiscussionSec
+
   return (
-    <div className="flex flex-1 overflow-hidden">
+    <div className="flex flex-col flex-1 overflow-hidden">
+
+      {/* ── 실시간 분석 (가로) ── */}
+      <div className="flex items-center gap-4 px-6 py-2 bg-purple-50/60 border-b border-purple-100 flex-shrink-0 flex-wrap text-xs">
+        <span className="font-extrabold text-purple-700 text-[11px]">실시간 분석</span>
+        <div className="flex items-center gap-2.5">
+          {[
+            { label: '문장 배열', filled: slots.reordering.filter(Boolean).length, total: slots.reordering.length, color: 'text-indigo-600' },
+            { label: '이메일',   filled: slots.email.filter(Boolean).length,       total: slots.email.length,       color: 'text-purple-600' },
+            { label: '학술 토론', filled: slots.discussion.filter(Boolean).length, total: slots.discussion.length,  color: 'text-rose-600' },
+          ].map(r => (
+            <div key={r.label} className="flex items-center gap-1">
+              <span className={`font-bold ${r.color}`}>{r.label}</span>
+              <span className="text-gray-500">{r.filled}/{r.total}</span>
+              {r.filled === r.total
+                ? <CheckCircle2 size={11} className="text-green-500" />
+                : <AlertCircle size={11} className="text-gray-300" />}
+            </div>
+          ))}
+        </div>
+        <div className="h-3 w-px bg-purple-200" />
+        <div className="flex items-center gap-1">
+          <Clock size={11} className="text-purple-400" />
+          <span className="text-gray-500">예상 시간:</span>
+          <span className="font-bold text-gray-700">{wTotalSec > 0 ? formatSeconds(wTotalSec) : '—'}</span>
+        </div>
+      </div>
+
       {/* ── 단일 컬럼 편집 영역 ── */}
       <div className="flex-1 overflow-y-auto p-5">
         <div className="max-w-2xl mx-auto space-y-4">
@@ -315,7 +346,7 @@ export default function WritingCanvas({
                 disabled={!!filling}
                 className="inline-flex items-center gap-1 text-xs font-bold px-3 py-1.5
                   bg-gray-800 hover:bg-gray-900 disabled:bg-gray-400 text-white rounded-lg transition">
-                <Zap size={12} /> 전체 Magic Fill
+                <Zap size={12} /> All
               </button>
             </div>
           </div>
@@ -371,84 +402,6 @@ export default function WritingCanvas({
             onPickOpen={i => setPickerState({ slotType: 'discussion', idx: i })}
           />
 
-        </div>
-      </div>
-
-      {/* ── 우측 미니 분석 ── */}
-      <div className="w-52 border-l border-gray-100 bg-white flex-shrink-0 overflow-y-auto p-4 space-y-4">
-        <h3 className="font-extrabold text-gray-900 text-sm">Writing 분석</h3>
-
-        {/* 채움 현황 */}
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-gray-500">채움 현황</span>
-            <span className="text-xs font-bold text-purple-600">{filledCount}/{totalSlots}</span>
-          </div>
-          <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-            <div className="h-full bg-purple-500 rounded-full transition-all"
-              style={{ width: `${(filledCount / totalSlots) * 100}%` }} />
-          </div>
-          <div className="mt-2 space-y-1 text-xs">
-            {[
-              { label: '문장 배열', filled: slots.reordering.filter(Boolean).length,  total: 10, color: 'bg-indigo-400' },
-              { label: '이메일',   filled: slots.email.filter(Boolean).length,       total: 2,  color: 'bg-purple-500' },
-              { label: '학술 토론', filled: slots.discussion.filter(Boolean).length, total: 2,  color: 'bg-rose-500' },
-            ].map(r => (
-              <div key={r.label} className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${r.color}`} />
-                <span className="text-gray-500 flex-1">{r.label}</span>
-                <span className="font-bold text-gray-700">{r.filled}/{r.total}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 채점 방식 안내 */}
-        <div>
-          <p className="text-xs font-semibold text-gray-600 mb-2">채점 방식</p>
-          <div className="space-y-2 text-xs">
-            <div className="p-2 bg-indigo-50 rounded-lg">
-              <p className="font-semibold text-indigo-700 mb-0.5">문장 배열</p>
-              <p className="text-indigo-500">완전 일치 시 1점, 자동 채점</p>
-            </div>
-            <div className="p-2 bg-purple-50 rounded-lg">
-              <p className="font-semibold text-purple-700 mb-0.5">이메일 쓰기</p>
-              <p className="text-purple-500">Gemini AI 채점, Band 점수 부여</p>
-            </div>
-            <div className="p-2 bg-rose-50 rounded-lg">
-              <p className="font-semibold text-rose-700 mb-0.5">학술 토론</p>
-              <p className="text-rose-500">Gemini AI 채점, Band 점수 부여</p>
-            </div>
-          </div>
-        </div>
-
-        {/* 난이도 분포 */}
-        <div>
-          <p className="text-xs font-semibold text-gray-600 mb-2">난이도 분포</p>
-          {[...slots.reordering, ...slots.email, ...slots.discussion].filter(Boolean).length === 0 ? (
-            <p className="text-xs text-gray-400">문제를 채우면 표시됩니다.</p>
-          ) : (
-            <div className="space-y-1.5">
-              {[1,2,3,4,5].map(d => {
-                const allQ = [...slots.reordering, ...slots.email, ...slots.discussion].filter(Boolean) as WritingSlotQ[]
-                const cnt = allQ.filter(q => q.difficulty === d).length
-                const pct = allQ.length > 0 ? (cnt / allQ.length) * 100 : 0
-                const b = BAND[d]
-                return (
-                  <div key={d} className="flex items-center gap-2">
-                    <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${b.color} w-10 text-center flex-shrink-0`}>
-                      {b.band}
-                    </span>
-                    <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-purple-400 rounded-full transition-all"
-                        style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="text-[10px] text-gray-400 w-3 text-right">{cnt}</span>
-                  </div>
-                )
-              })}
-            </div>
-          )}
         </div>
       </div>
 

@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Volume2, Zap, Loader2, ArrowUp, ArrowDown, Plus, Minus } from 'lucide-react'
-import { getDiffInfo } from '@/lib/utils'
+import { Volume2, Zap, Loader2, ArrowUp, ArrowDown, Plus, Minus, Clock, CheckCircle2, AlertCircle } from 'lucide-react'
+import { getDiffInfo, DEFAULT_TIME_LIMITS, formatSeconds } from '@/lib/utils'
 import QuestionPickerModal, { type PickedQuestion } from './QuestionPickerModal'
 
 // 슬롯 수 범위 (모듈 x 타입)
@@ -194,10 +194,9 @@ function ResponseGroup({
           </div>
           <span className="text-[10px] text-gray-400">{filled}개 채움</span>
         </div>
-        <button onClick={onFill} disabled={filling}
-          className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white rounded-lg transition">
-          {filling ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} />}
-          Magic Fill
+        <button onClick={onFill} disabled={filling} title="Magic Fill"
+          className="inline-flex items-center justify-center w-7 h-7 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white rounded-lg transition">
+          {filling ? <Loader2 size={11} className="animate-spin" /> : <Zap size={11} />}
         </button>
       </div>
       <div className="space-y-1.5">
@@ -245,10 +244,9 @@ function SetGroup({
           </div>
           <span className="text-[10px] text-gray-400">{filled}/{sets.length} 세트 · {totalQ}문항 채움</span>
         </div>
-        <button onClick={onFill} disabled={filling}
-          className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white rounded-lg transition">
-          {filling ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} />}
-          Magic Fill
+        <button onClick={onFill} disabled={filling} title="Magic Fill"
+          className="inline-flex items-center justify-center w-7 h-7 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white rounded-lg transition">
+          {filling ? <Loader2 size={11} className="animate-spin" /> : <Zap size={11} />}
         </button>
       </div>
       <div className="space-y-2">
@@ -306,10 +304,10 @@ function ModuleColumn({
           </div>
           <div className="flex flex-col items-end gap-1">
             <span className="text-xs font-bold text-gray-700">{totalFilled}/{totalSlots} 채움</span>
-            <button onClick={onMagicFillAll} disabled={!!filling}
+            <button onClick={onMagicFillAll} disabled={!!filling} title="전체 Fill"
               className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white rounded-lg transition">
               {filling?.startsWith(moduleName) ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} />}
-              전체 Fill
+              All
             </button>
           </div>
         </div>
@@ -524,8 +522,55 @@ export default function ListeningCanvas({
     onPickResponseOpen: (i: number) => setPickerState({ mod: modName, idx: i }),
   })
 
+  const lm1Filled = countFilled(lm1)
+  const lm2upFilled = countFilled(lm2up)
+  const lm2downFilled = countFilled(lm2down)
+  const lm1Total = totalSlots(lm1.response.length, lm1.conversation.length, lm1.academicTalk.length)
+  const lm2upTotal = totalSlots(lm2up.response.length, lm2up.conversation.length, lm2up.academicTalk.length)
+  const lm2downTotal = totalSlots(lm2down.response.length, lm2down.conversation.length, lm2down.academicTalk.length)
+
+  const lEstimatedSec = [
+    ...lm1.response.filter(Boolean).map(() => DEFAULT_TIME_LIMITS['choose_response'] ?? 30),
+    ...lm1.conversation.filter(Boolean).flatMap(s => s!.questions.map(() => DEFAULT_TIME_LIMITS['conversation'] ?? 30)),
+    ...lm1.academicTalk.filter(Boolean).flatMap(s => s!.questions.map(() => DEFAULT_TIME_LIMITS['academic_talk'] ?? 30)),
+    ...lm2up.response.filter(Boolean).map(() => DEFAULT_TIME_LIMITS['choose_response'] ?? 30),
+    ...lm2up.conversation.filter(Boolean).flatMap(s => s!.questions.map(() => DEFAULT_TIME_LIMITS['conversation'] ?? 30)),
+    ...lm2up.academicTalk.filter(Boolean).flatMap(s => s!.questions.map(() => DEFAULT_TIME_LIMITS['academic_talk'] ?? 30)),
+    ...lm2down.response.filter(Boolean).map(() => DEFAULT_TIME_LIMITS['choose_response'] ?? 30),
+    ...lm2down.conversation.filter(Boolean).flatMap(s => s!.questions.map(() => DEFAULT_TIME_LIMITS['conversation'] ?? 30)),
+    ...lm2down.academicTalk.filter(Boolean).flatMap(s => s!.questions.map(() => DEFAULT_TIME_LIMITS['academic_talk'] ?? 30)),
+  ].reduce((a, b) => a + b, 0)
+
   return (
-    <div className="flex gap-3 p-4 min-w-[900px] h-full items-start">
+    <div className="flex flex-col h-full">
+
+      {/* ── 실시간 분석 (가로) ── */}
+      <div className="flex items-center gap-4 px-6 py-2 bg-emerald-50/60 border-b border-emerald-100 flex-shrink-0 flex-wrap text-xs">
+        <span className="font-extrabold text-emerald-700 text-[11px]">실시간 분석</span>
+        <div className="flex items-center gap-2.5">
+          {[
+            { label: 'LM1',  filled: lm1Filled,     total: lm1Total,     color: 'text-gray-700' },
+            { label: 'LM2↑', filled: lm2upFilled,   total: lm2upTotal,   color: 'text-emerald-600' },
+            { label: 'LM2↓', filled: lm2downFilled, total: lm2downTotal, color: 'text-amber-600' },
+          ].map(r => (
+            <div key={r.label} className="flex items-center gap-1">
+              <span className={`font-bold ${r.color}`}>{r.label}</span>
+              <span className="text-gray-500">{r.filled}/{r.total}</span>
+              {r.filled === r.total
+                ? <CheckCircle2 size={11} className="text-green-500" />
+                : <AlertCircle size={11} className="text-gray-300" />}
+            </div>
+          ))}
+        </div>
+        <div className="h-3 w-px bg-emerald-200" />
+        <div className="flex items-center gap-1">
+          <Clock size={11} className="text-emerald-400" />
+          <span className="text-gray-500">예상 시간:</span>
+          <span className="font-bold text-gray-700">{lEstimatedSec > 0 ? formatSeconds(lEstimatedSec) : '—'}</span>
+        </div>
+      </div>
+
+      <div className="flex gap-3 p-4 min-w-[900px] flex-1 overflow-auto items-start">
 
       {/* Module 1 */}
       <ModuleColumn
@@ -557,6 +602,7 @@ export default function ListeningCanvas({
         excludeIds={allIds}
         title="Listening Response 문제 직접 선택"
       />
+      </div>
     </div>
   )
 }

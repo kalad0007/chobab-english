@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, Dispatch, SetStateAction } from 'react'
-import { Zap, X, Loader2, Mic, MessageSquare, Minus, Plus, Volume2 } from 'lucide-react'
+import { Zap, X, Loader2, Mic, MessageSquare, Minus, Plus, Volume2, Clock, CheckCircle2, AlertCircle } from 'lucide-react'
+import { DEFAULT_TIME_LIMITS, formatSeconds } from '@/lib/utils'
 import QuestionPickerModal, { type PickedQuestion } from './QuestionPickerModal'
 
 // ─── 타입 ──────────────────────────────────────────────
@@ -158,11 +159,9 @@ function SpeakingGroup({
             </button>
           </div>
           <span className="text-xs font-bold text-gray-500">{filled}/{count}</span>
-          <button onClick={onFill} disabled={filling}
-            className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1
-              bg-teal-600 hover:bg-teal-700 disabled:bg-teal-300 text-white rounded-lg transition">
-            {filling ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} />}
-            Magic Fill
+          <button onClick={onFill} disabled={filling} title="Magic Fill"
+            className="inline-flex items-center justify-center w-7 h-7 bg-teal-600 hover:bg-teal-700 disabled:bg-teal-300 text-white rounded-lg transition">
+            {filling ? <Loader2 size={11} className="animate-spin" /> : <Zap size={11} />}
           </button>
         </div>
       </div>
@@ -287,8 +286,38 @@ export default function SpeakingCanvas({
     })
   }
 
+  const sLRSec = slots.listenRepeat.filter(Boolean).length * (DEFAULT_TIME_LIMITS['listen_and_repeat'] ?? 10)
+  const sIVSec = slots.interview.filter(Boolean).length * (DEFAULT_TIME_LIMITS['take_an_interview'] ?? 45)
+  const sTotalSec = sLRSec + sIVSec
+
   return (
-    <div className="flex flex-1 overflow-hidden">
+    <div className="flex flex-col flex-1 overflow-hidden">
+
+      {/* ── 실시간 분석 (가로) ── */}
+      <div className="flex items-center gap-4 px-6 py-2 bg-teal-50/60 border-b border-teal-100 flex-shrink-0 flex-wrap text-xs">
+        <span className="font-extrabold text-teal-700 text-[11px]">실시간 분석</span>
+        <div className="flex items-center gap-2.5">
+          {[
+            { label: '듣고 따라말하기', filled: slots.listenRepeat.filter(Boolean).length, total: slots.listenRepeat.length, color: 'text-teal-600' },
+            { label: '인터뷰',         filled: slots.interview.filter(Boolean).length,    total: slots.interview.length,    color: 'text-cyan-600' },
+          ].map(r => (
+            <div key={r.label} className="flex items-center gap-1">
+              <span className={`font-bold ${r.color}`}>{r.label}</span>
+              <span className="text-gray-500">{r.filled}/{r.total}</span>
+              {r.filled === r.total
+                ? <CheckCircle2 size={11} className="text-green-500" />
+                : <AlertCircle size={11} className="text-gray-300" />}
+            </div>
+          ))}
+        </div>
+        <div className="h-3 w-px bg-teal-200" />
+        <div className="flex items-center gap-1">
+          <Clock size={11} className="text-teal-400" />
+          <span className="text-gray-500">예상 시간:</span>
+          <span className="font-bold text-gray-700">{sTotalSec > 0 ? formatSeconds(sTotalSec) : '—'}</span>
+        </div>
+      </div>
+
       {/* ── 단일 컬럼 편집 영역 ── */}
       <div className="flex-1 overflow-y-auto p-5">
         <div className="max-w-2xl mx-auto space-y-4">
@@ -317,7 +346,7 @@ export default function SpeakingCanvas({
                 disabled={!!filling}
                 className="inline-flex items-center gap-1 text-xs font-bold px-3 py-1.5
                   bg-gray-800 hover:bg-gray-900 disabled:bg-gray-400 text-white rounded-lg transition">
-                <Zap size={12} /> 전체 Magic Fill
+                <Zap size={12} /> All
               </button>
             </div>
           </div>
@@ -357,94 +386,6 @@ export default function SpeakingCanvas({
             onPickOpen={i => setPickerState({ slotType: 'interview', idx: i })}
           />
 
-        </div>
-      </div>
-
-      {/* ── 우측 미니 분석 ── */}
-      <div className="w-52 border-l border-gray-100 bg-white flex-shrink-0 overflow-y-auto p-4 space-y-4">
-        <h3 className="font-extrabold text-gray-900 text-sm">Speaking 분석</h3>
-
-        {/* 채움 현황 */}
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-gray-500">채움 현황</span>
-            <span className="text-xs font-bold text-teal-600">{filledCount}/{totalSlots}</span>
-          </div>
-          <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-            <div className="h-full bg-teal-500 rounded-full transition-all"
-              style={{ width: `${totalSlots > 0 ? (filledCount / totalSlots) * 100 : 0}%` }} />
-          </div>
-          <div className="mt-2 space-y-1 text-xs">
-            {[
-              { label: '듣고 따라말하기', filled: slots.listenRepeat.filter(Boolean).length, total: slots.listenRepeat.length, color: 'bg-teal-500' },
-              { label: '인터뷰',         filled: slots.interview.filter(Boolean).length,    total: slots.interview.length,    color: 'bg-cyan-500' },
-            ].map(r => (
-              <div key={r.label} className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${r.color}`} />
-                <span className="text-gray-500 flex-1 truncate">{r.label}</span>
-                <span className="font-bold text-gray-700">{r.filled}/{r.total}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 채점 방식 안내 */}
-        <div>
-          <p className="text-xs font-semibold text-gray-600 mb-2">채점 방식</p>
-          <div className="space-y-2 text-xs">
-            <div className="p-2 bg-teal-50 rounded-lg">
-              <p className="font-semibold text-teal-700 mb-0.5">듣고 따라말하기</p>
-              <p className="text-teal-500">STT 유사도 자동 채점 (0~1점)</p>
-            </div>
-            <div className="p-2 bg-cyan-50 rounded-lg">
-              <p className="font-semibold text-cyan-700 mb-0.5">인터뷰</p>
-              <p className="text-cyan-500">Gemini AI Band 점수 부여</p>
-            </div>
-          </div>
-        </div>
-
-        {/* 슬롯 조절 가이드 */}
-        <div>
-          <p className="text-xs font-semibold text-gray-600 mb-2">슬롯 범위</p>
-          <div className="space-y-1.5 text-xs text-gray-500">
-            <div className="flex items-center justify-between">
-              <span>듣고 따라말하기</span>
-              <span className="font-bold text-teal-600">{LR_MIN}~{LR_MAX}문항</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>인터뷰</span>
-              <span className="font-bold text-cyan-600">{IV_MIN}~{IV_MAX}문항</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 난이도 분포 */}
-        <div>
-          <p className="text-xs font-semibold text-gray-600 mb-2">난이도 분포</p>
-          {filledCount === 0 ? (
-            <p className="text-xs text-gray-400">문제를 채우면 표시됩니다.</p>
-          ) : (
-            <div className="space-y-1.5">
-              {[1,2,3,4,5].map(d => {
-                const allQ = [...slots.listenRepeat, ...slots.interview].filter(Boolean) as SpeakingSlotQ[]
-                const cnt = allQ.filter(q => q.difficulty === d).length
-                const pct = allQ.length > 0 ? (cnt / allQ.length) * 100 : 0
-                const b = BAND[d]
-                return (
-                  <div key={d} className="flex items-center gap-2">
-                    <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${b.color} w-10 text-center flex-shrink-0`}>
-                      {b.band}
-                    </span>
-                    <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-teal-400 rounded-full transition-all"
-                        style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="text-[10px] text-gray-400 w-3 text-right">{cnt}</span>
-                  </div>
-                )
-              })}
-            </div>
-          )}
         </div>
       </div>
 
