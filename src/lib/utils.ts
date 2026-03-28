@@ -238,58 +238,60 @@ export function toeflLevel(total: number) {
 // TOEFL 문제 세부유형 라벨
 export const QUESTION_SUBTYPE_LABELS: Record<string, Record<string, string>> = {
   reading: {
-    // 기본 10가지 유형 (현행)
-    factual: 'Factual Information',
-    negative_factual: 'Negative Factual',
-    inference: 'Inference',
-    rhetorical_purpose: 'Rhetorical Purpose',
-    vocabulary: 'Vocabulary',
-    reference: 'Reference',
+    // ── 빈칸 채우기 ──
+    complete_the_words:    'Complete the Words',
+    sentence_completion:   'Sentence Completion',
+    // ── 일상 읽기 ──
+    daily_life_email:      'Daily Life — Email',
+    daily_life_text_chain: 'Daily Life — Text Chain',
+    // ── 학술 독해 ──
+    academic_passage:      'Academic Passage',
+    factual:               'Factual Information',
+    negative_factual:      'Negative Factual',
+    inference:             'Inference',
+    rhetorical_purpose:    'Rhetorical Purpose',
+    vocabulary:            'Vocabulary',
+    reference:             'Reference',
     sentence_simplification: 'Sentence Simplification',
-    insert_text: 'Insert Text',
-    prose_summary: 'Prose Summary (3개 선택)',
-    fill_table: 'Fill in a Table (카테고리 분류)',
-    // 2026 신규 유형
-    complete_the_words:    'Complete the Words (단락 빈칸)',
-    sentence_completion:   'Sentence Completion (독립 문장)',
-    daily_life_email:      'Daily Life — Email (이메일)',
-    daily_life_text_chain: 'Daily Life — Text Chain (채팅)',
-    academic_passage:      'Academic Passage (학술 지문)',
-    // 구형 호환 보관
-    read_in_daily_life: 'Read in Daily Life (구형)',
+    insert_text:           'Insert Text',
+    prose_summary:         'Prose Summary',
+    fill_table:            'Fill in a Table',
+    // ── 구형 호환 (표시용 라벨 유지) ──
+    read_in_daily_life:    'Read in Daily Life (구형)',
   },
   listening: {
-    // 2026 유형
+    // ── 2026 신규 유형 ──
     choose_response: 'Choose a Response',
-    conversation:    'Conversation (일상 대화)',
-    academic_talk:   'Academic Talk (학술 강연)',
-    // 기본 유형 (구형 호환)
-    gist_content: 'Gist-Content',
-    gist_purpose: 'Gist-Purpose',
-    detail: 'Detail',
-    function: 'Function',
-    attitude: 'Attitude',
-    organization: 'Organization',
+    conversation:    'Conversation',
+    academic_talk:   'Academic Talk',
+    // ── 구형 유형 (호환) ──
+    gist_content:       'Gist-Content',
+    gist_purpose:       'Gist-Purpose',
+    detail:             'Detail',
+    function:           'Function',
+    attitude:           'Attitude',
+    organization:       'Organization',
     connecting_content: 'Connecting Content',
-    inference: 'Inference',
-    announcement: 'Announcement',
+    inference:          'Inference',
+    announcement:       'Announcement',
   },
   speaking: {
-    // 기본 4가지 과제 (현행)
-    independent: 'Task 1: Independent',
-    integrated_read_listen: 'Task 2: Campus (Read+Listen)',
+    // ── 2026 신규 유형 ──
+    listen_and_repeat: 'Listen and Repeat',
+    take_an_interview: 'Take an Interview',
+    // ── 구형 유형 (호환) ──
+    independent:                     'Task 1: Independent',
+    integrated_read_listen:          'Task 2: Campus (Read+Listen)',
     integrated_read_listen_academic: 'Task 3: Academic (Read+Listen)',
-    integrated_listen: 'Task 4: Lecture Summary',
-    // 2026 신규 유형
-    listen_and_repeat: 'Listen and Repeat ★NEW 2026',
-    take_an_interview: 'Take an Interview ★NEW 2026',
+    integrated_listen:               'Task 4: Lecture Summary',
   },
   writing: {
-    integrated_writing: 'Task 1: Integrated Writing',
-    academic_discussion: 'Task 2: Academic Discussion',
-    // 2026 신규 유형
-    sentence_reordering: 'Sentence Reordering (문장 배열) ★NEW 2026',
-    email_writing: 'Email Writing (이메일 작성) ★NEW 2026',
+    // ── 2026 신규 유형 ──
+    sentence_reordering: 'Build a Sentence',
+    email_writing:       'Write an Email',
+    academic_discussion: 'Academic Discussion',
+    // ── 구형 유형 (호환) ──
+    integrated_writing:  'Task 1: Integrated Writing',
   },
 }
 

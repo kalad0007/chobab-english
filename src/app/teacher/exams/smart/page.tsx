@@ -72,11 +72,13 @@ const SLOT_RANGE: Record<string, { min: number; max: number }> = {
   deep:      { min: 3, max: 8  },
 }
 
+// 문제 피커에서 보여줄 서브타입 (구형 제외)
 const READING_SUBTYPES: Record<string, string[]> = {
   fillBlank: ['complete_the_words', 'sentence_completion'],
-  dailyLife: ['read_in_daily_life'],
+  dailyLife: ['daily_life_email', 'daily_life_text_chain'],
   deep:      ['factual', 'negative_factual', 'inference', 'rhetorical_purpose',
-              'vocabulary', 'reference', 'sentence_simplification', 'insert_text'],
+              'vocabulary', 'reference', 'sentence_simplification', 'insert_text',
+              'academic_passage'],
 }
 
 // ─── 서브 컴포넌트: 배지 ────────────────────────────
