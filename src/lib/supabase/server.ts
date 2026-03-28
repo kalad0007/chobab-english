@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { cache } from 'react'
 
@@ -27,6 +28,15 @@ export async function createClient() {
         autoRefreshToken: false,
       },
     }
+  )
+}
+
+// RLS를 우회해야 하는 서버 전용 작업(초대코드 조회 등)에 사용
+export function createAdminClient() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
   )
 }
 

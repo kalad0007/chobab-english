@@ -1,14 +1,16 @@
 'use server'
 
-import { createClient, getUserFromCookie } from '@/lib/supabase/server'
+import { createClient, createAdminClient, getUserFromCookie } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 export async function joinClass(inviteCode: string): Promise<{ error?: string }> {
   const supabase = await createClient()
+  const admin = createAdminClient()
   const user = await getUserFromCookie()
   if (!user) return { error: '로그인이 필요합니다.' }
 
-  const { data: cls, error: codeError } = await supabase
+  // RLS 우회: 모든 반의 초대코드를 조회해야 하므로 admin 클라이언트 사용
+  const { data: cls, error: codeError } = await admin
     .from('classes')
     .select('id, name')
     .eq('invite_code', inviteCode.trim().toUpperCase())
