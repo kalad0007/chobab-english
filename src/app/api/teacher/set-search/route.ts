@@ -7,13 +7,14 @@ export async function GET(req: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
-  const category = searchParams.get('category') ?? 'reading'
-  const subtype  = searchParams.get('subtype')  ?? ''
-  const keyword  = searchParams.get('q')        ?? ''
+  const category  = searchParams.get('category') ?? 'reading'
+  const subtype   = searchParams.get('subtype')  ?? ''
+  const subtypes  = searchParams.get('subtypes') ?? '' // 콤마 구분 다중 subtype
+  const keyword   = searchParams.get('q')        ?? ''
 
   let query = supabase
     .from('questions')
-    .select('id, content, difficulty, question_subtype, type, category, passage, passage_group_id')
+    .select('id, content, difficulty, question_subtype, type, category, passage, passage_group_id, audio_url')
     .eq('teacher_id', user.id)
     .eq('category', category)
     .eq('is_active', true)
@@ -21,8 +22,9 @@ export async function GET(req: Request) {
     .order('passage_group_id')
     .order('created_at')
 
-  if (subtype)  query = query.eq('question_subtype', subtype)
-  if (keyword)  query = query.ilike('content', `%${keyword}%`)
+  if (subtype)        query = query.eq('question_subtype', subtype)
+  else if (subtypes)  query = query.in('question_subtype', subtypes.split(',').map(s => s.trim()))
+  if (keyword)        query = query.ilike('content', `%${keyword}%`)
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -41,6 +43,7 @@ export async function GET(req: Request) {
     return {
       passage_group_id: groupId,
       passage: qs[0]?.passage ?? '',
+      audio_url: (qs[0] as { audio_url?: string | null }).audio_url ?? null,
       question_subtype: qs[0]?.question_subtype ?? null,
       difficulty: Math.round(avg * 2) / 2,
       questions: qs.map(q => ({

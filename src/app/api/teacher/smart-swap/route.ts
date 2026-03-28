@@ -3,9 +3,10 @@ import { createClient } from '@/lib/supabase/server'
 
 const SLOT_SUBTYPES: Record<string, string[]> = {
   fill_blank:   ['complete_the_words', 'sentence_completion'],
-  daily_life:   ['read_in_daily_life'],
+  daily_life:   ['daily_life_email', 'daily_life_text_chain', 'read_in_daily_life'],
   deep_reading: ['factual', 'negative_factual', 'inference', 'rhetorical_purpose',
-                 'vocabulary', 'reference', 'sentence_simplification', 'insert_text'],
+                 'vocabulary', 'reference', 'sentence_simplification', 'insert_text',
+                 'academic_passage'],
 }
 
 export async function POST(req: Request) {

@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-// 슬롯 유형별 question_subtype 매핑
-const RESPONSE_SUBTYPES   = ['choose_response', 'gist_content', 'gist_purpose']
-const CONV_SUBTYPES       = ['conversation']
-const TALK_SUBTYPES       = ['detail', 'inference', 'function', 'attitude',
-                             'organization', 'connecting_content', 'announcement']
+// 슬롯 유형별 question_subtype 매핑 (2026 기준)
+const RESPONSE_SUBTYPES = ['choose_response']
+const CONV_SUBTYPES     = ['conversation']
+const TALK_SUBTYPES     = ['academic_talk']
 
 // 모듈별 난이도 창 (FLOAT ±0.5)
 function getDiffWindow(target: number, module: string) {
@@ -16,7 +15,7 @@ function getDiffWindow(target: number, module: string) {
 
 // 세트 수량 최적화: sets 목록에서 총 targetCount 문항에 가장 가깝게 조합 (Greedy)
 function optimizeSets(
-  sets: { audioId: string; audioUrl: string | null; questions: Record<string, unknown>[] }[],
+  sets: { groupId: string; audioUrl: string | null; questions: Record<string, unknown>[] }[],
   targetCount: number,
 ) {
   const sorted = [...sets].sort((a, b) => b.questions.length - a.questions.length)
@@ -72,7 +71,8 @@ export async function POST(req: Request) {
 
   let q = supabase
     .from('questions')
-    .select('id, content, difficulty, audio_url, audio_id, question_subtype, type')
+    // passage_group_id: 세트 그룹 ID (listening도 동일 필드 사용)
+    .select('id, content, difficulty, audio_url, passage_group_id, question_subtype, type')
     .eq('category', 'listening')
     .eq('is_active', true)
     .gte('difficulty', poolMin)
@@ -87,7 +87,7 @@ export async function POST(req: Request) {
   const { data: raw, error } = await q
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // 목표 난이도 가까운 순 정렬 후 셔플
+  // 목표 난이도 가까운 순 정렬
   const sorted = (raw ?? []).sort((a, b) =>
     Math.abs(a.difficulty - targetBand) - Math.abs(b.difficulty - targetBand)
   )
@@ -98,28 +98,36 @@ export async function POST(req: Request) {
     return NextResponse.json({ type: 'response', questions: picked })
   }
 
-  // ── Conversation / Academic Talk: audio_id로 그룹핑 ──
-  const grouped: Record<string, { audioId: string; audioUrl: string | null; questions: typeof raw }> = {}
+  // ── Conversation / Academic Talk: passage_group_id로 그룹핑 ──
+  const grouped: Record<string, { groupId: string; audioUrl: string | null; questions: typeof raw }> = {}
   for (const item of sorted) {
-    if (!item.audio_id) continue
-    if (!grouped[item.audio_id]) {
-      grouped[item.audio_id] = { audioId: item.audio_id, audioUrl: item.audio_url, questions: [] }
+    const key = item.passage_group_id
+    if (!key) continue
+    if (!grouped[key]) {
+      grouped[key] = { groupId: key, audioUrl: item.audio_url ?? null, questions: [] }
     }
-    grouped[item.audio_id].questions.push(item)
+    grouped[key].questions.push(item)
   }
 
   let sets = Object.values(grouped)
 
   if (slotType === 'conversation') {
-    sets = sets.filter(s => s.questions.length === 2)
+    sets = sets.filter(s => s.questions.length >= 2)
     sets = sets.sort(() => Math.random() - 0.5)
     const setsNeeded = Math.ceil(targetCount / 2)
-    return NextResponse.json({ type: 'sets', sets: sets.slice(0, setsNeeded) })
+    // AudioSet 형태로 반환 (groupId → audioId 호환)
+    return NextResponse.json({
+      type: 'sets',
+      sets: sets.slice(0, setsNeeded).map(s => ({ audioId: s.groupId, audioUrl: s.audioUrl, questions: s.questions })),
+    })
   }
 
-  // Academic Talk: 2~5문항 세트, 합계가 targetCount에 가깝도록 최적화
+  // Academic Talk: 2~5문항 세트
   sets = sets.filter(s => s.questions.length >= 2 && s.questions.length <= 5)
   sets = sets.sort(() => Math.random() - 0.5).slice(0, 20)
   const chosen = optimizeSets(sets, targetCount)
-  return NextResponse.json({ type: 'sets', sets: chosen })
+  return NextResponse.json({
+    type: 'sets',
+    sets: chosen.map(s => ({ audioId: s.groupId, audioUrl: s.audioUrl, questions: s.questions })),
+  })
 }

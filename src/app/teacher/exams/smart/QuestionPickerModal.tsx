@@ -80,7 +80,12 @@ export default function QuestionPickerModal({
     setSetsLoading(true)
     try {
       const params = new URLSearchParams({ category })
-      if (subtype) params.set('subtype', subtype)
+      if (subtype) {
+        params.set('subtype', subtype)
+      } else if (allowedSubtypes?.length) {
+        // 슬롯 타입에 맞는 subtype만 기본 필터로 적용
+        params.set('subtypes', allowedSubtypes.join(','))
+      }
       if (keyword) params.set('q', keyword)
       const res  = await fetch(`/api/teacher/set-search?${params}`)
       const data = await res.json()
@@ -89,7 +94,7 @@ export default function QuestionPickerModal({
     } finally {
       setSetsLoading(false)
     }
-  }, [category, subtype, keyword])
+  }, [category, subtype, keyword, allowedSubtypes])
 
   // 모달 열릴 때 초기화
   useEffect(() => {
