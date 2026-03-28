@@ -108,7 +108,7 @@ function QuestionEditor({
             onChange={e => onUpdate({ content: e.target.value })}
             placeholder="An introductory sentence for a brief summary of the passage is provided below. Complete the summary by selecting the THREE answer choices..."
             rows={2}
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
           />
         </div>
 
@@ -134,7 +134,7 @@ function QuestionEditor({
                 value={opt.text}
                 onChange={e => onUpdateSummaryOption(i, e.target.value)}
                 placeholder={`보기 ${opt.num}${q.summaryCorrect.includes(opt.num) ? ' (정답)' : ''}`}
-                className={`flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 ${
+                className={`flex-1 px-3 py-2 border rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500 ${
                   q.summaryCorrect.includes(opt.num) ? 'border-violet-300 bg-violet-50' : 'border-gray-200'
                 }`}
               />
@@ -147,7 +147,7 @@ function QuestionEditor({
           <label className="block text-xs font-semibold text-gray-600 mb-1">해설</label>
           <textarea value={q.explanation} onChange={e => onUpdate({ explanation: e.target.value })}
             placeholder="정답 해설..." rows={2}
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none" />
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none" />
         </div>
       </div>
     )
@@ -168,7 +168,7 @@ function QuestionEditor({
           <label className="block text-xs font-semibold text-gray-600 mb-1">지시문</label>
           <textarea value={q.content} onChange={e => onUpdate({ content: e.target.value })}
             placeholder="Complete the table below to summarize information about..." rows={2}
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none" />
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none" />
         </div>
 
         <div>
@@ -177,7 +177,7 @@ function QuestionEditor({
             {q.tableCategories.map((cat, i) => (
               <input key={i} value={cat} onChange={e => onUpdateTableCategory(i, e.target.value)}
                 placeholder={`카테고리 ${i + 1}`}
-                className={`flex-1 px-3 py-2 border border-amber-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${cat ? 'bg-amber-50' : ''}`} />
+                className={`flex-1 px-3 py-2 border border-amber-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-500 ${cat ? 'bg-amber-50' : ''}`} />
             ))}
           </div>
         </div>
@@ -189,7 +189,7 @@ function QuestionEditor({
               <span className="w-6 text-center text-xs text-gray-400 flex-shrink-0">{i + 1}</span>
               <input value={item.text} onChange={e => onUpdateTableItem(i, { text: e.target.value })}
                 placeholder={`항목 ${i + 1}`}
-                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none" />
+                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none" />
               <select value={item.category} onChange={e => onUpdateTableItem(i, { category: e.target.value })}
                 className={`px-2 py-2 border rounded-lg text-xs font-semibold focus:outline-none ${
                   item.category ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-gray-200 text-gray-400'
@@ -207,7 +207,7 @@ function QuestionEditor({
           <label className="block text-xs font-semibold text-gray-600 mb-1">해설</label>
           <textarea value={q.explanation} onChange={e => onUpdate({ explanation: e.target.value })}
             placeholder="정답 해설..." rows={2}
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none" />
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none" />
         </div>
       </div>
     )
@@ -233,7 +233,7 @@ function QuestionEditor({
           <textarea value={q.content} onChange={e => onUpdate({ content: e.target.value })}
             placeholder={`Footage captured by submarines has shown us that strange creatures thrive in the deepest parts of the ocean. People te__ to bel____ that su__ extreme environ____ are ju__ barren zon__. In rea____, research h__ clearly sh___ that li__ is abundant there.`}
             rows={6}
-            className="w-full px-3 py-2.5 border border-teal-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none font-mono bg-white" />
+            className="w-full px-3 py-2.5 border border-teal-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none font-mono bg-white" />
         </div>
         <div>
           <label className="block text-xs font-semibold text-gray-600 mb-1">
@@ -241,14 +241,14 @@ function QuestionEditor({
           </label>
           <input value={q.answer} onChange={e => onUpdate({ answer: e.target.value })}
             placeholder="tend, believe, such, environments, just, zones, reality, has, shows, life"
-            className="w-full px-3 py-2.5 border border-teal-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white" />
+            className="w-full px-3 py-2.5 border border-teal-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white" />
           <p className="text-xs text-gray-400 mt-1">빈칸 __ 이 나오는 순서대로 완성된 단어를 입력</p>
         </div>
         <div>
           <label className="block text-xs font-semibold text-gray-600 mb-1">해설</label>
           <textarea value={q.explanation} onChange={e => onUpdate({ explanation: e.target.value })}
             placeholder="각 빈칸 단어 설명..." rows={2}
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none" />
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none" />
         </div>
       </div>
     )
@@ -274,7 +274,7 @@ function QuestionEditor({
             onChange={e => onUpdate({ content: e.target.value })}
             placeholder={'The professor ___ her students to submit their essays early.\nThe new policy ___ all employees to work from home twice a week.\nResearchers ___ that the drug could reduce symptoms significantly.\nMany students ___ additional resources to prepare for the exam.\nThe company ___ a new headquarters in the city center last year.\nThe government ___ stricter environmental regulations in 2023.\nThe athlete ___ months of intense training before the competition.\nShe ___ a scholarship to study abroad at a top university.\nThe committee ___ a decision after hours of deliberation.\nHe ___ his colleagues with a detailed report of the findings.'}
             rows={12}
-            className="w-full px-3 py-3 border border-blue-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono"
+            className="w-full px-3 py-3 border border-blue-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono"
           />
           <p className="text-xs text-gray-400 mt-1">각 줄 = 문장 1개. 학생에게 번호 붙은 목록으로 표시됩니다.</p>
         </div>
@@ -286,7 +286,7 @@ function QuestionEditor({
             value={q.answer}
             onChange={e => onUpdate({ answer: e.target.value })}
             placeholder="encouraged,required,found,used,built,introduced,completed,received,made,impressed"
-            className="w-full px-3 py-2.5 border border-blue-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2.5 border border-blue-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <p className="text-xs text-gray-400 mt-1">문장 순서대로 각 빈칸의 정답 단어를 쉼표로 구분</p>
         </div>
@@ -294,7 +294,7 @@ function QuestionEditor({
           <label className="block text-xs font-semibold text-gray-600 mb-1">해설 (선택)</label>
           <textarea value={q.explanation} onChange={e => onUpdate({ explanation: e.target.value })}
             placeholder="각 빈칸의 단어 의미 및 문법 설명..." rows={2}
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
         </div>
       </div>
     )
@@ -308,7 +308,7 @@ function QuestionEditor({
         <label className="block text-xs font-semibold text-gray-600 mb-1">문제 유형</label>
         <select value={q.questionSubtype}
           onChange={e => onUpdate({ questionSubtype: e.target.value })}
-          className={`w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 ${ring}`}>
+          className={`w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 ${ring}`}>
           <option value="">선택하세요</option>
           {QUESTION_SUBTYPE_LABELS[category] &&
             Object.entries(QUESTION_SUBTYPE_LABELS[category]).map(([k, v]) => (
@@ -328,7 +328,7 @@ function QuestionEditor({
               : 'What is the main topic of the lecture?'
           }
           rows={2}
-          className={`w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 ${ring} resize-none`} />
+          className={`w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 ${ring} resize-none`} />
       </div>
 
       {/* Insert Text 안내 */}
@@ -358,7 +358,7 @@ function QuestionEditor({
                   ? `위치 ${String.fromCharCode(65 + i)} (예: 1단락 끝 이후)`
                   : `Option ${String.fromCharCode(65 + i)}`
               }
-              className={`flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 ${ring} ${
+              className={`flex-1 px-3 py-2 border rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 ${ring} ${
                 q.answer === String(opt.num) ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
               }`} />
           </div>
@@ -388,7 +388,7 @@ function QuestionEditor({
         <label className="block text-xs font-semibold text-gray-600 mb-1">해설</label>
         <textarea value={q.explanation} onChange={e => onUpdate({ explanation: e.target.value })}
           placeholder="정답 해설 및 오답 분석..." rows={2}
-          className={`w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 ${ring} resize-none`} />
+          className={`w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 ${ring} resize-none`} />
       </div>
     </div>
   )
@@ -861,7 +861,7 @@ export default function NewQuestionPage() {
               <div className="flex items-center gap-2">
                 <label className="text-xs font-semibold text-gray-600">최소 단어 수</label>
                 <input type="number" value={wordLimit} onChange={e => setWordLimit(Number(e.target.value))}
-                  className="w-24 px-2 py-1.5 border border-purple-200 rounded-lg text-sm" />
+                  className="w-24 px-2 py-1.5 border border-purple-200 rounded-lg text-sm text-gray-900" />
               </div>
             </div>
           )}
@@ -872,14 +872,14 @@ export default function NewQuestionPage() {
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">주제 키워드</label>
               <input value={topic} onChange={e => setTopic(e.target.value)}
                 placeholder="예: 환경, IT, 경제, 캠퍼스생활..."
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">요약 내용</label>
               <textarea value={summary} onChange={e => setSummary(e.target.value)}
                 placeholder="예: 환경오염이 기후변화에 미치는 영향을 다룬 학술 지문"
                 rows={2}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
             </div>
           </div>
         </div>
@@ -976,7 +976,7 @@ export default function NewQuestionPage() {
                             <label className="block text-xs font-semibold text-gray-600 mb-1">문제 유형 (Academic)</label>
                             <select value={q.questionSubtype}
                               onChange={e => updateMCQ(qIdx, { questionSubtype: e.target.value })}
-                              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
                               <option value="">선택하세요</option>
                               {ACADEMIC_READING_SUBTYPES.map(k => (
                                 <option key={k} value={k}>{QUESTION_SUBTYPE_LABELS['reading'][k] ?? k}</option>
@@ -1032,7 +1032,7 @@ export default function NewQuestionPage() {
                 <textarea value={audioScript} onChange={e => setAudioScript(e.target.value)}
                   placeholder="강의 또는 대화 스크립트를 입력하세요..."
                   rows={8}
-                  className="w-full px-3 py-2.5 border border-emerald-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none bg-white" />
+                  className="w-full px-3 py-2.5 border border-emerald-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none bg-white" />
               </div>
               {/* 목소리 선택 */}
               {isSingleSpeaker && (
@@ -1121,7 +1121,7 @@ export default function NewQuestionPage() {
                           <label className="block text-xs font-semibold text-gray-600 mb-1">문제 유형</label>
                           <select value={q.questionSubtype}
                             onChange={e => updateMCQ(qIdx, { questionSubtype: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500">
                             <option value="">선택하세요</option>
                             {TRADITIONAL_LISTENING_SUBTYPES.map(k => (
                               <option key={k} value={k}>{QUESTION_SUBTYPE_LABELS['listening'][k] ?? k}</option>
@@ -1175,7 +1175,7 @@ export default function NewQuestionPage() {
                 <textarea value={passage} onChange={e => setPassage(e.target.value)}
                   placeholder={taskNumber === 2 ? '캠퍼스 공지문 또는 학교 정책 지문 (~100 words)' : '학술 지문 (~100 words)'}
                   rows={5}
-                  className="w-full px-3 py-2.5 border border-orange-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none bg-white" />
+                  className="w-full px-3 py-2.5 border border-orange-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none bg-white" />
               </div>
             )}
 
@@ -1185,7 +1185,7 @@ export default function NewQuestionPage() {
                 <textarea value={audioScript} onChange={e => setAudioScript(e.target.value)}
                   placeholder={questionSubtype === 'listen_and_repeat' ? '학생이 반복할 문장을 입력하세요' : taskNumber === 2 ? '학생 대화 스크립트' : '교수 강의 스크립트'}
                   rows={6}
-                  className="w-full px-3 py-2.5 border border-orange-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none bg-white" />
+                  className="w-full px-3 py-2.5 border border-orange-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none bg-white" />
                 {isSingleSpeaker && (
                   <div className="mt-2">
                     <label className="block text-xs font-semibold text-gray-600 mb-1">목소리</label>
@@ -1227,7 +1227,7 @@ export default function NewQuestionPage() {
                     ? 'Some people prefer to study alone, while others prefer to study in a group. Which do you prefer and why?'
                     : 'Using points and examples from the lecture, explain how...'}
                   rows={3}
-                  className="w-full px-3 py-2.5 border border-orange-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none bg-white" />
+                  className="w-full px-3 py-2.5 border border-orange-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none bg-white" />
               </div>
             )}
           </div>
@@ -1261,7 +1261,7 @@ export default function NewQuestionPage() {
                             setWordChips(next)
                           }}
                           placeholder={`단어 ${idx + 1}`}
-                          className="flex-1 px-3 py-2 border border-purple-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                          className="flex-1 px-3 py-2 border border-purple-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
                         />
                         {wordChips.length > 1 && (
                           <button type="button"
@@ -1309,7 +1309,7 @@ export default function NewQuestionPage() {
                       <textarea value={audioScript} onChange={e => setAudioScript(e.target.value)}
                         placeholder="읽기 지문의 주장을 반박하는 강의 스크립트 (1-2분 분량)"
                         rows={6}
-                        className="w-full px-3 py-2.5 border border-purple-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none bg-white" />
+                        className="w-full px-3 py-2.5 border border-purple-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none bg-white" />
                       <div className="mt-2 flex items-center gap-3">
                         <button type="button" onClick={generateAudio} disabled={generatingAudio || !audioScript.trim()}
                           className="mt-2 inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white rounded-xl text-sm font-bold transition">
@@ -1370,7 +1370,7 @@ export default function NewQuestionPage() {
                     : 'Write a response that contributes to the discussion. Express and support your opinion...'
                 }
                 rows={questionSubtype === 'email_writing' ? 6 : 3} required
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
             </div>
 
             {/* listen_and_repeat: speaking prompt = content */}
@@ -1389,7 +1389,7 @@ export default function NewQuestionPage() {
                 <textarea value={speakingPrompt} onChange={e => setSpeakingPrompt(e.target.value)}
                   placeholder="Some people prefer studying alone, while others prefer studying in groups. Which do you prefer and why?"
                   rows={2}
-                  className="w-full px-3 py-2.5 border border-orange-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none bg-white" />
+                  className="w-full px-3 py-2.5 border border-orange-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none bg-white" />
               </div>
             )}
 
@@ -1408,7 +1408,7 @@ export default function NewQuestionPage() {
                     : '모범 답변을 영어로 작성하세요...'
                 }
                 rows={questionSubtype === 'email_writing' ? 8 : 5}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
@@ -1421,7 +1421,7 @@ export default function NewQuestionPage() {
                     : '채점 기준 및 핵심 포인트...'
                 }
                 rows={3}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
             </div>
           </div>
         )}
