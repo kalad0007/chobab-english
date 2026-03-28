@@ -273,6 +273,19 @@ export default function EditQuestionPage() {
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">주제 키워드</label>
+                <input value={subcategory} onChange={e => setSubcategory(e.target.value)}
+                  placeholder="예: 환경, IT, 경제, 캠퍼스생활..."
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">요약 내용</label>
+                <textarea value={summary} onChange={e => setSummary(e.target.value)}
+                  placeholder="예: 환경오염이 기후변화에 미치는 영향을 다룬 학술 지문"
+                  rows={2}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+              </div>
+              <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">제한 시간 (분)</label>
                 <input type="number" min={1} max={60} value={fbTimeLimit} onChange={e => setFbTimeLimit(Number(e.target.value))}
                   className="w-full max-w-xs px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />

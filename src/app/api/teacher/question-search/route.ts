@@ -17,7 +17,7 @@ export async function GET(req: Request) {
 
   let query = supabase
     .from('questions')
-    .select('id, content, difficulty, question_subtype, type, category, options, time_limit', { count: 'exact' })
+    .select('id, content, difficulty, question_subtype, type, category, options, time_limit, summary, subcategory, audio_url', { count: 'exact' })
     .eq('category', category)
     .eq('is_active', true)
     .order('difficulty', { ascending: true })

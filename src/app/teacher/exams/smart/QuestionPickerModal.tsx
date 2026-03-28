@@ -12,6 +12,9 @@ export interface PickedQuestion {
   type: string
   category: string
   time_limit?: number | null
+  summary?: string | null
+  subcategory?: string | null
+  audio_url?: string | null
 }
 
 interface PassageSet {
@@ -258,22 +261,30 @@ export default function QuestionPickerModal({
                     {isSel && <Check size={10} className="text-white" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs text-gray-800 line-clamp-2 leading-snug flex-1">{q.content}</p>
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${info.color}`}>
+                          {info.level}·{info.label}
+                        </span>
+                        {q.subcategory && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700"># {q.subcategory}</span>
+                        )}
+                        {q.question_subtype && (
+                          <span className="text-[10px] text-gray-400">
+                            {(subtypeMap[q.question_subtype] ?? q.question_subtype.replace(/_/g, ' ')).replace(/ ★NEW.*/, '')}
+                          </span>
+                        )}
+                        {q.audio_url && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700">🎧</span>}
+                      </div>
                       <span className="flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 flex-shrink-0 whitespace-nowrap">
                         <Clock size={9} /> {formatSeconds(qTimeSec)}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${info.color}`}>
-                        {info.level}·{info.label}
-                      </span>
-                      {q.question_subtype && (
-                        <span className="text-[10px] text-gray-400">
-                          {(subtypeMap[q.question_subtype] ?? q.question_subtype.replace(/_/g, ' ')).replace(/ ★NEW.*/, '')}
-                        </span>
-                      )}
-                    </div>
+                    {q.summary ? (
+                      <p className="text-xs text-gray-800 font-medium line-clamp-2 leading-snug">{q.summary}</p>
+                    ) : (
+                      <p className="text-xs text-gray-700 line-clamp-2 leading-snug">{q.content}</p>
+                    )}
                   </div>
                 </button>
               )

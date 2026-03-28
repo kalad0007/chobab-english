@@ -190,11 +190,10 @@ function SlotGroup({
           </div>
           <span className="text-[10px] text-gray-400">{filled}개 채움</span>
         </div>
-        <button onClick={onFill} disabled={filling}
-          className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1
+        <button onClick={onFill} disabled={filling} title="Magic Fill"
+          className="inline-flex items-center justify-center w-7 h-7
             bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg transition">
-          {filling ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} />}
-          Magic Fill
+          {filling ? <Loader2 size={11} className="animate-spin" /> : <Zap size={11} />}
         </button>
       </div>
       <div className="space-y-1.5">
@@ -794,7 +793,7 @@ export default function SmartBuilderPage() {
                       }}
                       className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 bg-gray-800 hover:bg-gray-900 disabled:bg-gray-400 text-white rounded-lg transition">
                       {filling?.startsWith('M1') ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} />}
-                      전체 Magic Fill
+                      All
                     </button>
                   </div>
                 </div>
@@ -832,7 +831,7 @@ export default function SmartBuilderPage() {
                       }}
                       className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg transition">
                       {filling?.startsWith('M2up') ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} />}
-                      전체 Magic Fill
+                      All
                     </button>
                   </div>
                 </div>
@@ -868,7 +867,7 @@ export default function SmartBuilderPage() {
                       }}
                       className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 text-white rounded-lg transition">
                       {filling?.startsWith('M2down') ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} />}
-                      전체 Magic Fill
+                      All
                     </button>
                   </div>
                 </div>
