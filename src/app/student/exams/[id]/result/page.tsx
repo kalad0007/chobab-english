@@ -1,7 +1,7 @@
 import { createClient, getUserFromCookie } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { CATEGORY_LABELS, getDiffInfo, usesAlphaOptions, optionLabel } from '@/lib/utils'
-import { CheckCircle, XCircle, Trophy, Star } from 'lucide-react'
+import { CATEGORY_LABELS, getDiffInfo, bandToLevel, usesAlphaOptions, optionLabel } from '@/lib/utils'
+import { CheckCircle, XCircle, Trophy } from 'lucide-react'
 
 export default async function ExamResultPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: examId } = await params
@@ -11,13 +11,13 @@ export default async function ExamResultPage({ params }: { params: Promise<{ id:
 
   const { data: submission } = await supabase
     .from('submissions')
-    .select('id, score, total_points, percentage, status')
+    .select('id, overall_band, reading_band, listening_band, writing_band, speaking_band, status')
     .eq('exam_id', examId)
     .eq('student_id', user.id)
     .single()
 
   const { data: exam } = await supabase
-    .from('exams').select('title, show_result_immediately, description').eq('id', examId).single()
+    .from('exams').select('title, show_result_immediately, max_band_ceiling').eq('id', examId).single()
 
   const { data: answers } = await supabase
     .from('submission_answers')
@@ -28,15 +28,16 @@ export default async function ExamResultPage({ params }: { params: Promise<{ id:
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const totalMC = (answers ?? []).filter(a => (a.questions as any)?.type === 'multiple_choice').length
 
-  const pct = submission?.percentage ?? 0
+  const overallBand   = submission?.overall_band ?? 0
+  const ceilingBand   = exam?.max_band_ceiling ?? 6.0
+  const bandInfo      = getDiffInfo(overallBand)
 
-  // maxBand 파싱 (score×0.1, total_points×0.1 방식으로 저장됨)
-  const bandScore   = (submission?.score ?? 0) / 10          // e.g. 35 → 3.5
-  const maxBandVal  = (submission?.total_points ?? 60) / 10  // e.g. 55 → 5.5
-  const bandInfo    = getDiffInfo(bandScore)
-
-  // 단순 정답률 (표시용)
-  const simplePct = totalMC > 0 ? Math.round((correctCount / totalMC) * 100) : 0
+  const sectionBands = [
+    { key: 'reading',   label: 'Reading',   band: submission?.reading_band },
+    { key: 'listening', label: 'Listening', band: submission?.listening_band },
+    { key: 'writing',   label: 'Writing',   band: submission?.writing_band },
+    { key: 'speaking',  label: 'Speaking',  band: submission?.speaking_band },
+  ].filter(s => s.band != null)
 
   return (
     <div className="p-7 max-w-3xl">
@@ -45,46 +46,54 @@ export default async function ExamResultPage({ params }: { params: Promise<{ id:
         <p className="text-gray-500 text-sm mt-1">{exam?.title}</p>
       </div>
 
-      {/* 점수 카드 — Band Score 중심 */}
-      <div className={`rounded-2xl p-6 mb-6 text-center ${
-        bandScore >= 5.0 ? 'bg-gradient-to-br from-purple-600 to-indigo-700' :
-        bandScore >= 4.0 ? 'bg-gradient-to-br from-blue-500 to-blue-700' :
-        bandScore >= 3.0 ? 'bg-gradient-to-br from-emerald-500 to-teal-600' :
-        'bg-gradient-to-br from-amber-500 to-orange-600'
+      {/* 점수 카드 — Overall Band 중심 */}
+      <div className={`rounded-2xl p-6 mb-4 text-center ${
+        overallBand >= 5.0 ? 'bg-gradient-to-br from-purple-600 to-indigo-700' :
+        overallBand >= 4.0 ? 'bg-gradient-to-br from-blue-500 to-blue-700' :
+        overallBand >= 3.0 ? 'bg-gradient-to-br from-emerald-500 to-teal-600' :
+        overallBand > 0    ? 'bg-gradient-to-br from-amber-500 to-orange-600' :
+        'bg-gradient-to-br from-gray-400 to-gray-600'
       }`}>
         <Trophy size={32} className="mx-auto text-white/80 mb-2" />
-
-        {/* 메인: 밴드 점수 */}
         <div className="text-7xl font-black text-white mb-1 tracking-tight">
-          {bandScore.toFixed(1)}
+          {overallBand > 0 ? overallBand.toFixed(1) : '—'}
         </div>
-        <div className="text-white/80 text-lg font-bold mb-0.5">Band Score</div>
+        <div className="text-white/80 text-lg font-bold mb-0.5">Overall Band</div>
         <div className="text-white/60 text-sm">
-          {bandInfo.level} · {bandInfo.name} · Max {maxBandVal.toFixed(1)}
+          {overallBand > 0 ? `${bandInfo.level} · ${bandInfo.name}` : '채점 대기 중'}
+          {' · '}Max {ceilingBand.toFixed(1)}
         </div>
-
-        {/* 서브: 가중 성취도 & 정답률 */}
-        <div className="mt-4 pt-4 border-t border-white/20 flex items-center justify-center gap-6 text-sm">
-          <div className="text-center">
-            <div className="text-white font-extrabold text-xl">{pct}%</div>
-            <div className="text-white/60 text-xs">난이도 가중 성취도</div>
-          </div>
-          {totalMC > 0 && (
-            <div className="text-center">
-              <div className="text-white font-extrabold text-xl">{correctCount}/{totalMC}</div>
-              <div className="text-white/60 text-xs">단순 정답</div>
-            </div>
-          )}
-        </div>
-
-        {/* 가산점 메시지 */}
-        {pct > simplePct && simplePct > 0 && (
-          <div className="mt-3 flex items-center justify-center gap-1 text-white/80 text-xs">
-            <Star size={11} className="fill-yellow-300 text-yellow-300" />
-            어려운 문제를 많이 맞혀 가산점이 부여되었습니다!
+        {overallBand > 0 && (
+          <div className="mt-2 text-white/50 text-xs">{bandToLevel(overallBand)}</div>
+        )}
+        {totalMC > 0 && (
+          <div className="mt-4 pt-4 border-t border-white/20">
+            <div className="text-white font-extrabold text-xl">{correctCount}/{totalMC}</div>
+            <div className="text-white/60 text-xs">객관식 정답</div>
           </div>
         )}
       </div>
+
+      {/* 섹션별 밴드 */}
+      {sectionBands.length > 0 && (
+        <div className={`grid gap-3 mb-6 ${sectionBands.length === 1 ? 'grid-cols-1' : sectionBands.length === 2 ? 'grid-cols-2' : sectionBands.length === 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
+          {sectionBands.map(s => {
+            const b = s.band!
+            const info = getDiffInfo(b)
+            return (
+              <div key={s.key} className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
+                <div className="text-xs font-bold text-gray-400 mb-1">{s.label}</div>
+                <div className={`text-2xl font-black ${b >= 5.0 ? 'text-purple-600' : b >= 4.0 ? 'text-blue-600' : b >= 3.0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                  {b.toFixed(1)}
+                </div>
+                <div className={`text-xs px-1.5 py-0.5 rounded-full font-semibold mt-1 inline-block ${info.color}`}>
+                  {info.level}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* 문항별 결과 */}
       {exam?.show_result_immediately && (

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ChevronLeft, ChevronRight, CheckSquare, Clock } from 'lucide-react'
-import { renderWithUnderlines, usesAlphaOptions, optionLabel, DEFAULT_TIME_LIMITS } from '@/lib/utils'
+import { renderWithUnderlines, usesAlphaOptions, optionLabel, DEFAULT_TIME_LIMITS, getMaxScore, calculateSectionBand, calculateOverallBand } from '@/lib/utils'
 import AudioPlayer from '@/components/ui/AudioPlayer'
 import SpeakingRecorder from '@/components/ui/SpeakingRecorder'
 import BuildASentencePlayer from '@/components/ui/BuildASentencePlayer'
@@ -36,8 +36,8 @@ export default function ExamTakePage() {
   const examId = params.id as string
   const supabase = createClient()
 
-  const [exam, setExam] = useState<{ title: string; time_limit: number | null; description: string | null } | null>(null)
-  const [maxBand, setMaxBand] = useState<number>(6.0)  // 시험의 최고 밴드
+  const [exam, setExam] = useState<{ title: string; time_limit: number | null } | null>(null)
+  const [maxBandCeiling, setMaxBandCeiling] = useState<number>(6.0)
   const [questions, setQuestions] = useState<Question[]>([])
   const [current, setCurrent] = useState(0)
   const [timeLeft, setTimeLeft] = useState<number | null>(null)       // 시험 전체 타이머
@@ -58,7 +58,7 @@ export default function ExamTakePage() {
       }
 
       const [{ data: examData }, { data: examQuestions }] = await Promise.all([
-        supabase.from('exams').select('title, time_limit, description').eq('id', examId).single(),
+        supabase.from('exams').select('title, time_limit, max_band_ceiling').eq('id', examId).single(),
         supabase.from('exam_questions')
           .select('question_id, order_num, points, questions(*)')
           .eq('exam_id', examId)
@@ -66,14 +66,7 @@ export default function ExamTakePage() {
       ])
 
       setExam(examData)
-
-      // description에서 maxBand 파싱 (일반 시험 & 적응형 공통)
-      if (examData?.description) {
-        try {
-          const cfg = JSON.parse(examData.description)
-          if (cfg.maxBand) setMaxBand(cfg.maxBand)
-        } catch { /* JSON 파싱 실패 시 기본값 6.0 유지 */ }
-      }
+      if (examData?.max_band_ceiling) setMaxBandCeiling(examData.max_band_ceiling)
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const qs: Question[] = (examQuestions ?? []).map((eq: any) => ({
@@ -163,12 +156,8 @@ export default function ExamTakePage() {
 
     const { data: { user } } = await supabase.auth.getUser()
 
-    // ── 난이도 가중 채점 ─────────────────────────────────
-    // W_q = difficulty (K=1, 비율 계산이므로 상수 소거됨)
-    // Score = (Σ W_q of correct) / (Σ W_q of all) × 100
-    let rawScore = 0                // 단순 맞은 문항 수 (표시용)
-    let weightedCorrect = 0        // 맞힌 문항 난이도 합
-    let weightedTotal = 0          // 전체 문항 난이도 합
+    // ── Step 1: 문제별 earned_score 계산 + submission_answers 저장 ──────────
+    const earnedByQuestion: Record<string, number> = {}
     const updates = []
 
     for (const q of questions) {
@@ -176,35 +165,32 @@ export default function ExamTakePage() {
       const isFillBlank = q.question_subtype === 'complete_the_words' || q.question_subtype === 'sentence_completion'
       const isWordTile = q.question_subtype === 'sentence_reordering'
       const isAutoGraded = (q.type === 'multiple_choice' || q.type === 'short_answer' || isFillBlank || isWordTile) && q.category !== 'speaking'
-      const isCorrect = isAutoGraded
-        ? isFillBlank
-          // fill-blank: 각 빈칸 단어 비교 (순서 유지, 대소문자 무시)
+
+      const maxScore = getMaxScore(q.question_subtype)
+      let isCorrect = false
+      let earnedScore = 0
+
+      if (isAutoGraded) {
+        isCorrect = isFillBlank
           ? (() => {
               const correct = (q.answer ?? '').split(',').map(a => a.trim().toLowerCase())
               const student = studentAns.split(',').map(a => a.trim().toLowerCase())
               return correct.length > 0 && correct.every((c, i) => c === student[i])
             })()
           : q.answer?.trim().toLowerCase() === studentAns.trim().toLowerCase()
-        : false
-
-      const diffWeight = q.difficulty ?? 3.0   // fallback 3.0
-      if (isAutoGraded) {
-        weightedTotal += diffWeight
-        if (isCorrect) {
-          rawScore += 1
-          weightedCorrect += diffWeight
-        }
+        earnedScore = isCorrect ? maxScore : 0
       }
+
+      earnedByQuestion[q.id] = earnedScore
 
       updates.push(supabase.from('submission_answers').upsert({
         submission_id: submissionId,
         question_id: q.id,
         student_answer: studentAns,
         is_correct: isAutoGraded ? isCorrect : null,
-        score: isAutoGraded ? (isCorrect ? q.points : 0) : 0,
+        score: isAutoGraded ? earnedScore : null,
       }, { onConflict: 'submission_id,question_id' }))
 
-      // 오답이면 재학습 큐에 추가 (자동채점 문제만)
       if (!isCorrect && isAutoGraded && user) {
         await supabase.from('wrong_answer_queue').upsert({
           student_id: user.id,
@@ -216,16 +202,20 @@ export default function ExamTakePage() {
 
     await Promise.all(updates)
 
-    // 가중 성취도 (0~100)
-    const weightedPct = weightedTotal > 0
-      ? Math.round((weightedCorrect / weightedTotal) * 100)
-      : 0
+    // ── Step 2: 섹션별 밴드 계산 ──────────────────────────────────────────────
+    const cats = ['reading', 'listening', 'writing', 'speaking'] as const
+    const sectionBands: Record<string, number | null> = { reading: null, listening: null, writing: null, speaking: null }
 
-    // 밴드 점수: (가중성취도 / 100) × maxBand → 0.5 단위 반올림
-    const rawBand = (weightedPct / 100) * maxBand
-    const bandScore = Math.round(rawBand * 2) / 2   // 0.5 단위
+    for (const cat of cats) {
+      const qs = questions.filter(q => q.category === cat)
+      if (qs.length === 0) continue
+      const earned = qs.reduce((s, q) => s + (earnedByQuestion[q.id] ?? 0), 0)
+      const max = qs.reduce((s, q) => s + getMaxScore(q.question_subtype), 0)
+      sectionBands[cat] = calculateSectionBand(earned, max, maxBandCeiling)
+    }
 
-    const totalPoints = questions.reduce((s, q) => s + q.points, 0)
+    // ── Step 3: 통합 밴드 (자동채점 완료된 섹션만 포함) ───────────────────────
+    const overallBand = calculateOverallBand(Object.values(sectionBands))
 
     // 영역별 실력 통계 업데이트 (객관식 + 단답형)
     for (const q of questions.filter(q => (q.type === 'multiple_choice' || q.type === 'short_answer') && q.category !== 'speaking')) {
@@ -239,19 +229,20 @@ export default function ExamTakePage() {
       })
     }
 
-    // writing essay만 선생님 채점 대기 (word tile, fill-blank, 객관식, 단답형, 스피킹 제외)
     const hasNonAutoGraded = questions.some(q => {
       const sub = q.question_subtype
       const isAutoSub = sub === 'sentence_reordering' || sub === 'complete_the_words' || sub === 'sentence_completion'
-      return q.type === 'essay' && q.category !== 'speaking' && !isAutoSub
+      return (q.type === 'essay' && q.category !== 'speaking' && !isAutoSub) || q.category === 'speaking'
     })
 
     await supabase.from('submissions').update({
       status: hasNonAutoGraded ? 'submitted' : 'graded',
-      score: Math.round(bandScore * 10),  // 밴드 점수 × 10 저장 (3.5 → 35)
-      total_points: Math.round(maxBand * 10),  // 최고 밴드 × 10 (5.5 → 55)
-      percentage: weightedPct,                  // 난이도 가중 성취도 %
-      submitted_at: new Date().toISOString(),
+      reading_band:   sectionBands.reading,
+      listening_band: sectionBands.listening,
+      writing_band:   sectionBands.writing,
+      speaking_band:  sectionBands.speaking,
+      overall_band:   overallBand > 0 ? overallBand : null,
+      submitted_at:   new Date().toISOString(),
     }).eq('id', submissionId)
 
     router.push(`/student/exams/${examId}/result`)

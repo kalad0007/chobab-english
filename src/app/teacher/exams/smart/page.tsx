@@ -494,6 +494,7 @@ export default function SmartBuilderPage() {
         class_id: classId || null,
         title: examTitle,
         description: JSON.stringify(adaptiveConfig),
+        max_band_ceiling: maxBand,
         time_limit: null,
         start_at: null, end_at: null,
         status: 'draft',

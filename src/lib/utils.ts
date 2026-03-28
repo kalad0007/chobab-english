@@ -100,108 +100,86 @@ export const LEGACY_DIFFICULTY_TO_BAND: Record<number, number> = {
   1: 2.0, 2: 3.0, 3: 4.0, 4: 5.0, 5: 6.0,
 }
 
-// 문제 결과 타입
+// ── 문제 유형별 배점 (max_score) ─────────────────────────────────────────────
+export const MAX_SCORE_BY_SUBTYPE: Record<string, number> = {
+  // Reading
+  complete_the_words:    1,
+  sentence_completion:   1,
+  daily_life_email:      3,
+  daily_life_text_chain: 3,
+  academic_passage:      5,
+  // Listening
+  choose_response:       1,
+  conversation:          2,
+  academic_talk:         3,
+  campus_announcement:   3,
+  // Writing
+  sentence_reordering:   1,
+  email_writing:         5,
+  academic_discussion:   15,
+  // Speaking
+  listen_and_repeat:     1,
+  take_an_interview:     5,
+}
+
+// 서브타입 → max_score 조회 (없으면 1)
+export function getMaxScore(subtype: string | null | undefined): number {
+  return MAX_SCORE_BY_SUBTYPE[subtype ?? ''] ?? 1
+}
+
+// ── 채점 결과 타입 ────────────────────────────────────────────────────────────
 export interface QuestionResult {
   questionId: string
-  difficulty: number   // DB difficulty FLOAT 1.0~6.0
-  isCorrect: boolean
+  difficulty: number      // DB difficulty FLOAT 1.0~6.0 (레벨 표시용)
+  maxScore: number        // 문제 배점 (MAX_SCORE_BY_SUBTYPE 기준)
+  earnedScore: number     // 실제 획득 점수 (0 ~ maxScore, 부분점수 가능)
 }
 
-// ── 가중치 기반 최종 밴드 산출 (v1.1) ──────────────────────────────────────
-// Final Score = Σ(correct × difficulty) / total_possible_weighted × MaxBand
-export function calculateWeightedBand(results: QuestionResult[], maxBand: number): number {
-  if (results.length === 0) return 1.0
-  const totalPossible = results.reduce((s, r) => s + r.difficulty, 0)
-  if (totalPossible === 0) return 1.0
-  const earnedWeighted = results.filter(r => r.isCorrect).reduce((s, r) => s + r.difficulty, 0)
-  const raw = (earnedWeighted / totalPossible) * maxBand
-  const clamped = Math.max(1.0, Math.min(6.0, raw))
-  return Math.round(clamped * 2) / 2
+// ── 2단계: 섹션 밴드 계산 ─────────────────────────────────────────────────────
+// Section Band = (Σ earned_score / Σ max_score) × ceiling_band
+// 결과는 0.1 단위 소수점 (0.5단위 스냅 없음 — 섹션 단계에서는 세밀하게 유지)
+export function calculateSectionBand(
+  earnedTotal: number,
+  maxTotal: number,
+  ceilingBand: number,
+): number {
+  if (maxTotal === 0) return 0
+  const raw = (earnedTotal / maxTotal) * ceilingBand
+  return Math.round(Math.max(0, Math.min(6.0, raw)) * 10) / 10
 }
 
-// 구버전 호환: 단순 평균 밴드 계산
-export function calculateObjectiveBand(results: QuestionResult[]): number {
-  if (results.length === 0) return 1.0
-  const correct = results.filter(r => r.isCorrect)
-  if (correct.length === 0) return 1.0
-  // difficulty가 이미 FLOAT Band값이므로 직접 평균
-  const avgBand = correct.reduce((s, r) => s + r.difficulty, 0) / correct.length
-  const accuracy = correct.length / results.length
-  const penalized = accuracy < 0.5 ? avgBand - 0.5 : avgBand
-  return Math.round(Math.max(1.0, Math.min(6.0, penalized)) * 2) / 2
+// ── 3단계: 통합 밴드 산출 ─────────────────────────────────────────────────────
+// Overall Band = 출제된 섹션 밴드들의 평균, 0.5 단위 스냅
+export function calculateOverallBand(sectionBands: (number | null | undefined)[]): number {
+  const valid = sectionBands.filter((b): b is number => b != null && b > 0)
+  if (valid.length === 0) return 0
+  const avg = valid.reduce((s, b) => s + b, 0) / valid.length
+  return Math.round(Math.max(1.0, Math.min(6.0, avg)) * 2) / 2
 }
 
-// Speaking 0~4점 → Band 1.0~6.0 변환
-export function speakingScoreToBand(score: number): number {
-  const map: Record<number, number> = { 0: 1.0, 1: 2.0, 2: 3.5, 3: 5.0, 4: 6.0 }
-  return map[Math.round(score)] ?? 1.0
+// ── QuestionResult 배열 → 섹션 raw 합산 헬퍼 ─────────────────────────────────
+export function sumScores(results: QuestionResult[]): { earned: number; max: number } {
+  return results.reduce(
+    (acc, r) => ({ earned: acc.earned + r.earnedScore, max: acc.max + r.maxScore }),
+    { earned: 0, max: 0 },
+  )
 }
 
-// Writing 0~5점 → Band 1.0~6.0 변환
-export function writingScoreToBand(score: number): number {
-  const map: Record<number, number> = { 0: 1.0, 1: 2.0, 2: 3.0, 3: 4.0, 4: 5.0, 5: 6.0 }
-  return map[Math.round(score)] ?? 1.0
-}
-
-// 구 토플(0~120점) 환산 — 학생 참고용
+// ── 구 토플(0~120점) 환산 — 선생님 참고용 ────────────────────────────────────
 export function mapToOldToeflScore(bandScore: number): string {
   if (bandScore >= 6.0) return '118~120점'
   if (bandScore >= 5.5) return '110~117점'
   if (bandScore >= 5.0) return '95~109점'
   if (bandScore >= 4.5) return '84~94점'
   if (bandScore >= 4.0) return '72~83점'
-  if (bandScore >= 3.0) return '42~71점'
-  return '41점 이하'
+  if (bandScore >= 3.5) return '57~71점'
+  if (bandScore >= 3.0) return '42~56점'
+  if (bandScore >= 2.5) return '30~41점'
+  if (bandScore >= 2.0) return '20~29점'
+  return '19점 이하'
 }
 
-// 신 토플 종합 성적표 산출
-export interface ToeflScoreReport {
-  readingBand: number
-  listeningBand: number
-  speakingBand: number
-  writingBand: number
-  totalBandScore: number
-  estimatedOldScore: string  // 구 토플 환산 참고값
-}
-
-export function generateToeflReport(
-  readingResults: QuestionResult[],
-  listeningResults: QuestionResult[],
-  speakingAiScore: number,  // AI 채점 결과 0~4
-  writingAiScore: number,   // AI 채점 결과 0~5
-): ToeflScoreReport {
-  const rBand = calculateObjectiveBand(readingResults)
-  const lBand = calculateObjectiveBand(listeningResults)
-  const sBand = speakingScoreToBand(speakingAiScore)
-  const wBand = writingScoreToBand(writingAiScore)
-
-  const avg = (rBand + lBand + sBand + wBand) / 4
-  const totalBandScore = Math.round(avg * 2) / 2
-
-  return {
-    readingBand: rBand,
-    listeningBand: lBand,
-    speakingBand: sBand,
-    writingBand: wBand,
-    totalBandScore,
-    estimatedOldScore: mapToOldToeflScore(totalBandScore),
-  }
-}
-
-// 정답률(%) → 밴드 추정 (대시보드 개요용 근사치)
-export function accuracyToBand(accuracy: number): number {
-  if (accuracy >= 90) return 6.0
-  if (accuracy >= 80) return 5.0
-  if (accuracy >= 70) return 4.5
-  if (accuracy >= 60) return 4.0
-  if (accuracy >= 50) return 3.5
-  if (accuracy >= 40) return 3.0
-  if (accuracy >= 30) return 2.5
-  if (accuracy >= 20) return 2.0
-  return 1.0
-}
-
-// 밴드 스코어 → 레벨 설명
+// ── 밴드 스코어 → 레벨 설명 ───────────────────────────────────────────────────
 export function bandToLevel(band: number): string {
   if (band >= 6.0) return 'C2 (Mastery)'
   if (band >= 5.5) return 'C1+ (Advanced+)'
@@ -212,6 +190,32 @@ export function bandToLevel(band: number): string {
   if (band >= 3.0) return 'B1 (Intermediate)'
   if (band >= 2.0) return 'A2 (Elementary)'
   return 'A1 (Beginner)'
+}
+
+// ── @deprecated 구형 함수 (하위 호환용, 신규 코드에서 사용 금지) ───────────────
+/** @deprecated calculateSectionBand / calculateOverallBand 사용 */
+export function calculateWeightedBand(results: QuestionResult[], maxBand: number): number {
+  const { earned, max } = sumScores(results)
+  return calculateSectionBand(earned, max, maxBand)
+}
+/** @deprecated calculateSectionBand 사용 */
+export function calculateObjectiveBand(results: QuestionResult[]): number {
+  const { earned, max } = sumScores(results)
+  return calculateSectionBand(earned, max, 6.0)
+}
+/** @deprecated 직접 earned_score 합산 방식으로 교체됨 */
+export function speakingScoreToBand(score: number): number {
+  const map: Record<number, number> = { 0: 1.0, 1: 2.0, 2: 3.5, 3: 5.0, 4: 6.0 }
+  return map[Math.round(score)] ?? 1.0
+}
+/** @deprecated 직접 earned_score 합산 방식으로 교체됨 */
+export function writingScoreToBand(score: number): number {
+  const map: Record<number, number> = { 0: 1.0, 1: 2.0, 2: 3.0, 3: 4.0, 4: 5.0, 5: 6.0 }
+  return map[Math.round(score)] ?? 1.0
+}
+/** @deprecated calculateSectionBand 사용 */
+export function accuracyToBand(accuracy: number): number {
+  return calculateSectionBand(accuracy, 100, 6.0)
 }
 
 // 구 토플 호환 — 섹션별 만점 (참고용으로만 유지)

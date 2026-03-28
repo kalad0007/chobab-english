@@ -54,7 +54,7 @@ export default async function StudentDashboard() {
   const { data: pendingExams } = pendingExamsQuery ? await pendingExamsQuery : { data: [] }
 
   const { data: recentSubmissions } = await supabase
-    .from('submissions').select('id, score, total_points, percentage, submitted_at, status, exams(title)')
+    .from('submissions').select('id, overall_band, submitted_at, status, exams(title)')
     .eq('student_id', user.id).in('status', ['graded', 'submitted'])
     .order('submitted_at', { ascending: false }).limit(3)
 
@@ -315,12 +315,13 @@ export default async function StudentDashboard() {
                 (recentSubmissions ?? []).map((sub: any) => (
                   <div key={sub.id} className="flex items-center justify-between px-5 py-3.5">
                     <p className="text-sm font-semibold text-gray-800">{sub.exams?.title}</p>
-                    {sub.status === 'graded' ? (
+                    {sub.status === 'graded' && sub.overall_band ? (
                       <span className={`text-sm font-black ${
-                        sub.percentage >= 80 ? 'text-emerald-600' :
-                        sub.percentage >= 60 ? 'text-blue-600' : 'text-amber-600'
+                        sub.overall_band >= 5.0 ? 'text-purple-600' :
+                        sub.overall_band >= 4.0 ? 'text-blue-600' :
+                        sub.overall_band >= 3.0 ? 'text-emerald-600' : 'text-amber-600'
                       }`}>
-                        {sub.score}/{sub.total_points}점
+                        Band {sub.overall_band.toFixed(1)}
                       </span>
                     ) : (
                       <span className="text-xs bg-amber-100 text-amber-700 font-bold px-2 py-1 rounded-full">채점 중</span>

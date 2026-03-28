@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2, Sparkles, CheckCircle } from 'lucide-react'
+import { getMaxScore, calculateSectionBand, calculateOverallBand, mapToOldToeflScore } from '@/lib/utils'
 
 interface EvalResult {
   totalScore: number
@@ -21,7 +22,7 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
   const router = useRouter()
   const supabase = createClient()
   const [score, setScore] = useState<string>('')
-  const [maxPoints, setMaxPoints] = useState<number | null>(null)
+  const maxPoints = getMaxScore(q?.question_subtype)
   const [saving, setSaving] = useState(false)
   const [evaluating, setEvaluating] = useState(false)
   const [evalResult, setEvalResult] = useState<EvalResult | null>(null)
@@ -36,18 +37,6 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
 
   const audioUrl = answer.student_answer // URL stored as student_answer
 
-  useEffect(() => {
-    async function loadMaxPoints() {
-      const { data } = await supabase
-        .from('exam_questions')
-        .select('points')
-        .eq('exam_id', sub?.exam_id ?? '')
-        .eq('question_id', q?.id ?? '')
-        .single()
-      if (data) setMaxPoints(data.points)
-    }
-    loadMaxPoints()
-  }, [])
 
   async function aiEvaluate() {
     if (!audioUrl?.startsWith('http')) return
@@ -78,8 +67,8 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
   }
 
   async function saveGrade() {
-    const numScore = parseInt(score)
-    if (isNaN(numScore)) return
+    const numScore = parseFloat(score)
+    if (isNaN(numScore) || numScore < 0 || numScore > maxPoints) return
     setSaving(true)
 
     const feedback = evalResult
@@ -92,43 +81,49 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
       teacher_feedback: feedback || null,
     }).eq('id', answer.id)
 
-    // submission 전체 점수 재계산 (항상 업데이트)
+    // 섹션별 밴드 재계산
     const { data: allAnswers } = await supabase
       .from('submission_answers')
-      .select('score, is_correct')
+      .select('score, is_correct, questions(category, question_subtype)')
       .eq('submission_id', sub?.id ?? '')
 
-    if (allAnswers) {
-      const totalScore = allAnswers.reduce((acc, a) => acc + (a.score ?? 0), 0)
-      const gradedCount = allAnswers.filter(a => a.is_correct !== null).length
-      const allGraded = gradedCount === allAnswers.length
+    const { data: exam } = await supabase
+      .from('exams').select('max_band_ceiling').eq('id', sub?.exam_id ?? '').single()
+    const ceiling = exam?.max_band_ceiling ?? 6.0
 
-      const { data: examQ } = await supabase
-        .from('exam_questions').select('points').eq('exam_id', sub?.exam_id ?? '')
-      const totalPoints = (examQ ?? []).reduce((acc, q) => acc + q.points, 0)
+    if (allAnswers) {
+      const cats = ['reading', 'listening', 'writing', 'speaking'] as const
+      const sectionBands: Record<string, number | null> = {}
+
+      for (const cat of cats) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const qs = allAnswers.filter(a => (a.questions as any)?.category === cat)
+        if (qs.length === 0) continue
+        const allGraded = qs.every(a => a.is_correct !== null)
+        if (!allGraded) continue
+        const earned = qs.reduce((s, a) => s + (a.score ?? 0), 0)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const max = qs.reduce((s, a) => s + getMaxScore((a.questions as any)?.question_subtype), 0)
+        sectionBands[cat] = calculateSectionBand(earned, max, ceiling)
+      }
+
+      const overallBand = calculateOverallBand(Object.values(sectionBands))
+      const gradedCount = allAnswers.filter(a => a.is_correct !== null).length
 
       await supabase.from('submissions').update({
-        score: totalScore,
-        total_points: totalPoints,
-        percentage: totalPoints > 0 ? Math.round((totalScore / totalPoints) * 100) : 0,
-        // 모든 답안 채점 완료 시에만 graded로 변경
-        ...(allGraded ? { status: 'graded' } : {}),
+        reading_band:   sectionBands.reading   ?? undefined,
+        listening_band: sectionBands.listening ?? undefined,
+        writing_band:   sectionBands.writing   ?? undefined,
+        speaking_band:  sectionBands.speaking  ?? undefined,
+        overall_band:   overallBand > 0 ? overallBand : undefined,
+        ...(gradedCount === allAnswers.length ? { status: 'graded' } : {}),
       }).eq('id', sub?.id ?? '')
     }
 
-    // 학생 speaking 영역 실력 통계 업데이트 (실제 배점 기준 퍼센트)
+    // 학생 speaking 영역 실력 통계 업데이트
     const studentId = sub?.student_id
     if (studentId) {
-      // 이 스피킹 문제의 배점 조회
-      const { data: speakingEQ } = await supabase
-        .from('exam_questions')
-        .select('points')
-        .eq('exam_id', sub?.exam_id ?? '')
-        .eq('question_id', q?.id ?? '')
-        .single()
-      const speakingMaxPoints = speakingEQ?.points ?? 100
-      const percentage = Math.round((numScore / speakingMaxPoints) * 100)
-
+      const percentage = Math.round((numScore / maxPoints) * 100)
       fetch('/api/stats/update-speaking', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -218,13 +213,16 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
             value={score}
             onChange={e => setScore(e.target.value)}
             placeholder="점수"
-            min={0} max={maxPoints ?? 100}
+            min={0} max={maxPoints} step={0.5}
             className="w-20 px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-center font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          {maxPoints !== null && (
-            <span className="text-sm font-bold text-gray-400">/ {maxPoints}점</span>
-          )}
+          <span className="text-sm font-bold text-gray-400">/ {maxPoints}점</span>
         </div>
+        {score !== '' && !isNaN(parseFloat(score)) && (
+          <span className="text-xs text-gray-400">
+            구 TOEFL: {mapToOldToeflScore(parseFloat(score) / maxPoints * 6.0)}
+          </span>
+        )}
         <button onClick={saveGrade} disabled={saving || !score}
           className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white rounded-xl text-sm font-bold transition">
           {saving ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={16} />}
