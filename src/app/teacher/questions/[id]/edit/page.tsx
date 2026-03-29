@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORY_LABELS, DIFFICULTY_LEVELS, QUESTION_SUBTYPE_LABELS, getDiffInfo, usesAlphaOptions, optionLabel, DEFAULT_TIME_LIMITS, formatSeconds } from '@/lib/utils'
 import { Loader2, Volume2 } from 'lucide-react'
+import AutoResizeTextarea from '@/components/ui/AutoResizeTextarea'
 
 const CATEGORY_COLORS: Record<string, string> = {
   reading:   'bg-blue-100 text-blue-700',
@@ -279,10 +280,10 @@ export default function EditQuestionPage() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">요약 내용</label>
-                <textarea value={summary} onChange={e => setSummary(e.target.value)}
+                <AutoResizeTextarea value={summary} onChange={e => setSummary(e.target.value)}
                   placeholder="예: 환경오염이 기후변화에 미치는 영향을 다룬 학술 지문"
-                  rows={4}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                  minRows={3}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             </div>
           ) : (
@@ -295,10 +296,10 @@ export default function EditQuestionPage() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">요약 내용</label>
-                <textarea value={summary} onChange={e => setSummary(e.target.value)}
+                <AutoResizeTextarea value={summary} onChange={e => setSummary(e.target.value)}
                   placeholder="예: 환경오염이 기후변화에 미치는 영향을 다룬 학술 지문"
-                  rows={4}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                  minRows={3}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             </div>
           )}
@@ -324,7 +325,7 @@ export default function EditQuestionPage() {
                     step={1}
                     value={idx}
                     onChange={e => setDifficulty(DIFFICULTY_LEVELS[Number(e.target.value)].value)}
-                    className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    className="w-full cursor-pointer accent-blue-600"
                   />
                   <div className="flex justify-between text-[10px] text-gray-400 px-0.5">
                     <span>A1 기초</span>
