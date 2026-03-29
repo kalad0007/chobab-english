@@ -217,6 +217,7 @@ export default function PassageReader({
 }) {
   const [transOpen, setTransOpen] = useState<Set<string>>(new Set())
   const [expOpen, setExpOpen] = useState<Set<string>>(new Set())
+  const [vocabOpen, setVocabOpen] = useState<Set<string>>(new Set())
   // chunk reveal: paraId → number of chunks revealed (undefined = all shown)
   const [chunkReveal, setChunkReveal] = useState<Record<string, number>>({})
   const [popup, setPopup] = useState<VocabPopup | null>(null)
@@ -226,6 +227,9 @@ export default function PassageReader({
   }
   function toggleExp(id: string) {
     setExpOpen(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+  function toggleVocab(id: string) {
+    setVocabOpen(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
   function revealNextChunk(paraId: string, total: number) {
     setChunkReveal(prev => {
@@ -285,8 +289,10 @@ export default function PassageReader({
           {paragraphs.map((para, idx) => {
             const showTrans = transOpen.has(para.id)
             const showExp = expOpen.has(para.id)
+            const showVocab = vocabOpen.has(para.id)
             const hasTrans = !!para.text_ko
             const hasExp = !!para.explanation
+            const hasVocab = para.vocab_list.length > 0
             const chunks = para.annotations.filter(a => a.type === 'chunk')
             const hasChunks = chunks.length >= 2
             const revealed = chunkReveal[para.id] ?? (hasChunks ? 0 : undefined)
@@ -344,33 +350,8 @@ export default function PassageReader({
 
                 {/* Translation */}
                 {showTrans && hasTrans && (
-                  <div className="mt-3 pl-4 border-l-2 border-blue-200 space-y-3">
+                  <div className="mt-3 pl-4 border-l-2 border-blue-200">
                     <p className="text-sm text-blue-700 leading-normal whitespace-pre-line">{para.text_ko}</p>
-                    {para.vocab_list.length > 0 && (
-                      <div>
-                        <p className="text-[11px] font-bold text-gray-400 mb-1.5">📚 주요 어휘</p>
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-xs border-collapse">
-                            <thead>
-                              <tr className="bg-blue-50">
-                                <th className="text-left px-2 py-1.5 text-blue-600 font-bold border border-blue-100 w-1/4">단어</th>
-                                <th className="text-left px-2 py-1.5 text-blue-600 font-bold border border-blue-100 w-1/4">뜻</th>
-                                <th className="text-left px-2 py-1.5 text-blue-600 font-bold border border-blue-100">문맥</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {para.vocab_list.map((v, i) => (
-                                <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-blue-50/30'}>
-                                  <td className="px-2 py-1.5 font-semibold text-gray-800 border border-blue-100">{v.word}</td>
-                                  <td className="px-2 py-1.5 text-blue-700 border border-blue-100">{v.meaning_ko}</td>
-                                  <td className="px-2 py-1.5 text-gray-600 border border-blue-100 leading-relaxed">{v.context}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -382,9 +363,36 @@ export default function PassageReader({
                   </div>
                 )}
 
+                {/* Vocab table */}
+                {showVocab && hasVocab && (
+                  <div className="mt-3 pl-4 border-l-2 border-purple-200">
+                    <p className="text-[11px] font-bold text-purple-600 mb-1.5">📚 주요 어휘</p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-purple-50">
+                            <th className="text-left px-2 py-1.5 text-purple-600 font-bold border border-purple-100 w-1/5">단어</th>
+                            <th className="text-left px-2 py-1.5 text-purple-600 font-bold border border-purple-100 w-1/5">뜻</th>
+                            <th className="text-left px-2 py-1.5 text-purple-600 font-bold border border-purple-100">문맥</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {para.vocab_list.map((v, i) => (
+                            <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-purple-50/40'}>
+                              <td className="px-2 py-1.5 font-semibold text-gray-800 border border-purple-100">{v.word}</td>
+                              <td className="px-2 py-1.5 text-purple-700 border border-purple-100">{v.meaning_ko}</td>
+                              <td className="px-2 py-1.5 text-gray-600 border border-purple-100 leading-relaxed">{v.context}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
                 {/* Toggle buttons */}
-                {(hasTrans || hasExp) && (
-                  <div className="flex gap-2 mt-3">
+                {(hasTrans || hasExp || hasVocab) && (
+                  <div className="flex flex-wrap gap-2 mt-3">
                     {hasTrans && (
                       <button
                         onClick={() => toggleTrans(para.id)}
@@ -407,6 +415,18 @@ export default function PassageReader({
                         }`}
                       >
                         📖 독해 해설 {showExp ? '▲' : '▼'}
+                      </button>
+                    )}
+                    {hasVocab && (
+                      <button
+                        onClick={() => toggleVocab(para.id)}
+                        className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border-2 transition ${
+                          showVocab
+                            ? 'border-purple-400 bg-purple-50 text-purple-700'
+                            : 'border-gray-200 text-gray-400 hover:border-purple-300 hover:text-purple-500'
+                        }`}
+                      >
+                        📚 주요 어휘 {showVocab ? '▲' : '▼'}
                       </button>
                     )}
                   </div>
