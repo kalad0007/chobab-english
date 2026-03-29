@@ -225,6 +225,7 @@ export default function FillBlankPage() {
       preparation_time: null,
       response_time: null,
       word_limit: timeLimit,
+      time_limit: timeLimit * 60,
       question_subtype: format === 'paragraph' ? 'complete_the_words' : 'sentence_completion',
       task_number: null,
     })

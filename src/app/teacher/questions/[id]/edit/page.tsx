@@ -99,16 +99,15 @@ export default function EditQuestionPage() {
           try {
             const meta = JSON.parse(rawExp)
             if (meta.format !== undefined) {
-              // 위저드 저장 포맷 — JSON 메타데이터
               setFbTitle(meta.title ?? '')
               setFbTimeLimit(meta.timeLimit ?? 10)
+              setTimeLimit((meta.timeLimit ?? 10) * 60)  // stepper를 분→초로 동기화
               setExplanation(meta.explanation ?? '')
               isWizardMeta = true
             }
           } catch { /* not JSON */ }
         }
         if (!isWizardMeta) {
-          // AI 생성 등 일반 텍스트 해설
           setFbTitle('')
           setFbTimeLimit(10)
           setExplanation(rawExp)

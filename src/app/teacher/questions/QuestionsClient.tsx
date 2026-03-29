@@ -173,20 +173,20 @@ export default function QuestionsClient({ listItems }: Props) {
                       {CATEGORY_LABELS[rep.category] ?? rep.category}
                     </span>
                     {rep.subcategory && (
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700"># {rep.subcategory}</span>
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 whitespace-nowrap"># {rep.subcategory}</span>
                     )}
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${diff.color}`}>{diff.cefr} {diff.label}</span>
-                    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-bold">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${diff.color}`}>{diff.cefr} {diff.label}</span>
+                    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-bold whitespace-nowrap">
                       <Layers size={10} /> {setQs.length}문제 세트
                     </span>
-                    {setQs.some(q => q.audio_url) && <span className="text-xs px-2 py-0.5 rounded-full bg-sky-100 text-sky-700">🎧 음성있음</span>}
+                    {setQs.some(q => q.audio_url) && <span className="text-xs px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 whitespace-nowrap">🎧 음성있음</span>}
                   </div>
                   {rep.summary ? (
                     <p className="text-sm text-gray-800 font-medium line-clamp-2">{rep.summary}</p>
                   ) : (
                     <p className="text-sm text-gray-500 italic line-clamp-2">{(rep.passage ?? rep.content ?? '').replace(/\n/g, ' ').slice(0, 120)}…</p>
                   )}
-                  <p className="text-xs text-gray-300 mt-1">
+                  <p className="text-xs text-gray-300 mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
                     {new Date(rep.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })} · {setQs.length}문제
                   </p>
                 </div>
@@ -228,12 +228,12 @@ export default function QuestionsClient({ listItems }: Props) {
                     {CATEGORY_LABELS[iq.category] ?? iq.category}
                   </span>
                   {iq.subcategory && (
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700"># {iq.subcategory}</span>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 whitespace-nowrap"># {iq.subcategory}</span>
                   )}
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${diff.color}`}>{diff.cefr} {diff.label}</span>
-                  {iq.audio_url && <span className="text-xs px-2 py-0.5 rounded-full bg-sky-100 text-sky-700">🎧 음성있음</span>}
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${diff.color}`}>{diff.cefr} {diff.label}</span>
+                  {iq.audio_url && <span className="text-xs px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 whitespace-nowrap">🎧 음성있음</span>}
                   {iq.source === 'ai_generated' && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">AI생성</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium whitespace-nowrap">AI생성</span>
                   )}
                 </div>
                 {iq.summary ? (
@@ -241,7 +241,7 @@ export default function QuestionsClient({ listItems }: Props) {
                 ) : (
                   <p className="text-sm text-gray-700 line-clamp-2">{iq.content}</p>
                 )}
-                <p className="text-xs text-gray-300 mt-1">
+                <p className="text-xs text-gray-300 mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
                   {new Date(iq.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })}
                   {iq.attempt_count > 0 && ` · 정답률 ${Math.round((iq.correct_count / iq.attempt_count) * 100)}% · 출제 ${iq.attempt_count}회`}
                 </p>
