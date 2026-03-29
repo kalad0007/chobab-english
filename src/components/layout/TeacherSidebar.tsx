@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, BookOpen, Sparkles, FileText, ClipboardList,
-  Users, School, BarChart3, BookMarked, LogOut, Menu, X, Zap, BookA, ScrollText
+  Users, School, BarChart3, BookMarked, LogOut, Menu, X, Zap, BookA, ScrollText, KeyRound
 } from 'lucide-react'
 
 const navItems = [
@@ -57,10 +57,39 @@ export default function TeacherSidebar({ teacherName }: { teacherName: string })
   const router = useRouter()
   const supabase = createClient()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [pwModal, setPwModal] = useState(false)
+  const [oldPw, setOldPw] = useState('')
+  const [newPw, setNewPw] = useState('')
+  const [confirmPw, setConfirmPw] = useState('')
+  const [pwError, setPwError] = useState('')
+  const [pwSuccess, setPwSuccess] = useState(false)
+  const [pwLoading, setPwLoading] = useState(false)
 
   async function handleLogout() {
     await supabase.auth.signOut()
     router.push('/login')
+  }
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault()
+    setPwError('')
+    if (newPw !== confirmPw) { setPwError('새 비밀번호가 일치하지 않습니다.'); return }
+    if (newPw.length < 6) { setPwError('비밀번호는 최소 6자 이상이어야 합니다.'); return }
+    setPwLoading(true)
+    try {
+      // Re-authenticate then update
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user?.email) { setPwError('사용자 정보를 불러올 수 없습니다.'); return }
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email: user.email, password: oldPw })
+      if (signInError) { setPwError('기존 비밀번호가 올바르지 않습니다.'); return }
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPw })
+      if (updateError) { setPwError('비밀번호 변경 실패: ' + updateError.message); return }
+      setPwSuccess(true)
+      setOldPw(''); setNewPw(''); setConfirmPw('')
+      setTimeout(() => { setPwModal(false); setPwSuccess(false) }, 1500)
+    } finally {
+      setPwLoading(false)
+    }
   }
 
   return (
@@ -107,6 +136,24 @@ export default function TeacherSidebar({ teacherName }: { teacherName: string })
           </button>
         </div>
 
+        {/* 로그아웃 + 비밀번호 변경 */}
+        <div className="px-3 py-3 border-b border-gray-100 space-y-0.5">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+          >
+            <LogOut size={16} />
+            로그아웃
+          </button>
+          <button
+            onClick={() => { setPwModal(true); setPwError(''); setPwSuccess(false) }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors"
+          >
+            <KeyRound size={16} />
+            비밀번호 변경
+          </button>
+        </div>
+
         {/* 네비게이션 */}
         <nav className="flex-1 py-4 px-3 space-y-5 overflow-y-auto">
           {navItems.map(group => (
@@ -140,18 +187,64 @@ export default function TeacherSidebar({ teacherName }: { teacherName: string })
             </div>
           ))}
         </nav>
-
-        {/* 로그아웃 */}
-        <div className="p-3 border-t border-gray-100">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors"
-          >
-            <LogOut size={16} />
-            로그아웃
-          </button>
-        </div>
       </aside>
+
+      {/* 비밀번호 변경 모달 */}
+      {pwModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-bold text-gray-900 text-base">비밀번호 변경</h3>
+              <button onClick={() => setPwModal(false)} className="text-gray-400 hover:text-gray-600">
+                <X size={18} />
+              </button>
+            </div>
+            {pwSuccess ? (
+              <div className="text-center py-6">
+                <p className="text-emerald-600 font-bold text-sm">✅ 비밀번호가 변경되었습니다!</p>
+              </div>
+            ) : (
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">기존 비밀번호</label>
+                  <input
+                    type="password" value={oldPw} onChange={e => setOldPw(e.target.value)} required
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="현재 비밀번호 입력"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">새 비밀번호</label>
+                  <input
+                    type="password" value={newPw} onChange={e => setNewPw(e.target.value)} required
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="새 비밀번호 (6자 이상)"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">새 비밀번호 확인</label>
+                  <input
+                    type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} required
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="새 비밀번호 재입력"
+                  />
+                </div>
+                {pwError && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{pwError}</p>}
+                <div className="flex gap-2 pt-1">
+                  <button type="button" onClick={() => setPwModal(false)}
+                    className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">
+                    취소
+                  </button>
+                  <button type="submit" disabled={pwLoading}
+                    className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl text-sm font-bold transition">
+                    {pwLoading ? '변경 중...' : '변경하기'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </>
   )
 }

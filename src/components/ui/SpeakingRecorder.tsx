@@ -11,7 +11,8 @@ interface SpeakingRecorderProps {
 }
 
 export default function SpeakingRecorder({
-  prompt,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  prompt: _prompt,
   questionId,
   submissionId,
   onRecorded,
@@ -120,12 +121,6 @@ export default function SpeakingRecorder({
 
   return (
     <div className="space-y-4">
-      {/* 과제 안내 */}
-      <div className="bg-amber-50 border-l-4 border-amber-400 rounded-r-xl p-4">
-        <p className="text-xs font-bold text-amber-700 mb-1">🎤 스피킹 과제</p>
-        <p className="text-sm text-gray-800">{prompt}</p>
-      </div>
-
       <div className="bg-white border border-gray-200 rounded-2xl p-5">
         {/* 녹음 전 / 녹음 중 */}
         {!audioBlob && (

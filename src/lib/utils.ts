@@ -16,11 +16,15 @@ export function formatDate(date: string | Date) {
 // 문제 유형별 기본 제한시간 (초)
 export const DEFAULT_TIME_LIMITS: Record<string, number> = {
   // Reading
-  complete_the_words:     300,  // 5분
-  sentence_completion:    300,  // 5분
-  daily_life_email:        60,  // 1분
-  daily_life_text_chain:   60,  // 1분
-  academic_passage:        70,  // 1분 10초
+  complete_the_words:        300,  // 5분
+  sentence_completion:       300,  // 5분
+  daily_life_email:           60,  // 1분
+  daily_life_text_chain:      60,  // 1분
+  daily_life_notice:          60,  // 1분
+  daily_life_guide:           60,  // 1분
+  daily_life_article:         60,  // 1분
+  daily_life_campus_notice:   60,  // 1분
+  academic_passage:           70,  // 1분 10초
   // Listening
   choose_response:         30,
   conversation:            30,
@@ -46,7 +50,11 @@ export function formatSeconds(sec: number): string {
 }
 
 // A/B/C/D 보기 표기 여부: 리스닝 전체 + 리딩 특정 서브타입
-const ALPHA_OPTION_SUBTYPES = new Set(['daily_life_email', 'daily_life_text_chain', 'academic_passage'])
+const ALPHA_OPTION_SUBTYPES = new Set([
+  'daily_life_email', 'daily_life_text_chain',
+  'daily_life_notice', 'daily_life_guide', 'daily_life_article', 'daily_life_campus_notice',
+  'academic_passage',
+])
 export function usesAlphaOptions(category: string, subtype?: string | null): boolean {
   return category === 'listening' || ALPHA_OPTION_SUBTYPES.has(subtype ?? '')
 }
@@ -103,11 +111,15 @@ export const LEGACY_DIFFICULTY_TO_BAND: Record<number, number> = {
 // ── 문제 유형별 배점 (max_score) ─────────────────────────────────────────────
 export const MAX_SCORE_BY_SUBTYPE: Record<string, number> = {
   // Reading
-  complete_the_words:    1,
-  sentence_completion:   1,
-  daily_life_email:      3,
-  daily_life_text_chain: 3,
-  academic_passage:      5,
+  complete_the_words:        1,
+  sentence_completion:       1,
+  daily_life_email:          3,
+  daily_life_text_chain:     3,
+  daily_life_notice:         3,
+  daily_life_guide:          3,
+  daily_life_article:        3,
+  daily_life_campus_notice:  3,
+  academic_passage:          5,
   // Listening
   choose_response:       1,
   conversation:          2,
@@ -247,8 +259,12 @@ export const QUESTION_SUBTYPE_LABELS: Record<string, Record<string, string>> = {
     complete_the_words:    'Complete the Words',
     sentence_completion:   'Sentence Completion',
     // ── 일상 읽기 ──
-    daily_life_email:      'Daily Life — Email',
-    daily_life_text_chain: 'Daily Life — Text Chain',
+    daily_life_email:          'Daily Life — Email',
+    daily_life_text_chain:     'Daily Life — Text Chain',
+    daily_life_notice:         'Daily Life — Notice',
+    daily_life_guide:          'Daily Life — Guide',
+    daily_life_article:        'Daily Life — Article',
+    daily_life_campus_notice:  'Daily Life — Campus Notice',
     // ── 학술 독해 ──
     academic_passage:      'Academic Passage',
     factual:               'Factual Information',

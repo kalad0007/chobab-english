@@ -51,6 +51,9 @@ export default function EditQuestionPage() {
 
   const [timeLimit, setTimeLimit] = useState<number>(30)
 
+  // 핵심단어
+  const [vocabWords, setVocabWords] = useState<{ word: string; pos: string; def: string; example: string }[]>([])
+
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
   const [error, setError] = useState('')
@@ -60,6 +63,7 @@ export default function EditQuestionPage() {
   const isSpeaking = category === 'speaking'
   const isConversation = questionSubtype === 'conversation'
   const isSingleSpeaker = ['choose_response', 'academic_talk', 'listen_and_repeat', 'take_an_interview'].includes(questionSubtype)
+  const isListenAndRepeat = questionSubtype === 'listen_and_repeat'
 
   useEffect(() => {
     async function fetchQuestion() {
@@ -88,6 +92,12 @@ export default function EditQuestionPage() {
       setAudioScript(d.audio_script ?? '')
       setAudioUrl(d.audio_url ?? '')
       setSpeakingPrompt(d.speaking_prompt ?? '')
+      // 핵심단어 로드
+      if (Array.isArray(d.vocab_words)) {
+        setVocabWords(d.vocab_words.map((v: { word: string; pos?: string; def: string; example?: string }) => ({
+          word: v.word ?? '', pos: v.pos ?? '', def: v.def ?? '', example: v.example ?? '',
+        })))
+      }
       // 제한시간: 저장된 값 → 없으면 subtype 기본값 → fallback 30
       const subtype2 = data.question_subtype ?? ''
       setTimeLimit(d.time_limit ?? DEFAULT_TIME_LIMITS[subtype2] ?? 30)
@@ -150,8 +160,25 @@ export default function EditQuestionPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
+  // Listen and Repeat: audio_script가 있지만 audio_url이 없으면 자동으로 TTS 생성
+  useEffect(() => {
+    if (isListenAndRepeat && audioScript.trim() && !audioUrl && !fetching && !generatingAudio) {
+      generateAudio()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isListenAndRepeat, audioScript, audioUrl, fetching])
+
+  // 스피킹(L&R 제외): speaking_prompt가 바뀌면 audio_script 동기화
+  useEffect(() => {
+    if (isSpeaking && !isListenAndRepeat) {
+      setAudioScript(speakingPrompt)
+    }
+  }, [isSpeaking, isListenAndRepeat, speakingPrompt])
+
   async function generateAudio() {
-    if (!audioScript.trim()) { setError('스크립트를 먼저 입력하세요.'); return }
+    // 스피킹(L&R 제외): speaking_prompt를 스크립트로 사용
+    const script = (isSpeaking && !isListenAndRepeat) ? speakingPrompt : audioScript
+    if (!script.trim()) { setError('스크립트를 먼저 입력하세요.'); return }
     setGeneratingAudio(true)
     setError('')
     try {
@@ -159,7 +186,7 @@ export default function EditQuestionPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          script: audioScript,
+          script,
           questionId: id,
           gender: voiceGender,
           subtype: questionSubtype,
@@ -168,6 +195,8 @@ export default function EditQuestionPage() {
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'TTS 생성 실패'); return }
       setAudioUrl(data.audioUrl)
+      // 스피킹: audio_script도 동기화
+      if (isSpeaking && !isListenAndRepeat) setAudioScript(script)
     } finally {
       setGeneratingAudio(false)
     }
@@ -198,6 +227,18 @@ export default function EditQuestionPage() {
       savedExplanation = explanation || null
     }
 
+    // 스피킹(L&R 제외): speaking_prompt가 audio_script 역할을 겸함
+    const finalAudioScript = (isSpeaking && !isListenAndRepeat)
+      ? (speakingPrompt || null)
+      : (audioScript || null)
+
+    const finalVocabWords = vocabWords.filter(v => v.word.trim()).map(v => ({
+      word: v.word.trim(),
+      ...(v.pos.trim() ? { pos: v.pos.trim() } : {}),
+      def: v.def.trim(),
+      ...(v.example.trim() ? { example: v.example.trim() } : {}),
+    }))
+
     const { error: dbError } = await supabase
       .from('questions')
       .update({
@@ -207,15 +248,16 @@ export default function EditQuestionPage() {
         summary: summary || null,
         difficulty,
         content,
-        passage: passage || null,
+        passage: (isSpeaking && !isListenAndRepeat) ? null : (passage || null),
         options: type === 'multiple_choice' ? options.filter(o => o.text.trim()) : null,
         answer: finalAnswer,
         explanation: savedExplanation,
         ...(isListening || isSpeaking ? {
-          audio_script: audioScript || null,
+          audio_script: finalAudioScript,
           audio_url: audioUrl || null,
         } : {}),
         ...(isSpeaking ? { speaking_prompt: speakingPrompt || null } : {}),
+        vocab_words: finalVocabWords.length > 0 ? finalVocabWords : null,
         time_limit: timeLimit,
       } as Record<string, unknown>)
       .eq('id', id)
@@ -364,28 +406,45 @@ export default function EditQuestionPage() {
           </div>
         </div>
 
-        {/* 리스닝/스피킹 음성 스크립트 — 문제보다 위 */}
+        {/* 리스닝/스피킹 음성 섹션 */}
         {(isListening || isSpeaking) && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+          <div className={`rounded-2xl border shadow-sm p-5 space-y-4 ${isSpeaking ? 'bg-orange-50 border-orange-100' : 'bg-white border-gray-100'}`}>
             <div className="flex items-center gap-2">
-              <Volume2 size={16} className="text-emerald-600" />
+              <Volume2 size={16} className={isSpeaking ? 'text-orange-600' : 'text-emerald-600'} />
               <h2 className="font-bold text-gray-900">
-                {isListening ? '음성 스크립트' : '음성 스크립트 (선택)'}
+                {isListening ? '음성 스크립트' : isListenAndRepeat ? 'Listen & Repeat 문장' : '스피킹 과제 질문 (음성으로 재생됨)'}
               </h2>
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                {isListening ? '리스닝 스크립트 (영어)' : '음성 스크립트 (영어)'}
-              </label>
-              <textarea
-                value={audioScript}
-                onChange={e => setAudioScript(e.target.value)}
-                placeholder="학생이 들을 영어 스크립트를 입력하세요..."
-                rows={5}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              />
-            </div>
+            {/* 리스닝 or L&R: 직접 스크립트 입력 */}
+            {(isListening || isListenAndRepeat) && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  {isListening ? '리스닝 스크립트 (영어)' : '반복할 문장 (영어)'}
+                </label>
+                <AutoResizeTextarea
+                  value={audioScript}
+                  onChange={e => setAudioScript(e.target.value)}
+                  placeholder={isListenAndRepeat ? '학생이 따라 말할 문장을 입력하세요...' : '학생이 들을 영어 스크립트를 입력하세요...'}
+                  minRows={3}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white"
+                />
+              </div>
+            )}
+
+            {/* 스피킹(L&R 제외): speaking_prompt가 곧 음성 스크립트 */}
+            {isSpeaking && !isListenAndRepeat && (
+              <div>
+                <AutoResizeTextarea
+                  value={speakingPrompt}
+                  onChange={e => setSpeakingPrompt(e.target.value)}
+                  placeholder="학생에게 음성으로 재생할 질문을 입력하세요..."
+                  minRows={3}
+                  className="w-full px-3 py-2.5 border border-orange-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none bg-white"
+                />
+                <p className="text-xs text-orange-600 mt-1.5">🔊 이 텍스트가 TTS로 변환되어 학생에게 음성으로만 제공됩니다.</p>
+              </div>
+            )}
 
             {/* 목소리 선택 */}
             {isSingleSpeaker && (
@@ -422,8 +481,8 @@ export default function EditQuestionPage() {
               <button
                 type="button"
                 onClick={generateAudio}
-                disabled={generatingAudio || !audioScript.trim()}
-                className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition"
+                disabled={generatingAudio || (isListenAndRepeat ? !audioScript.trim() : isSpeaking ? !speakingPrompt.trim() : !audioScript.trim())}
+                className={`flex items-center gap-2 px-4 py-2.5 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition ${isSpeaking ? 'bg-orange-500 hover:bg-orange-600' : 'bg-emerald-600 hover:bg-emerald-700'}`}
               >
                 {generatingAudio
                   ? <><Loader2 size={14} className="animate-spin" /> 생성 중...</>
@@ -437,24 +496,11 @@ export default function EditQuestionPage() {
                 </div>
               )}
             </div>
-
-            {isSpeaking && (
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">스피킹 과제 (학생에게 보여줄 지시문)</label>
-                <textarea
-                  value={speakingPrompt}
-                  onChange={e => setSpeakingPrompt(e.target.value)}
-                  placeholder="예: Listen and summarize the main point of the conversation."
-                  rows={3}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                />
-              </div>
-            )}
           </div>
         )}
 
-        {/* 지문 — 리스닝은 스크립트가 있으므로 숨김, fill-blank는 별도 처리 */}
-        {!isListening && (
+        {/* 지문 — 리스닝/스피킹은 숨김, fill-blank는 별도 처리 */}
+        {!isListening && !isSpeaking && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
           <h2 className="font-bold text-gray-900">
             {isFillBlank
@@ -487,9 +533,9 @@ export default function EditQuestionPage() {
 
           {!isFillBlank && (
             <>
-              <textarea value={content} onChange={e => setContent(e.target.value)}
+              <AutoResizeTextarea value={content} onChange={e => setContent(e.target.value)}
                 placeholder="문제를 입력하세요..."
-                rows={4} required
+                minRows={3} required
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
 
               {type === 'multiple_choice' && (
@@ -538,10 +584,62 @@ export default function EditQuestionPage() {
         {/* 해설 */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <h2 className="font-bold text-gray-900 mb-3">해설 (선택)</h2>
-          <textarea value={explanation} onChange={e => setExplanation(e.target.value)}
+          <AutoResizeTextarea value={explanation} onChange={e => setExplanation(e.target.value)}
             placeholder={isFillBlank ? '각 빈칸의 정답 근거나 문법 포인트를 설명해주세요...' : '정답 해설을 입력하면 학생들에게 도움이 돼요...'}
-            rows={3}
+            minRows={2}
             className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+        </div>
+
+        {/* 핵심단어 */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="font-bold text-gray-900">핵심 단어 (선택)</h2>
+            <button type="button"
+              onClick={() => setVocabWords(w => [...w, { word: '', pos: '', def: '', example: '' }])}
+              className="text-xs font-bold px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition">
+              + 단어 추가
+            </button>
+          </div>
+          {vocabWords.length === 0 && (
+            <p className="text-xs text-gray-400">단어 추가 버튼으로 핵심 어휘를 등록하세요. 해설 아래에 학생에게 표시됩니다.</p>
+          )}
+          {vocabWords.map((v, i) => (
+            <div key={i} className="flex gap-2 items-start bg-indigo-50 rounded-xl p-3">
+              <div className="flex-1 space-y-1.5">
+                <div className="flex gap-1.5">
+                  <input
+                    value={v.word}
+                    onChange={e => setVocabWords(w => w.map((x, j) => j === i ? { ...x, word: e.target.value } : x))}
+                    placeholder="단어 (영어)"
+                    className="flex-1 px-2.5 py-1.5 border border-indigo-200 rounded-lg text-sm font-bold text-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
+                  />
+                  <input
+                    value={v.pos}
+                    onChange={e => setVocabWords(w => w.map((x, j) => j === i ? { ...x, pos: e.target.value } : x))}
+                    placeholder="품사"
+                    className="w-20 px-2.5 py-1.5 border border-indigo-200 rounded-lg text-xs font-semibold text-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white text-center"
+                  />
+                </div>
+                <input
+                  value={v.def}
+                  onChange={e => setVocabWords(w => w.map((x, j) => j === i ? { ...x, def: e.target.value } : x))}
+                  placeholder="정의/뜻 (한국어 or 영어)"
+                  className="w-full px-2.5 py-1.5 border border-indigo-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
+                />
+                <input
+                  value={v.example}
+                  onChange={e => setVocabWords(w => w.map((x, j) => j === i ? { ...x, example: e.target.value } : x))}
+                  placeholder="문제/정답 속 예문 (선택)"
+                  className="w-full px-2.5 py-1.5 border border-indigo-200 rounded-lg text-xs text-gray-500 italic focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
+                />
+              </div>
+              <button type="button"
+                onClick={() => setVocabWords(w => w.filter((_, j) => j !== i))}
+                className="text-gray-300 hover:text-red-400 transition mt-1 flex-shrink-0">
+                ✕
+              </button>
+            </div>
+          ))}
         </div>
 
         <div className="flex gap-3">

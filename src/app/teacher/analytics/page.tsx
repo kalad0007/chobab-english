@@ -51,7 +51,9 @@ function BandTrendChart({ data }: { data: { label: string; avgBand: number }[] }
 
 const HEAT_LABELS: Record<string, string> = {
   complete_the_words: '빈칸채우기', sentence_completion: '문장완성',
-  daily_life_email: '이메일독해', daily_life_text_chain: '문자독해',
+  daily_life_email: '이메일', daily_life_text_chain: '문자',
+  daily_life_notice: '공지문(읽기)', daily_life_guide: '가이드',
+  daily_life_article: '기사', daily_life_campus_notice: '학교공지',
   academic_passage: '학술독해', choose_response: '응답선택',
   conversation: '대화', academic_talk: '학술강의',
   campus_announcement: '공지문', sentence_reordering: '문장배열',
@@ -71,6 +73,10 @@ const CURRENT_SUBTYPES = [
   { category: 'reading',   subtype: 'sentence_completion' },
   { category: 'reading',   subtype: 'daily_life_email' },
   { category: 'reading',   subtype: 'daily_life_text_chain' },
+  { category: 'reading',   subtype: 'daily_life_notice' },
+  { category: 'reading',   subtype: 'daily_life_guide' },
+  { category: 'reading',   subtype: 'daily_life_article' },
+  { category: 'reading',   subtype: 'daily_life_campus_notice' },
   { category: 'reading',   subtype: 'academic_passage' },
   { category: 'listening', subtype: 'choose_response' },
   { category: 'listening', subtype: 'conversation' },

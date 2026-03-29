@@ -80,6 +80,8 @@ export interface Question {
   // subcategory = topic (환경, IT, 경제 등 주제 키워드)
   // 시간 제한
   time_limit: number | null         // 문제당 제한시간(초)
+  // 핵심단어 영역
+  vocab_words: { word: string; pos?: string; def: string; example?: string }[] | null
 }
 
 export interface Exam {

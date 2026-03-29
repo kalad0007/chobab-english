@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORY_LABELS, renderWithUnderlines, usesAlphaOptions, optionLabel } from '@/lib/utils'
-import { RefreshCw, CheckCircle, XCircle, Sparkles, Loader2 } from 'lucide-react'
+import { RefreshCw, CheckCircle, XCircle } from 'lucide-react'
 import Link from 'next/link'
 import FillBlankPlayer from '@/components/ui/FillBlankPlayer'
+import VocabWords from '@/components/ui/VocabWords'
 
 interface ReviewItem {
   id: string
@@ -19,6 +20,7 @@ interface ReviewItem {
     options: { num: number; text: string }[] | null
     answer: string
     explanation: string | null
+    vocab_words: { word: string; def: string; example?: string }[] | null
     category: string
     type: string
     question_subtype: string | null
@@ -33,7 +35,7 @@ export default function ReviewPage() {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null)
   const [fillAnswer, setFillAnswer] = useState('')
   const [submitted, setSubmitted] = useState(false)
-  const [generating, setGenerating] = useState(false)
+
 
   useEffect(() => {
     async function load() {
@@ -45,7 +47,7 @@ export default function ReviewPage() {
         .select(`
           id, original_question_id, generated_question_id, retry_count,
           questions!wrong_answer_queue_original_question_id_fkey(
-            id, content, passage, options, answer, explanation, category, type, question_subtype
+            id, content, passage, options, answer, explanation, vocab_words, category, type, question_subtype
           )
         `)
         .eq('student_id', user.id)
@@ -113,43 +115,6 @@ export default function ReviewPage() {
     handleAnswer(isCorrect ? item.question.answer : fillAnswer)
   }
 
-  async function generateSimilar() {
-    const item = items[current]
-    setGenerating(true)
-
-    const res = await fetch('/api/ai/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        category: item.question.category,
-        difficulty: 3,
-        count: 1,
-        topic: '',
-      }),
-    })
-
-    if (res.ok) {
-      const data = await res.json()
-      const newQ = data.questions?.[0]
-      if (newQ) {
-        // 새 문제 저장
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
-        const { data: savedQ } = await supabase.from('questions').insert({
-          teacher_id: user.id,
-          ...newQ,
-          type: 'multiple_choice',
-          source: 'ai_generated',
-        }).select('id').single()
-
-        if (savedQ) {
-          await supabase.from('wrong_answer_queue').update({ generated_question_id: savedQ.id }).eq('id', item.id)
-        }
-      }
-    }
-    setGenerating(false)
-  }
 
   if (loading) return <div className="flex items-center justify-center min-h-screen text-gray-400">로딩 중...</div>
 
@@ -287,6 +252,11 @@ export default function ReviewPage() {
             }
           </div>
           {explanationText && <p className="text-sm text-gray-700">{explanationText}</p>}
+          {Array.isArray(q.vocab_words) && q.vocab_words.length > 0 && (
+            <div className="mt-2">
+              <VocabWords words={q.vocab_words} />
+            </div>
+          )}
           {isFillBlank && submitted && (
             <div className="mt-2 space-y-1">
               {q.answer.split(',').map((correct: string, ci: number) => {
@@ -307,13 +277,6 @@ export default function ReviewPage() {
 
       {/* 버튼 */}
       <div className="flex gap-3">
-        {submitted && (
-          <button onClick={generateSimilar} disabled={generating}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl text-sm font-bold transition hover:opacity-90 disabled:opacity-60">
-            {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-            유사문제 생성
-          </button>
-        )}
         {submitted && current < items.length - 1 && (
           <button onClick={handleNext}
             className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold transition">

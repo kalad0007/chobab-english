@@ -25,9 +25,12 @@ function getDiffDesc(d: number): string {
   return 'A1 수준 (TOEFL 30-45점)'
 }
 
-function buildPrompt(category: string, subtype: string, difficulty: number, count: number, topic: string, questionsPerPassage: number = 1, wordCount: number = 0): string {
+function buildPrompt(category: string, subtype: string, difficulty: number, count: number, topic: string, questionsPerPassage: number = 1, wordCount: number = 0, passageContext: string = ''): string {
   const diffDesc = getDiffDesc(difficulty)
   const topicNote = topic ? `주제/소재: ${topic}` : ''
+  const passageContextNote = passageContext
+    ? `\n\n【기존 지문/스크립트 (반드시 이 내용을 기반으로 새 문제를 만드세요)】\n${passageContext}\n\n위 지문/스크립트를 활용하여 새로운 문제를 만드세요. passage 필드에는 위 지문과 동일한 내용을 넣으세요.`
+    : ''
   const n = count
   const qpp = questionsPerPassage
 
@@ -103,6 +106,74 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
 
 반드시 다음 JSON 형식으로만 응답 (마크다운 코드블록 없이 순수 JSON):
 {"questions":[{"content":"What will Jake most likely do next?","passage":"[9:00 AM] Jake: Hey everyone, are we still meeting today?\\n[9:02 AM] Sarah: I think so, where should we go?\\n[9:03 AM] Mike: How about the library?\\n[9:05 AM] Jake: Sounds good. See you at 2 PM!","options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"1","explanation":"해설...","category":"reading","difficulty":${difficulty},"question_subtype":"daily_life_text_chain","audio_script":null,"speaking_prompt":null},{"content":"두 번째 질문 (목적/세부정보/추론 등)...","passage":"[same chat passage]","options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"2","explanation":"해설...","category":"reading","difficulty":${difficulty},"question_subtype":"daily_life_text_chain","audio_script":null,"speaking_prompt":null}]}`,
+
+    daily_life_notice: `TOEFL "Read in Daily Life - Notice" 문제 세트 ${n}개를 생성하세요.
+- 공식 공지문 ${n}개를 생성하고, 각 공지마다 ${qpp}개의 독해 문제를 만드세요
+- 총 ${n * qpp}개의 문제 객체를 questions 배열에 포함하세요
+- 같은 공지문에 대한 ${qpp}개 문제는 동일한 passage 값을 사용하세요
+- 공지문 형식: 제목, 날짜, 기관명, 본문 (${wc3}단어). 규정·정책·안내 내용
+- passage 필드에 공지문 전체를 실제 줄바꿈(\\n)으로 넣으세요
+- 각 공지에 대해 다양한 질문 유형: 공지 목적, 특정 규정/조건, 대상자, 추론 등
+- options는 반드시 4개를 포함해야 합니다
+- answer는 정답 번호를 문자열로 (예: "2")
+- 난이도: ${diffDesc} ${topicNote}
+- difficulty 값은 반드시 ${difficulty}를 사용하세요
+- question_subtype은 반드시 "daily_life_notice"로 설정하세요
+- category는 반드시 "reading"으로 설정하세요
+
+반드시 다음 JSON 형식으로만 응답 (마크다운 코드블록 없이 순수 JSON):
+{"questions":[{"content":"What is the main purpose of this notice?","passage":"NOTICE\\nDate: March 10, 2025\\nFrom: Building Management\\n\\n[공지문 본문 ${wc3}단어]","options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"2","explanation":"해설...","category":"reading","difficulty":${difficulty},"question_subtype":"daily_life_notice","audio_script":null,"speaking_prompt":null}]}`,
+
+    daily_life_guide: `TOEFL "Read in Daily Life - Guide" 문제 세트 ${n}개를 생성하세요.
+- 가이드/매뉴얼 ${n}개를 생성하고, 각 가이드마다 ${qpp}개의 독해 문제를 만드세요
+- 총 ${n * qpp}개의 문제 객체를 questions 배열에 포함하세요
+- 같은 가이드에 대한 ${qpp}개 문제는 동일한 passage 값을 사용하세요
+- 가이드 형식: 제목, 단계별 안내 또는 섹션 구조, 본문 (${wc3}단어). How-to, 사용 설명서, 절차 안내
+- passage 필드에 가이드 전체를 실제 줄바꿈(\\n)으로 넣으세요
+- 각 가이드에 대해 다양한 질문 유형: 특정 단계/조건, 목적, 주의사항, 추론 등
+- options는 반드시 4개를 포함해야 합니다
+- answer는 정답 번호를 문자열로 (예: "3")
+- 난이도: ${diffDesc} ${topicNote}
+- difficulty 값은 반드시 ${difficulty}를 사용하세요
+- question_subtype은 반드시 "daily_life_guide"로 설정하세요
+- category는 반드시 "reading"으로 설정하세요
+
+반드시 다음 JSON 형식으로만 응답 (마크다운 코드블록 없이 순수 JSON):
+{"questions":[{"content":"According to the guide, what should you do first?","passage":"How to Register for Online Banking\\n\\nStep 1: [단계 내용]\\nStep 2: [단계 내용]\\n[가이드 본문 ${wc3}단어 계속]","options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"3","explanation":"해설...","category":"reading","difficulty":${difficulty},"question_subtype":"daily_life_guide","audio_script":null,"speaking_prompt":null}]}`,
+
+    daily_life_article: `TOEFL "Read in Daily Life - Article" 문제 세트 ${n}개를 생성하세요.
+- 짧은 기사 ${n}개를 생성하고, 각 기사마다 ${qpp}개의 독해 문제를 만드세요
+- 총 ${n * qpp}개의 문제 객체를 questions 배열에 포함하세요
+- 같은 기사에 대한 ${qpp}개 문제는 동일한 passage 값을 사용하세요
+- 기사 형식: 헤드라인, 부제목(옵션), 날짜, 본문 (${wc3}단어). 뉴스·잡지 스타일
+- passage 필드에 기사 전체를 실제 줄바꿈(\\n)으로 넣으세요
+- 각 기사에 대해 다양한 질문 유형: 기사 주제, 특정 사실, 어조, 추론, 어휘 등
+- options는 반드시 4개를 포함해야 합니다
+- answer는 정답 번호를 문자열로 (예: "1")
+- 난이도: ${diffDesc} ${topicNote}
+- difficulty 값은 반드시 ${difficulty}를 사용하세요
+- question_subtype은 반드시 "daily_life_article"로 설정하세요
+- category는 반드시 "reading"으로 설정하세요
+
+반드시 다음 JSON 형식으로만 응답 (마크다운 코드블록 없이 순수 JSON):
+{"questions":[{"content":"What is the article mainly about?","passage":"City Council Plans Major Transportation Overhaul\\nMarch 10, 2025\\n\\n[기사 본문 ${wc3}단어]","options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"1","explanation":"해설...","category":"reading","difficulty":${difficulty},"question_subtype":"daily_life_article","audio_script":null,"speaking_prompt":null}]}`,
+
+    daily_life_campus_notice: `TOEFL "Read in Daily Life - Campus Notice" 문제 세트 ${n}개를 생성하세요.
+- 대학 교내 공지문 ${n}개를 생성하고, 각 공지마다 ${qpp}개의 독해 문제를 만드세요
+- 총 ${n * qpp}개의 문제 객체를 questions 배열에 포함하세요
+- 같은 공지문에 대한 ${qpp}개 문제는 동일한 passage 값을 사용하세요
+- 캠퍼스 공지 형식: 학교/부서명, 제목, 날짜, 본문 (${wc3}단어). 수강신청·행사·도서관·장학금·기숙사 등 대학 생활 주제
+- passage 필드에 공지문 전체를 실제 줄바꿈(\\n)으로 넣으세요
+- 각 공지에 대해 다양한 질문 유형: 공지 목적, 마감일/날짜, 대상 학생, 필요 조건, 추론 등
+- options는 반드시 4개를 포함해야 합니다
+- answer는 정답 번호를 문자열로 (예: "2")
+- 난이도: ${diffDesc} ${topicNote}
+- difficulty 값은 반드시 ${difficulty}를 사용하세요
+- question_subtype은 반드시 "daily_life_campus_notice"로 설정하세요
+- category는 반드시 "reading"으로 설정하세요
+
+반드시 다음 JSON 형식으로만 응답 (마크다운 코드블록 없이 순수 JSON):
+{"questions":[{"content":"What is the main purpose of this notice?","passage":"University of California\\nOffice of Academic Affairs\\n\\nImportant Notice Regarding Spring Registration\\nDate: March 10, 2025\\n\\n[공지문 본문 ${wc3}단어]","options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"2","explanation":"해설...","category":"reading","difficulty":${difficulty},"question_subtype":"daily_life_campus_notice","audio_script":null,"speaking_prompt":null}]}`,
 
     choose_response: `TOEFL "Listen and Choose a Response" 문제를 ${n}개 생성하세요.
 - 짧은 한마디(질문 또는 평서문)를 듣고 가장 자연스러운 대답 선택
@@ -187,24 +258,28 @@ Respond with pure JSON only (no markdown):
 {"questions":[{"content":"You recently visited a restaurant and had a bad experience. Write an email to the manager.\\n\\nYour email must include:\\n• Describe what went wrong during your visit\\n• Explain how this experience affected you\\n• Suggest what the restaurant should do to improve","passage":null,"options":null,"answer":"Dear Manager,\\n\\nI am writing to express my disappointment regarding my recent visit to your restaurant on March 10th. [150+ word model email continues with all 3 conditions addressed]\\n\\nSincerely,\\n[Name]","explanation":"채점 기준: 조건 3가지 충족, 격식체 이메일 형식, 논리적 구성, 150단어 이상","category":"writing","difficulty":${difficulty},"question_subtype":"email_writing","audio_script":null,"speaking_prompt":null}]}`,
 
     academic_discussion: `TOEFL "Write for an Academic Discussion" 문제를 ${n}개 생성하세요.
-- content 필드에 다음을 포함하세요:
-  1) 교수가 제시한 수업 주제와 토론 질문
-  2) 학생 Claire의 의견 (2-3문장)
-  3) 학생 Kevin의 의견 (2-3문장)
-  4) 지시사항: "Write a post responding to the professor's question. Express and support your opinion. Make a contribution to the discussion in your own words. An effective response will contain at least ${wc11} words."
-- answer 필드에 ${wc11}단어 이상의 모범 토론 참여 답안을 넣으세요
-- options는 null로 설정하세요
+형식 규칙:
+- passage 필드에 교수 + 학생2명 포스트를 넣으세요:
+  "Dr. [교수 성]:\\n[교수 토론 질문 — 80-100단어]\\n\\n[학생1 이름]:\\n[학생1 의견 — 50-70단어]\\n\\n[학생2 이름]:\\n[학생2 의견 — 50-70단어]"
+- content 필드에는 학생 지시문만 넣으세요:
+  "Write a post responding to the professor's question. Express and support your opinion. Make a contribution to the discussion in your own words. An effective response will contain at least ${wc11} words."
+- answer 필드에 ${wc11}단어 이상의 모범 답안을 넣으세요
+- 교수 포스트는 수업 맥락 소개 + 명확한 토론 질문 포함
+- 두 학생은 서로 다른 입장을 표명하며 간결한 근거 제시
+- options는 null
 - 난이도: ${diffDesc} ${topicNote}
 - difficulty 값은 반드시 ${difficulty}를 사용하세요
 - question_subtype은 반드시 "academic_discussion"으로 설정하세요
 - category는 반드시 "writing"으로 설정하세요
 
 반드시 다음 JSON 형식으로만 응답 (마크다운 코드블록 없이 순수 JSON):
-{"questions":[{"content":"Your professor is teaching a class on business management.\\n\\n**Professor's question:** For the past few classes, we have been discussing the concept of remote work. Some argue that the number of employees working from home will increase as it benefits both the company and employees. Others believe the challenges of implementing remote work will keep it from becoming a widespread practice. What are your thoughts on this issue?\\n\\n**Claire:** In my opinion, remote work will become more common. Employees reported that they were more productive when they were working from home.\\n\\n**Kevin:** While there are some benefits to remote work, I think communication problems will keep it from becoming widespread. A face-to-face meeting is more effective than having one online.\\n\\nWrite a post responding to the professor's question. Express and support your opinion. Make a contribution to the discussion in your own words. An effective response will contain at least 100 words.","passage":null,"options":null,"answer":"I agree with Claire that remote work will become increasingly common in the future. Research consistently shows that employees who work from home report higher levels of productivity and job satisfaction. Without the distractions of a traditional office environment—such as unnecessary meetings and interruptions from colleagues—workers can focus more effectively on their tasks.\\n\\nWhile Kevin raises a valid point about communication challenges, I believe technology has largely solved this problem. Tools like video conferencing and collaborative software make it easy to communicate clearly and efficiently from anywhere. Companies that invest in these tools often find that remote teams perform just as well as, if not better than, in-person teams.\\n\\nUltimately, the benefits of remote work, including reduced commute times and better work-life balance, make it an attractive option for both employers and employees.","explanation":"채점 기준: 명확한 의견 제시, 논리적 근거 2가지 이상, 토론 내용 참조, 100단어 이상, 자연스러운 학술 문체","category":"writing","difficulty":${difficulty},"question_subtype":"academic_discussion","audio_script":null,"speaking_prompt":null}]}`,
+{"questions":[{"content":"Write a post responding to the professor's question. Express and support your opinion. Make a contribution to the discussion in your own words. An effective response will contain at least 100 words.","passage":"Dr. Palmer:\\nFor the past few classes, we have been discussing the rise of remote work. Many companies adopted it during the pandemic and some have kept it. Others have required employees to return to the office. What are your thoughts? Do you think remote work will become the norm, or will most employees return to the office in the long run?\\n\\nAlex:\\nI think remote work will become more common. Studies show that employees are more productive at home because there are fewer distractions. Companies can also save money on office space, which benefits everyone.\\n\\nMia:\\nI disagree. I believe most people will return to the office because working in person makes collaboration and communication much easier. Building strong relationships with colleagues is harder when you are working remotely.","options":null,"answer":"I agree with Alex that remote work will become increasingly common. Research consistently shows that employees who work from home report higher productivity and job satisfaction. Without constant interruptions from colleagues, workers can focus more deeply on their tasks.\\n\\nWhile Mia raises a valid point about collaboration, technology has largely addressed this challenge. Video conferencing and project management tools allow teams to communicate effectively from anywhere. Many successful companies now operate entirely remotely with no loss in performance.\\n\\nUltimately, remote work offers employees a better work-life balance while allowing companies to reduce overhead costs. These advantages make it a compelling long-term solution for many industries.","explanation":"채점 기준: 명확한 의견 제시, 논리적 근거 2가지 이상, 두 학생 의견 중 하나 이상 참조, 100단어 이상, 학술 문체","category":"writing","difficulty":${difficulty},"question_subtype":"academic_discussion","audio_script":null,"speaking_prompt":null}]}`,
 
-    listen_and_repeat: `TOEFL "Listen and Repeat" (따라 말하기) 문장을 ${n}개 생성하세요.
-- 원어민이 자연스럽게 말할 법한 짧고 자연스러운 문장 (1-2 문장)
-- 발음/억양/유창성 연습에 적합
+    listen_and_repeat: `TOEFL "Listen and Repeat" 세트를 ${n}개 생성하세요. 각 세트는 ${qpp}개의 문장으로 구성됩니다. 총 ${n * qpp}개의 문제 객체를 questions 배열에 담으세요.
+- 같은 세트 안의 문장들은 같은 주제/상황에서 점점 길어지도록 구성하세요 (단계적 난이도 상승)
+  예) 세트 내 1번: 짧고 간단 (5-7단어), 2번: 약간 길어짐 (8-10단어), 3번: 더 길어짐 (11-14단어)
+- 세트가 여러 개라면 각 세트는 서로 다른 주제/상황을 사용하세요
+- 같은 세트에 속한 문제들은 passage 필드에 동일한 세트 식별자를 넣으세요 (예: "L&R Set 1: Campus Life") — 이 값으로 묶어 저장됩니다
 - speaking_prompt 필드 = audio_script 필드 = 반복할 문장 (동일한 값)
 - answer 필드 = 반복할 문장 (speaking_prompt와 동일)
 - content 필드에는 지시문을 넣으세요 (예: "Listen and repeat the following sentence.")
@@ -214,7 +289,7 @@ Respond with pure JSON only (no markdown):
 - category는 반드시 "speaking"으로 설정하세요
 
 반드시 다음 JSON 형식으로만 응답 (마크다운 코드블록 없이 순수 JSON):
-{"questions":[{"content":"Listen and repeat the following sentence.","passage":null,"options":null,"answer":"The library closes at nine o'clock on weekdays.","explanation":"발음 포인트: /laɪ.brər.i/, 연음 처리: closes_at, nine_o'clock","category":"speaking","difficulty":${difficulty},"question_subtype":"listen_and_repeat","audio_script":"The library closes at nine o'clock on weekdays.","speaking_prompt":"The library closes at nine o'clock on weekdays."}]}`,
+{"questions":[{"content":"Listen and repeat the following sentence.","passage":"L&R Set 1: Campus Life","options":null,"answer":"She studies.","explanation":"발음 포인트: /ʃ/ 마찰음","category":"speaking","difficulty":${difficulty},"question_subtype":"listen_and_repeat","audio_script":"She studies.","speaking_prompt":"She studies."},{"content":"Listen and repeat the following sentence.","passage":"L&R Set 1: Campus Life","options":null,"answer":"She studies at the library every afternoon.","explanation":"발음 포인트: /ˈlaɪ.brər.i/, 리듬 패턴","category":"speaking","difficulty":${difficulty},"question_subtype":"listen_and_repeat","audio_script":"She studies at the library every afternoon.","speaking_prompt":"She studies at the library every afternoon."}]}`,
 
     academic_passage: `TOEFL "Read an Academic Passage" 문제 세트 ${n}개를 생성하세요.
 - 자연과학/역사/사회과학 학술 지문 ${n}개를 생성하고, 각 지문마다 ${qpp}개의 문제를 만드세요
@@ -233,11 +308,14 @@ Respond with pure JSON only (no markdown):
 반드시 다음 JSON 형식으로만 응답 (마크다운 코드블록 없이 순수 JSON):
 {"questions":[{"content":"According to the passage, which of the following is true?","passage":"[200-300 word academic passage here — only in the FIRST question of each set]","options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"2","explanation":"해설...","category":"reading","difficulty":${difficulty},"question_subtype":"academic_passage","audio_script":null,"speaking_prompt":null},{"content":"두 번째 질문 (inference/vocabulary/etc.)...","passage":"__SAME__","options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"3","explanation":"해설...","category":"reading","difficulty":${difficulty},"question_subtype":"academic_passage","audio_script":null,"speaking_prompt":null}]}`,
 
-    take_an_interview: `TOEFL "Take an Interview" 문제를 ${n}개 생성하세요.
-- 면접관이 던지는 질문 (A vs B 선택형 또는 개방형)
+    take_an_interview: `TOEFL "Take an Interview" 인터뷰 세트를 ${n}개 생성하세요. 각 세트는 ${qpp}개의 연속 질문으로 구성됩니다. 총 ${n * qpp}개의 문제 객체를 questions 배열에 담으세요.
+- 각 세트는 서로 다른 주제(예: 공부 방법, 여행, 기술, 환경, 일 vs 여가 등)를 사용하세요
+- 같은 세트 안의 질문들은 하나의 주제에서 자연스럽게 이어지는 인터뷰 흐름으로 구성하세요 (첫 질문 → 심화 → 마무리)
+- 각 세트의 마지막 질문은 반드시 동의/의견 확인형으로 끝내세요 (예: "Do you agree that...?", "Would you say that...?")
+- 같은 세트에 속한 문제들은 passage 필드에 동일한 세트 식별자를 넣으세요 (예: "Interview Set 1: Study Habits") — 이 값으로 묶어 저장됩니다
 - content 필드에 영어 질문과 한국어 번역을 함께 넣으세요
 - speaking_prompt 필드 = content의 영어 질문 부분
-- answer 필드에 모범 답안을 넣으세요 (명확한 입장, 2-3가지 이유, 구체적 예시 포함)
+- answer 필드에 모범 답안을 넣으세요 (명확한 입장, 2-3가지 이유, 구체적 예시, ~45초 분량)
 - options는 null로 설정하세요
 - 준비 시간 15초, 답변 시간 45초 상정
 - 난이도: ${diffDesc} ${topicNote}
@@ -246,7 +324,7 @@ Respond with pure JSON only (no markdown):
 - category는 반드시 "speaking"으로 설정하세요
 
 반드시 다음 JSON 형식으로만 응답 (마크다운 코드블록 없이 순수 JSON):
-{"questions":[{"content":"Some people prefer studying alone, while others prefer studying in groups. Which do you prefer and why?\\n(혼자 공부와 그룹 공부 중 어떤 것을 선호하나요?)","passage":null,"options":null,"answer":"I prefer studying alone because I can focus better without distractions. First, when I study by myself, I can set my own pace and spend more time on difficult concepts. For example, last semester I was able to master calculus by studying alone for two hours each evening. Second, studying alone helps me develop self-discipline, which is essential for academic success. Therefore, I believe solo studying leads to better learning outcomes for me.","explanation":"채점 포인트: 명확한 입장, 2-3가지 이유, 구체적 예시, 45초 분량","category":"speaking","difficulty":${difficulty},"question_subtype":"take_an_interview","audio_script":null,"speaking_prompt":"Some people prefer studying alone, while others prefer studying in groups. Which do you prefer and why?"}]}`,
+{"questions":[{"content":"Some people prefer studying alone, while others prefer studying in groups. Which do you prefer and why?\\n(혼자 공부와 그룹 공부 중 어떤 것을 선호하나요?)","passage":"Interview Set 1: Study Habits","options":null,"answer":"I prefer studying alone because I can focus better. First, I can set my own pace. For example, last semester I mastered calculus by studying alone two hours daily. Second, solo study builds self-discipline essential for academic success.","explanation":"채점 포인트: 명확한 입장, 2가지 이유, 구체적 예시, 45초 분량","category":"speaking","difficulty":${difficulty},"question_subtype":"take_an_interview","audio_script":null,"speaking_prompt":"Some people prefer studying alone, while others prefer studying in groups. Which do you prefer and why?"},{"content":"Do you agree that developing good study habits early in life is more important than natural intelligence?\\n(어릴 때 좋은 학습 습관을 기르는 것이 타고난 지능보다 중요하다고 생각하나요?)","passage":"Interview Set 1: Study Habits","options":null,"answer":"Yes, I strongly agree. Habits are actively developable, while intelligence is largely fixed. Many successful people attribute achievements to consistent effort rather than innate talent. Regular review and active recall can overcome gaps in natural ability.","explanation":"채점 포인트: 동의/반대 명확히, 근거 2가지, 45초 분량","category":"speaking","difficulty":${difficulty},"question_subtype":"take_an_interview","audio_script":null,"speaking_prompt":"Do you agree that developing good study habits early in life is more important than natural intelligence?"}]}`,
   }
 
   // fallback: old category-level prompts for subtypes not listed above (e.g. academic passage subtypes)
@@ -269,7 +347,8 @@ Respond with pure JSON only (no markdown):
 {"questions":[{"content":"문제","passage":null,"options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"2","explanation":"해설","category":"listening","difficulty":${difficulty},"question_subtype":"${subtype || 'detail'}","audio_script":"스크립트...","speaking_prompt":null}]}`,
   }
 
-  return subtypePrompts[subtype] ?? categoryFallbacks[category] ?? subtypePrompts[Object.keys(subtypePrompts)[0]]
+  const basePrompt = subtypePrompts[subtype] ?? categoryFallbacks[category] ?? subtypePrompts[Object.keys(subtypePrompts)[0]]
+  return basePrompt + passageContextNote
 }
 
 export async function POST(req: NextRequest) {
@@ -283,13 +362,20 @@ export async function POST(req: NextRequest) {
 
   const anthropic = new Anthropic({ apiKey })
 
-  const { category, subtype, difficulty, count, topic, questionsPerPassage, wordCount } = await req.json()
+  const { category, subtype, difficulty, count, topic, questionsPerPassage, wordCount, passageContext } = await req.json()
 
   const topicValue = topic ?? ''
-  const prompt = buildPrompt(category, subtype ?? '', difficulty, count, topicValue, questionsPerPassage ?? 1, wordCount ?? 0)
+  const prompt = buildPrompt(category, subtype ?? '', difficulty, count, topicValue, questionsPerPassage ?? 1, wordCount ?? 0, passageContext ?? '')
     + `\n\n【필수 추가 필드】위 JSON의 각 문제 객체에 반드시 다음 두 필드를 포함하세요:
 - "summary": 지문·음성·시나리오를 한국어로 1-2문장 요약 (예: "환경오염이 기후변화에 미치는 영향을 논의하는 학술 지문", "도서관 연장 운영에 관한 두 학생의 캠퍼스 대화")
-- "subcategory": 주제 키워드 1-2개 (예: "환경", "IT", "경제", "캠퍼스생활", "과학"${topicValue ? ` — 입력된 주제 "${topicValue}"를 우선 사용` : ''})`
+- "subcategory": 주제 키워드 1-2개 (예: "환경", "IT", "경제", "캠퍼스생활", "과학"${topicValue ? ` — 입력된 주제 "${topicValue}"를 우선 사용` : ''})
+- "vocab_words": content(문제) 또는 answer(정답/모범답안)에 실제로 등장하는 단어 중 학습 가치가 높은 것을 선택하여 JSON 배열로
+  ▸ choose_response / listen_and_repeat / take_an_interview → 1-2개 (짧은 문장이므로 최대 2개)
+  ▸ 그 외 모든 유형 → 최소 5개 이상 (숙어·구동사 포함 가능)
+  ▸ passage(지문)에만 있고 content/answer에 없는 단어는 제외
+  ▸ 문법·작문 순수 유형은 null 허용
+  형식: [{"word":"어휘","pos":"품사(n./v./adj./adv./phrase 등)","def":"한국어 뜻 또는 영어 정의","example":"해당 문제/정답에서 그 단어가 쓰인 문장 그대로"}]
+  예시: [{"word":"innate","pos":"adj.","def":"타고난, 선천적인","example":"innate talent is largely fixed"},{"word":"attribute","pos":"v.","def":"~의 덕분으로 돌리다","example":"attribute their achievements to consistent effort"}]`
 
   let message
   try {

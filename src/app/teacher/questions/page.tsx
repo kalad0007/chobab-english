@@ -25,11 +25,10 @@ const SOURCE_LABEL: Record<string, string> = {
 // 카테고리별 주요 서브타입 필터 옵션
 const SUBTYPE_FILTER: Record<string, { value: string; label: string }[]> = {
   reading: [
-    { value: 'complete_the_words',    label: 'Complete the Words' },
-    { value: 'sentence_completion',   label: 'Sentence Completion' },
-    { value: 'daily_life_email',      label: 'Daily Life Email' },
-    { value: 'daily_life_text_chain', label: 'Text Chain' },
-    { value: 'academic_passage',      label: 'Academic Passage' },
+    { value: 'complete_the_words',  label: 'Complete the Words' },
+    { value: 'sentence_completion', label: 'Sentence Completion' },
+    { value: 'daily_life',          label: 'Daily Life' },
+    { value: 'academic_passage',    label: 'Academic Passage' },
   ],
   listening: [
     { value: 'choose_response', label: 'Choose a Response' },
@@ -69,7 +68,11 @@ export default async function QuestionsPage({
     .order('created_at', { ascending: false })
 
   if (category) query = query.eq('category', category)
-  if (subtype)  query = query.eq('question_subtype', subtype)
+  if (subtype === 'daily_life') {
+    query = query.like('question_subtype', 'daily_life_%')
+  } else if (subtype) {
+    query = query.eq('question_subtype', subtype)
+  }
   if (source)   query = query.eq('source', source)
   if (q)        query = query.or(`content.ilike.%${q}%,summary.ilike.%${q}%,subcategory.ilike.%${q}%`)
 

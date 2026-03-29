@@ -10,12 +10,20 @@ import Link from 'next/link'
 
 // ────────── 2026 유형 상수 ──────────
 const READING_TYPES = [
-  { value: 'complete_the_words',    label: '1-1A · Complete the Words',       desc: '지문 속 단어 뒷부분 마스킹 (단락형 빈칸)', badge: 'bg-teal-100 text-teal-700' },
-  { value: 'sentence_completion',   label: '1-1B · Sentence Completion',       desc: '독립 문장 1개에 빈칸 1개 (문법/어휘)', badge: 'bg-blue-100 text-blue-700' },
-  { value: 'daily_life_email',      label: '1-2A · Daily Life — Email',        desc: '격식 이메일 (From/To/Subject) + MCQ', badge: 'bg-cyan-100 text-cyan-700' },
-  { value: 'daily_life_text_chain', label: '1-2B · Daily Life — Text Chain',   desc: '그룹 채팅 형식 (3-4명) + MCQ', badge: 'bg-sky-100 text-sky-700' },
-  { value: 'academic_passage',      label: '1-3 · Academic Passage',           desc: '700단어+ 학술 지문 + 여러 문제 세트', badge: 'bg-indigo-100 text-indigo-700' },
+  { value: 'complete_the_words',  label: '1-1A · Complete the Words',  desc: '지문 속 단어 뒷부분 마스킹 (단락형 빈칸)', badge: 'bg-teal-100 text-teal-700' },
+  { value: 'sentence_completion', label: '1-1B · Sentence Completion',  desc: '독립 문장 1개에 빈칸 1개 (문법/어휘)', badge: 'bg-blue-100 text-blue-700' },
+  { value: 'daily_life',          label: '1-2 · Daily Life',            desc: '이메일·문자·공지·가이드·기사·학교공지 6가지 형식 + MCQ', badge: 'bg-cyan-100 text-cyan-700' },
+  { value: 'academic_passage',    label: '1-3 · Academic Passage',      desc: '700단어+ 학술 지문 + 여러 문제 세트', badge: 'bg-indigo-100 text-indigo-700' },
 ] as const
+
+const DAILY_LIFE_FORMATS = [
+  { value: 'email',          label: 'Email',          desc: '격식 이메일 (From/To/Subject)' },
+  { value: 'text_chain',     label: 'Text Chain',      desc: '그룹 채팅 (3-4명, 타임스탬프)' },
+  { value: 'notice',         label: 'Notice',          desc: '공지문 (공식 안내/규정)' },
+  { value: 'guide',          label: 'Guide',           desc: '가이드/매뉴얼 (단계별 안내)' },
+  { value: 'article',        label: 'Article',         desc: '짧은 기사 (뉴스/잡지)' },
+  { value: 'campus_notice',  label: 'Campus Notice',   desc: '학교 공지문 (학사/행사)' },
+]
 
 const LISTENING_TYPES = [
   { value: 'choose_response', label: '2-1 · Choose a Response', desc: '짧은 한마디 듣고 가장 자연스러운 대답 선택 (1문제)', badge: 'bg-emerald-100 text-emerald-700' },
@@ -32,6 +40,8 @@ const isFillTable    = (sub: string) => sub === 'fill_table'
 const isCompleteWords = (sub: string) => sub === 'complete_the_words'
 const isEssaySubtype = (sub: string) => isCompleteWords(sub)
 
+type VocabEntry = { word: string; pos: string; def: string; example: string }
+
 interface MCQuestion {
   content: string
   questionSubtype: string
@@ -39,6 +49,7 @@ interface MCQuestion {
   options: { num: number; text: string }[]
   answer: string
   explanation: string
+  vocabWords: VocabEntry[]
   // prose_summary: 6지선다
   summaryOptions: { num: number; text: string }[]
   summaryCorrect: number[]   // 정답 번호 3개
@@ -56,11 +67,57 @@ const emptyMCQuestion = (): MCQuestion => ({
   ],
   answer: '',
   explanation: '',
+  vocabWords: [],
   summaryOptions: Array.from({ length: 6 }, (_, i) => ({ num: i + 1, text: '' })),
   summaryCorrect: [],
   tableCategories: ['', '', ''],
   tableItems: Array.from({ length: 7 }, () => ({ text: '', category: '' })),
 })
+
+// ────────── 핵심단어 인라인 에디터 ──────────
+function VocabEditorInline({ words, onChange }: { words: VocabEntry[]; onChange: (w: VocabEntry[]) => void }) {
+  return (
+    <div className="space-y-2 pt-3 border-t border-gray-100 mt-3">
+      <div className="flex items-center justify-between">
+        <label className="text-xs font-bold text-indigo-700">핵심 단어 및 숙어</label>
+        <button type="button"
+          onClick={() => onChange([...words, { word: '', pos: '', def: '', example: '' }])}
+          className="text-[11px] font-bold px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition">
+          + 단어 추가
+        </button>
+      </div>
+      {words.length === 0 && (
+        <p className="text-[11px] text-gray-400">문제/정답에 등장한 핵심 어휘를 추가하세요.</p>
+      )}
+      {words.map((v, i) => (
+        <div key={i} className="flex gap-1.5 items-start bg-indigo-50 rounded-xl p-2.5">
+          <div className="flex-1 space-y-1">
+            <div className="flex gap-1">
+              <input value={v.word}
+                onChange={e => onChange(words.map((x, j) => j === i ? { ...x, word: e.target.value } : x))}
+                placeholder="단어/숙어"
+                className="flex-1 px-2 py-1 border border-indigo-200 rounded-lg text-xs font-bold text-indigo-800 focus:outline-none focus:ring-1 focus:ring-indigo-400 bg-white" />
+              <input value={v.pos}
+                onChange={e => onChange(words.map((x, j) => j === i ? { ...x, pos: e.target.value } : x))}
+                placeholder="품사"
+                className="w-16 px-2 py-1 border border-indigo-200 rounded-lg text-[11px] font-semibold text-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-400 bg-white text-center" />
+            </div>
+            <input value={v.def}
+              onChange={e => onChange(words.map((x, j) => j === i ? { ...x, def: e.target.value } : x))}
+              placeholder="뜻 (한국어 or 영어)"
+              className="w-full px-2 py-1 border border-indigo-200 rounded-lg text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-indigo-400 bg-white" />
+            <input value={v.example}
+              onChange={e => onChange(words.map((x, j) => j === i ? { ...x, example: e.target.value } : x))}
+              placeholder="예문 (문제/정답 속 문장)"
+              className="w-full px-2 py-1 border border-indigo-200 rounded-lg text-[11px] italic text-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 bg-white" />
+          </div>
+          <button type="button" onClick={() => onChange(words.filter((_, j) => j !== i))}
+            className="text-gray-300 hover:text-red-400 transition text-sm mt-0.5 flex-shrink-0">✕</button>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 // ────────── 세부유형 뱃지 색상 ──────────
 const SUBTYPE_BADGE: Record<string, string> = {
@@ -148,6 +205,7 @@ function QuestionEditor({
           <textarea value={q.explanation} onChange={e => onUpdate({ explanation: e.target.value })}
             placeholder="정답 해설..." rows={2}
             className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none" />
+          <VocabEditorInline words={q.vocabWords} onChange={w => onUpdate({ vocabWords: w })} />
         </div>
       </div>
     )
@@ -208,6 +266,7 @@ function QuestionEditor({
           <textarea value={q.explanation} onChange={e => onUpdate({ explanation: e.target.value })}
             placeholder="정답 해설..." rows={2}
             className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none" />
+          <VocabEditorInline words={q.vocabWords} onChange={w => onUpdate({ vocabWords: w })} />
         </div>
       </div>
     )
@@ -249,6 +308,7 @@ function QuestionEditor({
           <textarea value={q.explanation} onChange={e => onUpdate({ explanation: e.target.value })}
             placeholder="각 빈칸 단어 설명..." rows={2}
             className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none" />
+          <VocabEditorInline words={q.vocabWords} onChange={w => onUpdate({ vocabWords: w })} />
         </div>
       </div>
     )
@@ -295,15 +355,18 @@ function QuestionEditor({
           <textarea value={q.explanation} onChange={e => onUpdate({ explanation: e.target.value })}
             placeholder="각 빈칸의 단어 의미 및 문법 설명..." rows={2}
             className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+          <VocabEditorInline words={q.vocabWords} onChange={w => onUpdate({ vocabWords: w })} />
         </div>
       </div>
     )
   }
 
   // ── 기본 4지선다 (Standard MC) ──
+  const isDailyLife = q.questionSubtype.startsWith('daily_life_')
   return (
     <div className="space-y-4">
-      {/* 세부유형 선택 */}
+      {/* 세부유형 선택 — daily_life는 외부 형식 선택기로 대체 */}
+      {!isDailyLife && (
       <div>
         <label className="block text-xs font-semibold text-gray-600 mb-1">문제 유형</label>
         <select value={q.questionSubtype}
@@ -317,6 +380,7 @@ function QuestionEditor({
           }
         </select>
       </div>
+      )}
 
       {/* 문제 본문 */}
       <div>
@@ -389,6 +453,7 @@ function QuestionEditor({
         <textarea value={q.explanation} onChange={e => onUpdate({ explanation: e.target.value })}
           placeholder="정답 해설 및 오답 분석..." rows={2}
           className={`w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 ${ring} resize-none`} />
+        <VocabEditorInline words={q.vocabWords} onChange={w => onUpdate({ vocabWords: w })} />
       </div>
     </div>
   )
@@ -412,6 +477,7 @@ export default function NewQuestionPage() {
 
   // 상위 유형 선택 (Reading / Listening)
   const [readingType, setReadingType] = useState<string>('')
+  const [dailyLifeFormat, setDailyLifeFormat] = useState<string>('')
   const [listeningType, setListeningType] = useState<string>('')
 
   // Listening 필드
@@ -430,8 +496,19 @@ export default function NewQuestionPage() {
   const [wordLimit, setWordLimit] = useState(150)
   const [writingTaskNumber, setWritingTaskNumber] = useState(1)
 
+  // Academic Discussion 분리 입력 필드
+  const [profName, setProfName] = useState('Johnson')
+  const [profPost, setProfPost] = useState('')
+  const [s1Name, setS1Name] = useState('')
+  const [s1Post, setS1Post] = useState('')
+  const [s2Name, setS2Name] = useState('')
+  const [s2Post, setS2Post] = useState('')
+
   // sentence_reordering: word chips
   const [wordChips, setWordChips] = useState<string[]>([''])
+
+  // Speaking/Writing 핵심단어 (essay 경로)
+  const [essayVocabWords, setEssayVocabWords] = useState<VocabEntry[]>([])
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -450,6 +527,7 @@ export default function NewQuestionPage() {
     setCategory(newCat)
     setQuestionSubtype('')
     setReadingType('')
+    setDailyLifeFormat('')
     setListeningType('')
     setMcQuestions([emptyMCQuestion()])
     setExpandedQ(0)
@@ -463,6 +541,10 @@ export default function NewQuestionPage() {
     if (newCat === 'writing') setWritingTaskNumber(1)
     setWordChips([''])
     setTimeLimit(30)
+    setEssayVocabWords([])
+    setProfName('Johnson'); setProfPost('')
+    setS1Name(''); setS1Post('')
+    setS2Name(''); setS2Post('')
   }
 
   function applyDefaultTimeLimit(subtype: string) {
@@ -611,13 +693,22 @@ export default function NewQuestionPage() {
             question_subtype: q.questionSubtype || null,
             task_number: null,
             time_limit: timeLimit,
+            vocab_words: (() => {
+              const vw = q.vocabWords.filter(v => v.word.trim()).map(v => ({
+                word: v.word.trim(),
+                ...(v.pos.trim() ? { pos: v.pos.trim() } : {}),
+                def: v.def.trim(),
+                ...(v.example.trim() ? { example: v.example.trim() } : {}),
+              }))
+              return vw.length > 0 ? vw : null
+            })(),
           }
         })
 
       if (rows.length === 0) { setError('최소 1개 문제를 입력하세요.'); setLoading(false); return }
 
-      // 지문이 있고 문제가 2개 이상이면 같은 passage_group_id 부여
-      const groupId = rows.length > 1 && passage ? crypto.randomUUID() : null
+      // 지문이 있거나 스피킹(인터뷰/L&R 세트)이면서 문제가 2개 이상이면 같은 passage_group_id 부여
+      const groupId = rows.length > 1 && (passage || category === 'speaking') ? crypto.randomUUID() : null
       const finalRows = rows.map(r => ({ ...r, passage_group_id: groupId }))
 
       const { error: dbError } = await supabase.from('questions').insert(finalRows)
@@ -628,6 +719,16 @@ export default function NewQuestionPage() {
         ? wordChips.filter(w => w.trim()).map((text, i) => ({ num: i + 1, text }))
         : null
 
+      // Academic Discussion: assemble passage from separate fields
+      const isAcademicDiscussion = questionSubtype === 'academic_discussion' && writingTaskNumber === 2
+      const assembledPassage = isAcademicDiscussion
+        ? [
+            `Dr. ${profName.trim() || 'Professor'}:\n${profPost.trim()}`,
+            s1Name.trim() ? `${s1Name.trim()}:\n${s1Post.trim()}` : '',
+            s2Name.trim() ? `${s2Name.trim()}:\n${s2Post.trim()}` : '',
+          ].filter(Boolean).join('\n\n')
+        : passage
+
       const { error: dbError } = await supabase.from('questions').insert({
         teacher_id: user.id,
         type: 'essay',
@@ -636,7 +737,7 @@ export default function NewQuestionPage() {
         summary: summary || null,
         difficulty,
         content,
-        passage: passage || null,
+        passage: assembledPassage || null,
         options: sentenceReorderingOptions,
         answer: answer || '',
         explanation: explanation || null,
@@ -651,6 +752,15 @@ export default function NewQuestionPage() {
         question_subtype: questionSubtype || null,
         task_number: isSpeaking ? taskNumber : isWriting ? writingTaskNumber : null,
         time_limit: timeLimit,
+        vocab_words: (() => {
+          const vw = essayVocabWords.filter(v => v.word.trim()).map(v => ({
+            word: v.word.trim(),
+            ...(v.pos.trim() ? { pos: v.pos.trim() } : {}),
+            def: v.def.trim(),
+            ...(v.example.trim() ? { example: v.example.trim() } : {}),
+          }))
+          return vw.length > 0 ? vw : null
+        })(),
       })
       if (dbError) { setError('저장 실패: ' + dbError.message); setLoading(false); return }
     }
@@ -715,11 +825,12 @@ export default function NewQuestionPage() {
                   <button key={t.value} type="button"
                     onClick={() => {
                       setReadingType(t.value)
+                      setDailyLifeFormat('')
                       setMcQuestions(prev => prev.map(q => ({
                         ...q,
-                        questionSubtype: t.value === 'academic_passage' ? '' : t.value,
+                        questionSubtype: (t.value === 'academic_passage' || t.value === 'daily_life') ? '' : t.value,
                       })))
-                      applyDefaultTimeLimit(t.value)
+                      if (t.value !== 'daily_life') applyDefaultTimeLimit(t.value)
                     }}
                     className={`text-left p-3 rounded-xl border-2 transition ${readingType === t.value ? 'border-blue-500 bg-blue-50' : 'border-gray-100 hover:border-blue-200 bg-white'}`}>
                     <div className="flex items-center gap-2">
@@ -730,6 +841,33 @@ export default function NewQuestionPage() {
                   </button>
                 ))}
               </div>
+
+              {/* Daily Life 형식 선택 */}
+              {readingType === 'daily_life' && (
+                <div className="mt-3">
+                  <label className="block text-xs font-semibold text-gray-600 mb-2">Daily Life 형식 선택</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {DAILY_LIFE_FORMATS.map(f => {
+                      const subtype = `daily_life_${f.value}`
+                      return (
+                        <button key={f.value} type="button"
+                          onClick={() => {
+                            setDailyLifeFormat(f.value)
+                            setMcQuestions(prev => prev.map(q => ({ ...q, questionSubtype: subtype })))
+                            applyDefaultTimeLimit(subtype)
+                          }}
+                          className={`text-left p-2.5 rounded-xl border-2 transition ${dailyLifeFormat === f.value ? 'border-cyan-500 bg-cyan-50' : 'border-gray-100 hover:border-cyan-200 bg-white'}`}>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold text-cyan-700">{f.label}</span>
+                            {dailyLifeFormat === f.value && <Check size={11} className="text-cyan-600" />}
+                          </div>
+                          <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{f.desc}</p>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -888,26 +1026,42 @@ export default function NewQuestionPage() {
         {isReading && (
           <>
             {/* ── 유형 선택 후 폼 ── */}
-            {readingType && (<>
+            {(readingType && (readingType !== 'daily_life' || dailyLifeFormat)) && (<>
             {(() => {
-              const isDailyEmail = readingType === 'daily_life_email'
-              const isDailyText = readingType === 'daily_life_text_chain'
+              const isDailyLife = readingType === 'daily_life'
+              const dlFormat = isDailyLife ? dailyLifeFormat : ''
               const showPassage = !['sentence_completion', 'complete_the_words'].includes(readingType)
-              const passagePlaceholder = isDailyEmail
-                ? 'From: sender@email.com\nTo: recipient@email.com\nDate: March 15, 2025\nSubject: Subject here\n\n[Email body text here]'
-                : isDailyText
-                ? '[9:00 AM] Jake: Hey everyone, are we still meeting today?\n[9:02 AM] Sarah: I think so, where are we going?\n[9:05 AM] Mike: How about the library at 2pm?\n[9:06 AM] Jake: Sounds good to me!'
+              const passagePlaceholderMap: Record<string, string> = {
+                email:         'From: sender@email.com\nTo: recipient@email.com\nDate: March 15, 2025\nSubject: Subject here\n\n[Email body text here]',
+                text_chain:    '[9:00 AM] Jake: Hey everyone, are we still meeting today?\n[9:02 AM] Sarah: I think so, where are we going?\n[9:05 AM] Mike: How about the library at 2pm?\n[9:06 AM] Jake: Sounds good to me!',
+                notice:        'NOTICE\nDate: March 15, 2025\nFrom: [Issuing Organization]\n\n[Notice body text — regulations, policies, or announcements...]',
+                guide:         'How to [Task Title]\n\nStep 1: [First step description]\nStep 2: [Second step description]\nStep 3: [Continue steps...]\n\nNote: [Any important warnings or tips]',
+                article:       '[Headline: Article Title Here]\n[Optional subheading]\nMarch 15, 2025\n\n[Article body text — news or magazine style...]',
+                campus_notice: '[University Name]\n[Department / Office Name]\n\nImportant Notice: [Title]\nDate: March 15, 2025\n\n[Campus notice body text — academic or campus life topic...]',
+              }
+              const passageLabelMap: Record<string, string> = {
+                email:         '이메일 본문 (From/To/Date/Subject + Body)',
+                text_chain:    '채팅 대화 (시간 + 이름 + 메시지 형식)',
+                notice:        '공지문 (제목/날짜/기관 + 본문)',
+                guide:         '가이드/매뉴얼 (단계별 안내)',
+                article:       '기사 (헤드라인 + 본문)',
+                campus_notice: '학교 공지문 (대학교 교내 공지)',
+              }
+              const passagePlaceholder = isDailyLife
+                ? (passagePlaceholderMap[dlFormat] ?? '')
                 : '700단어 이상의 학술 지문을 입력하세요. Insert Text 유형은 ■ 기호로 4군데 위치를 표시하세요...'
-              const passageLabel = isDailyEmail ? '이메일 본문 (From/To/Date/Subject + Body)' : isDailyText ? '채팅 대화 (시간 + 이름 + 메시지 형식)' : '학술 지문 (Passage)'
+              const passageLabel = isDailyLife
+                ? (passageLabelMap[dlFormat] ?? 'Daily Life 지문')
+                : '학술 지문 (Passage)'
               return showPassage ? (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                   <h2 className="font-bold text-gray-900 mb-1">{passageLabel}</h2>
                   <p className="text-xs text-gray-400 mb-3">
-                    {isDailyEmail ? '이메일 본문은 모든 문제에서 공유됩니다.' : isDailyText ? '채팅 대화는 모든 문제에서 공유됩니다.' : '공유 지문입니다. 모든 문제에 동일 지문이 사용됩니다. Insert Text는 지문에 ■ 기호로 삽입 위치를 표시하세요.'}
+                    {isDailyLife ? '지문은 모든 문제에서 공유됩니다.' : '공유 지문입니다. 모든 문제에 동일 지문이 사용됩니다. Insert Text는 지문에 ■ 기호로 삽입 위치를 표시하세요.'}
                   </p>
                   <UnderlineTextarea value={passage} onChange={setPassage}
                     placeholder={passagePlaceholder}
-                    rows={isDailyEmail || isDailyText ? 10 : 12} />
+                    rows={isDailyLife ? 10 : 12} />
                 </div>
               ) : null
             })()}
@@ -1322,11 +1476,55 @@ export default function NewQuestionPage() {
                 )}
 
                 {writingTaskNumber === 2 && (
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">토론 배경 <span className="text-red-500">*</span></label>
-                    <UnderlineTextarea value={passage} onChange={setPassage}
-                      placeholder={`Dr. Johnson:\nIn today's class, we discussed...\n\nStudent A (Alex):\nI think that...\n\nStudent B (Maria):\nI disagree because...`}
-                      rows={10} />
+                  <div className="space-y-4">
+                    <p className="text-xs font-bold text-purple-700 bg-purple-50 border border-purple-100 rounded-lg px-3 py-2">
+                      각 항목을 따로 입력하세요. 교수: 80-100단어 / 학생: 각 50-70단어
+                    </p>
+
+                    {/* 교수 */}
+                    <div className="border border-purple-200 rounded-xl p-3 bg-white space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">Dr.</span>
+                        <input value={profName} onChange={e => setProfName(e.target.value)}
+                          placeholder="교수 성 (예: Johnson)"
+                          className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                      </div>
+                      <textarea value={profPost} onChange={e => setProfPost(e.target.value)}
+                        placeholder={`In today's class, we've been discussing [주제]. For this week's discussion, I'd like you to consider the following question:\n\n[토론 질문 — 80-100단어]`}
+                        rows={5}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-400 resize-none" />
+                      <p className="text-[10px] text-gray-400 text-right">{profPost.trim().split(/\s+/).filter(Boolean).length} 단어</p>
+                    </div>
+
+                    {/* 학생 1 */}
+                    <div className="border border-blue-200 rounded-xl p-3 bg-white space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">학생 1</span>
+                        <input value={s1Name} onChange={e => setS1Name(e.target.value)}
+                          placeholder="학생 이름 (예: Alex)"
+                          className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                      </div>
+                      <textarea value={s1Post} onChange={e => setS1Post(e.target.value)}
+                        placeholder="I think that... (50-70단어)"
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none" />
+                      <p className="text-[10px] text-gray-400 text-right">{s1Post.trim().split(/\s+/).filter(Boolean).length} 단어</p>
+                    </div>
+
+                    {/* 학생 2 */}
+                    <div className="border border-sky-200 rounded-xl p-3 bg-white space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-sky-700 bg-sky-100 px-2 py-0.5 rounded-full">학생 2</span>
+                        <input value={s2Name} onChange={e => setS2Name(e.target.value)}
+                          placeholder="학생 이름 (예: Maria)"
+                          className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-sky-400" />
+                      </div>
+                      <textarea value={s2Post} onChange={e => setS2Post(e.target.value)}
+                        placeholder="I disagree because... (50-70단어)"
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-sky-400 resize-none" />
+                      <p className="text-[10px] text-gray-400 text-right">{s2Post.trim().split(/\s+/).filter(Boolean).length} 단어</p>
+                    </div>
                   </div>
                 )}
               </>
@@ -1422,6 +1620,7 @@ export default function NewQuestionPage() {
                 }
                 rows={3}
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+              <VocabEditorInline words={essayVocabWords} onChange={setEssayVocabWords} />
             </div>
           </div>
         )}

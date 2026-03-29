@@ -75,7 +75,7 @@ const SLOT_RANGE: Record<string, { min: number; max: number }> = {
 // 문제 피커에서 보여줄 서브타입 (구형 제외)
 const READING_SUBTYPES: Record<string, string[]> = {
   fillBlank: ['complete_the_words', 'sentence_completion'],
-  dailyLife: ['daily_life_email', 'daily_life_text_chain'],
+  dailyLife: ['daily_life_email', 'daily_life_text_chain', 'daily_life_notice', 'daily_life_guide', 'daily_life_article', 'daily_life_campus_notice'],
   deep:      ['factual', 'negative_factual', 'inference', 'rhetorical_purpose',
               'vocabulary', 'reference', 'sentence_simplification', 'insert_text',
               'academic_passage'],
@@ -804,7 +804,7 @@ export default function SmartBuilderPage() {
                   {...slotGroupProps('M1', 'fillBlank')} />
                 <SlotGroup label="Daily Life" icon={<Globe size={12} />}
                   {...slotGroupProps('M1', 'dailyLife')} />
-                <SlotGroup label="Deep Reading" icon={<BookOpen size={12} />}
+                <SlotGroup label="Academic Passage" icon={<BookOpen size={12} />}
                   {...slotGroupProps('M1', 'deep')} />
               </div>
             </div>
@@ -840,7 +840,7 @@ export default function SmartBuilderPage() {
               <div className="p-3">
                 <SlotGroup label="Fill in the Blank (Advanced)" icon={<AlignLeft size={12} />}
                   {...slotGroupProps('M2up', 'fillBlank')} />
-                <SlotGroup label="Deep Reading (Advanced)" icon={<BookOpen size={12} />}
+                <SlotGroup label="Academic Passage (Advanced)" icon={<BookOpen size={12} />}
                   {...slotGroupProps('M2up', 'deep')} />
               </div>
             </div>
@@ -876,7 +876,7 @@ export default function SmartBuilderPage() {
               <div className="p-3">
                 <SlotGroup label="Fill in the Blank (Remedial)" icon={<AlignLeft size={12} />}
                   {...slotGroupProps('M2down', 'fillBlank')} />
-                <SlotGroup label="Deep Reading (Remedial)" icon={<BookOpen size={12} />}
+                <SlotGroup label="Academic Passage (Remedial)" icon={<BookOpen size={12} />}
                   {...slotGroupProps('M2down', 'deep')} />
               </div>
             </div>

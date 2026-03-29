@@ -28,6 +28,7 @@ interface Question {
   audio_play_limit?: number | null
   speaking_prompt?: string | null
   time_limit?: number | null
+  explanation?: string | null
 }
 
 export default function ExamTakePage() {
@@ -309,13 +310,13 @@ export default function ExamTakePage() {
                   )}
                 </div>
 
-                {/* 리스닝: 오디오 플레이어 */}
-                {isListening && (q.audio_url || q.audio_script) && (
+                {/* 리스닝/스피킹: 오디오 플레이어 */}
+                {(isListening || isSpeaking) && q.audio_url && (
                   <div className="mb-5">
                     <AudioPlayer
                       audioUrl={q.audio_url}
-                      script={q.audio_script}
-                      playLimit={q.audio_play_limit ?? 3}
+                      script={isListening ? q.audio_script : null}
+                      playLimit={isListening ? (q.audio_play_limit ?? 3) : undefined}
                       onPlayed={(count) => setPlayedCounts(prev => ({ ...prev, [q.id]: count }))}
                     />
                   </div>
@@ -352,6 +353,9 @@ export default function ExamTakePage() {
                     wordTiles={q.options}
                     value={answers[q.id] ?? ''}
                     onChange={(answer) => saveAnswer(q.id, answer)}
+                    correctAnswer={q.answer}
+                    explanation={q.explanation ?? undefined}
+                    showCheck
                   />
                 ) : (q.question_subtype === 'complete_the_words' || q.question_subtype === 'sentence_completion') ? (
                   /* Fill-blank — 빈칸 채우기 */

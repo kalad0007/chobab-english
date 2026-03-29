@@ -18,6 +18,7 @@ export async function POST(req: NextRequest) {
     answer: string; explanation?: string | null; category: string; difficulty: number;
     question_subtype?: string | null; audio_script?: string | null; speaking_prompt?: string | null;
     summary?: string | null; subcategory?: string | null;
+    vocab_words?: { word: string; def: string; example?: string }[] | null;
   }) => ({
     teacher_id: user.id,
     type: ESSAY_SUBTYPES.has(q.question_subtype ?? '') ? 'essay' : 'multiple_choice',
@@ -40,6 +41,7 @@ export async function POST(req: NextRequest) {
     task_number: null,
     source: 'ai_generated',
     summary: q.summary ?? null,
+    vocab_words: Array.isArray(q.vocab_words) && q.vocab_words.length > 0 ? q.vocab_words : null,
   }))
 
   // Group questions sharing the same passage OR audio_script with a shared UUID

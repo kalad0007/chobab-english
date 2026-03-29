@@ -14,7 +14,7 @@ const navItems = [
       { href: '/student/dashboard', label: '내 대시보드', icon: LayoutDashboard },
       { href: '/student/exams', label: '모의고사', icon: FileText },
       { href: '/student/review', label: '오답 복습', icon: RefreshCw },
-      { href: '/student/learn',  label: '학습 자료', icon: BookOpen },
+      { href: '/student/learn',  label: 'TOEFL 기출 학습 자료', icon: BookOpen },
       { href: '/student/vocab',    label: '어휘 학습',  icon: BookA },
       { href: '/student/passages', label: '독해 지문',  icon: ScrollText },
       { href: '/student/my-words', label: '내 단어장', icon: BookMarked },

@@ -6,6 +6,8 @@ import { ArrowLeft, Pencil, Volume2 } from 'lucide-react'
 import type { Question } from '@/types/database'
 import DeleteButton from '../../DeleteButton'
 import SetDeleteButton from './SetDeleteButton'
+import AIAddButton from './AIAddButton'
+import VocabWords from '@/components/ui/VocabWords'
 
 const CATEGORY_COLORS: Record<string, string> = {
   reading:   'bg-blue-100 text-blue-700',
@@ -34,7 +36,7 @@ export default async function SetPreviewPage({
 
   if (!qs || qs.length === 0) notFound()
 
-  type QRow = Question & { passage_group_id?: string; audio_script?: string | null; audio_url?: string | null }
+  type QRow = Question & { passage_group_id?: string; audio_script?: string | null; audio_url?: string | null; vocab_words?: { word: string; def: string; example?: string }[] | null }
   const questions = qs as QRow[]
   const rep = questions[0]
   const diff = getDiffInfo(rep.difficulty)
@@ -57,7 +59,9 @@ export default async function SetPreviewPage({
             </p>
           </div>
         </div>
-        <SetDeleteButton groupId={groupId} questionIds={questions.map(q => q.id)} />
+        <div className="flex items-center gap-2">
+          <SetDeleteButton groupId={groupId} questionIds={questions.map(q => q.id)} />
+        </div>
       </div>
 
       {/* 메타 배지 */}
@@ -183,10 +187,24 @@ export default async function SetPreviewPage({
                     <p className="text-sm text-gray-700 leading-6 whitespace-pre-wrap">{q.explanation}</p>
                   </div>
                 )}
+                {Array.isArray((q as QRow).vocab_words) && (q as QRow).vocab_words!.length > 0 && (
+                  <VocabWords words={(q as QRow).vocab_words!} />
+                )}
               </div>
             </details>
           </div>
         ))}
+      </div>
+
+      {/* AI 추가 문제 생성 — 문제 목록 하단 */}
+      <div className="mt-4">
+        <AIAddButton
+          groupId={groupId}
+          passage={rep.passage ?? null}
+          category={rep.category}
+          questionSubtype={rep.question_subtype ?? null}
+          difficulty={rep.difficulty}
+        />
       </div>
     </div>
   )

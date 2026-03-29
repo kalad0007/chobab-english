@@ -2,6 +2,7 @@ import { createClient, getUserFromCookie } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { CATEGORY_LABELS, getDiffInfo, bandToLevel, usesAlphaOptions, optionLabel } from '@/lib/utils'
 import { CheckCircle, XCircle, Trophy } from 'lucide-react'
+import VocabWords from '@/components/ui/VocabWords'
 
 export default async function ExamResultPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: examId } = await params
@@ -21,7 +22,7 @@ export default async function ExamResultPage({ params }: { params: Promise<{ id:
 
   const { data: answers } = await supabase
     .from('submission_answers')
-    .select('question_id, student_answer, is_correct, score, questions(content, passage, answer, explanation, category, options, type, difficulty, question_subtype)')
+    .select('question_id, student_answer, is_correct, score, questions(content, passage, answer, explanation, vocab_words, category, options, type, difficulty, question_subtype)')
     .eq('submission_id', submission?.id)
 
   const correctCount = (answers ?? []).filter(a => a.is_correct).length
@@ -168,6 +169,9 @@ export default async function ExamResultPage({ params }: { params: Promise<{ id:
                       <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-800">
                         💡 {explanationText}
                       </div>
+                    )}
+                    {Array.isArray(q.vocab_words) && q.vocab_words.length > 0 && (
+                      <VocabWords words={q.vocab_words} />
                     )}
                   </div>
                 </div>

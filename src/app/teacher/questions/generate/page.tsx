@@ -20,11 +20,15 @@ interface GeneratedQuestion {
 
 const SUBTYPE_OPTIONS: Record<string, { value: string; label: string; desc: string; badge: string }[]> = {
   reading: [
-    { value: 'complete_the_words', label: 'Complete the Words', desc: '단락형 빈칸 — 지문 속 단어 뒷부분 마스킹', badge: 'bg-teal-100 text-teal-700' },
-    { value: 'sentence_completion', label: 'Sentence Completion', desc: '독립 문장 빈칸 — 짧은 문장, 각 1개 빈칸', badge: 'bg-blue-100 text-blue-700' },
-    { value: 'daily_life_email', label: 'Daily Life — Email', desc: '이메일 형식 실용문 + 독해 문제', badge: 'bg-cyan-100 text-cyan-700' },
-    { value: 'daily_life_text_chain', label: 'Daily Life — Text Chain', desc: '그룹 채팅 형식 (3-4명) + 독해 문제', badge: 'bg-sky-100 text-sky-700' },
-    { value: 'academic_passage', label: 'Academic Passage', desc: '200-300단어 학술 지문 + 여러 문제 세트', badge: 'bg-indigo-100 text-indigo-700' },
+    { value: 'complete_the_words',       label: 'Complete the Words',       desc: '단락형 빈칸 — 지문 속 단어 뒷부분 마스킹', badge: 'bg-teal-100 text-teal-700' },
+    { value: 'sentence_completion',      label: 'Sentence Completion',      desc: '독립 문장 빈칸 — 짧은 문장, 각 1개 빈칸', badge: 'bg-blue-100 text-blue-700' },
+    { value: 'daily_life_email',         label: 'Daily Life — Email',       desc: '이메일 형식 실용문 + 독해 문제', badge: 'bg-cyan-100 text-cyan-700' },
+    { value: 'daily_life_text_chain',    label: 'Daily Life — Text Chain',  desc: '그룹 채팅 형식 (3-4명) + 독해 문제', badge: 'bg-sky-100 text-sky-700' },
+    { value: 'daily_life_notice',        label: 'Daily Life — Notice',      desc: '공식 공지문 (규정·정책·안내) + 독해 문제', badge: 'bg-cyan-100 text-cyan-700' },
+    { value: 'daily_life_guide',         label: 'Daily Life — Guide',       desc: '가이드/매뉴얼 (단계별 안내) + 독해 문제', badge: 'bg-sky-100 text-sky-700' },
+    { value: 'daily_life_article',       label: 'Daily Life — Article',     desc: '뉴스·잡지 기사 + 독해 문제', badge: 'bg-cyan-100 text-cyan-700' },
+    { value: 'daily_life_campus_notice', label: 'Daily Life — Campus Notice', desc: '대학 교내 공지문 + 독해 문제', badge: 'bg-sky-100 text-sky-700' },
+    { value: 'academic_passage',         label: 'Academic Passage',         desc: '200-300단어 학술 지문 + 여러 문제 세트', badge: 'bg-indigo-100 text-indigo-700' },
   ],
   listening: [
     { value: 'choose_response',    label: 'Choose a Response',  desc: '짧은 한마디 듣고 적절한 대답 선택',       badge: 'bg-emerald-100 text-emerald-700' },
@@ -43,13 +47,28 @@ const SUBTYPE_OPTIONS: Record<string, { value: string; label: string; desc: stri
   ],
 }
 
-const MULTI_QPP_SUBTYPES = ['daily_life_email', 'daily_life_text_chain', 'academic_passage', 'conversation', 'academic_talk', 'campus_announcement']
+const MULTI_QPP_SUBTYPES = [
+  'daily_life_email', 'daily_life_text_chain', 'daily_life_notice', 'daily_life_guide',
+  'daily_life_article', 'daily_life_campus_notice',
+  'academic_passage', 'conversation', 'academic_talk', 'campus_announcement',
+  'listen_and_repeat', 'take_an_interview',
+]
+
+// 스피킹 전용 라벨
+const SPEAKING_SET_LABELS: Record<string, { setLabel: string; perSetLabel: string }> = {
+  listen_and_repeat: { setLabel: '세트 개수', perSetLabel: '세트당 문장 개수' },
+  take_an_interview: { setLabel: '인터뷰 셋 개수', perSetLabel: '셋당 질문 개수' },
+}
 
 // Per-subtype word/message count config for teacher-adjustable stepper
 const WORD_COUNT_CONFIG: Record<string, { default: number; step: number; min: number; max: number; unit: string }> = {
   complete_the_words:    { default: 100, step: 5,  min: 50,  max: 300, unit: '단어' },
-  daily_life_email:      { default: 80,  step: 5,  min: 40,  max: 200, unit: '단어' },
-  daily_life_text_chain: { default: 8,   step: 1,  min: 4,   max: 30,  unit: '메시지' },
+  daily_life_email:          { default: 80, step: 5, min: 40, max: 200, unit: '단어' },
+  daily_life_text_chain:     { default: 8,  step: 1, min: 4,  max: 30,  unit: '메시지' },
+  daily_life_notice:         { default: 80, step: 5, min: 40, max: 200, unit: '단어' },
+  daily_life_guide:          { default: 80, step: 5, min: 40, max: 200, unit: '단어' },
+  daily_life_article:        { default: 80, step: 5, min: 40, max: 200, unit: '단어' },
+  daily_life_campus_notice:  { default: 80, step: 5, min: 40, max: 200, unit: '단어' },
   academic_passage:      { default: 220, step: 5,  min: 100, max: 400, unit: '단어' },
   conversation:          { default: 80,  step: 5,  min: 40,  max: 200, unit: '단어' },
   academic_talk:         { default: 150, step: 5,  min: 80,  max: 400, unit: '단어' },
@@ -141,6 +160,9 @@ export default function GenerateQuestionsPage() {
   const subtypeList = SUBTYPE_OPTIONS[category] ?? []
   const selectedSubtypeInfo = subtypeList.find(s => s.value === subtype)
   const isMultiQpp = subtype !== null && MULTI_QPP_SUBTYPES.includes(subtype)
+  const speakingLabels = subtype ? SPEAKING_SET_LABELS[subtype] : null
+  const setCountLabel = speakingLabels?.setLabel ?? '문제 Set 개수'
+  const perSetLabel = speakingLabels?.perSetLabel ?? '지문당 문제 개수'
 
   return (
     <div className="p-7 max-w-3xl">
@@ -285,7 +307,7 @@ export default function GenerateQuestionsPage() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              {isMultiQpp ? '문제 Set 개수' : '문제 개수'}
+              {isMultiQpp ? setCountLabel : '문제 개수'}
             </label>
             <select value={count} onChange={e => setCount(Number(e.target.value))}
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500">
@@ -300,11 +322,11 @@ export default function GenerateQuestionsPage() {
           </div>
         </div>
 
-        {/* 지문당 문제 개수 (multi-QPP subtypes only) */}
+        {/* 지문/셋당 문제 개수 (multi-QPP subtypes only) */}
         {isMultiQpp && (
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              지문당 문제 개수
+              {perSetLabel}
               <span className="ml-2 text-xs font-normal text-gray-400">총 {count * questionsPerPassage}개 문제 생성</span>
             </label>
             <div className="flex gap-2">
@@ -368,12 +390,12 @@ export default function GenerateQuestionsPage() {
                         </span>
                       )}
                       {q.passage && (
-                        <div className="bg-gray-50 border-l-2 border-blue-400 p-3 rounded text-xs text-gray-600 mb-3 line-clamp-3">
+                        <div className="bg-gray-50 border-l-2 border-blue-400 p-3 rounded text-xs text-gray-600 mb-3 whitespace-pre-wrap">
                           {q.passage}
                         </div>
                       )}
                       {q.audio_script && !q.passage && (
-                        <div className="bg-emerald-50 border-l-2 border-emerald-400 p-3 rounded text-xs text-gray-600 mb-3 line-clamp-3">
+                        <div className="bg-emerald-50 border-l-2 border-emerald-400 p-3 rounded text-xs text-gray-600 mb-3 whitespace-pre-wrap">
                           {q.audio_script}
                         </div>
                       )}

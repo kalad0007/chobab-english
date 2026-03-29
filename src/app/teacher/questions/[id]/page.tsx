@@ -5,6 +5,7 @@ import { CATEGORY_LABELS, QUESTION_SUBTYPE_LABELS, getDiffInfo, usesAlphaOptions
 import { ArrowLeft, Pencil, Volume2 } from 'lucide-react'
 import type { Question } from '@/types/database'
 import BuildASentencePlayer from '@/components/ui/BuildASentencePlayer'
+import VocabWords from '@/components/ui/VocabWords'
 
 const CATEGORY_COLORS: Record<string, string> = {
   reading:   'bg-blue-100 text-blue-700',
@@ -164,18 +165,28 @@ export default async function QuestionPreviewPage({
         )}
       </div>
 
-      {/* 리스닝 음성 스크립트 + 재생 — 문제보다 위 */}
-      {question.category === 'listening' && (question.audio_script || (question as Question & { audio_url?: string }).audio_url) && (
-        <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 mb-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <Volume2 size={16} className="text-emerald-600" />
-            <p className="text-sm font-bold text-emerald-700">음성 스크립트</p>
+      {/* 리스닝/스피킹 음성 스크립트 + 재생 — 문제보다 위 */}
+      {(question.category === 'listening' || question.category === 'speaking') && (question.audio_script || (question as Question & { audio_url?: string }).audio_url) && (
+        <div className={`border rounded-2xl p-5 mb-4 space-y-3 ${question.category === 'speaking' ? 'bg-orange-50 border-orange-100' : 'bg-emerald-50 border-emerald-100'}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Volume2 size={16} className={question.category === 'speaking' ? 'text-orange-600' : 'text-emerald-600'} />
+              <p className={`text-sm font-bold ${question.category === 'speaking' ? 'text-orange-700' : 'text-emerald-700'}`}>
+                {question.category === 'speaking' ? '음성 (스피킹)' : '음성 스크립트'}
+              </p>
+            </div>
+            {!(question as Question & { audio_url?: string }).audio_url && (
+              <Link href={`/teacher/questions/${question.id}/edit`}
+                className={`text-xs px-3 py-1 rounded-lg font-semibold transition ${question.category === 'speaking' ? 'text-orange-700 bg-orange-100 hover:bg-orange-200' : 'text-emerald-700 bg-emerald-100 hover:bg-emerald-200'}`}>
+                + AI 음성 생성
+              </Link>
+            )}
           </div>
           {(question as Question & { audio_url?: string }).audio_url && (
             <audio controls src={(question as Question & { audio_url?: string }).audio_url} className="w-full rounded-xl" />
           )}
           {question.audio_script && (
-            <p className="text-sm text-emerald-900 whitespace-pre-wrap leading-7">{question.audio_script}</p>
+            <p className={`text-sm whitespace-pre-wrap leading-7 ${question.category === 'speaking' ? 'text-orange-900' : 'text-emerald-900'}`}>{question.audio_script}</p>
           )}
         </div>
       )}
@@ -299,6 +310,9 @@ export default async function QuestionPreviewPage({
               <p className="text-sm text-gray-700 leading-6 whitespace-pre-wrap">{explanationText}</p>
             </div>
           )}
+          {(question as Question & { vocab_words?: { word: string; def: string; example?: string }[] | null }).vocab_words?.length ? (
+            <VocabWords words={(question as Question & { vocab_words?: { word: string; def: string; example?: string }[] | null }).vocab_words!} defaultOpen />
+          ) : null}
         </div>
       </details>
     </div>
