@@ -7,6 +7,7 @@ import {
   Check, Send, BookOpen, ChevronLeft, Highlighter, Scissors, BookA, X, Wand2
 } from 'lucide-react'
 import { createPassage } from '../actions'
+import AutoResizeTextarea from '@/components/ui/AutoResizeTextarea'
 import { TOEFL_TOPICS } from '../../vocab/constants'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -118,7 +119,7 @@ export default function NewPassagePage() {
         body: JSON.stringify({ text: para.text, topic }),
       })
       const data = await res.json()
-      if (data.text_ko) updatePara(id, { text_ko: data.text_ko })
+      if (data.text_ko) updatePara(id, { text_ko: data.text_ko.replace(/\n\n+/g, '\n') })
     } finally {
       updatePara(id, { translating: false })
     }
@@ -327,12 +328,12 @@ export default function NewPassagePage() {
 
             {/* Text area or annotate view */}
             {para.mode === 'edit' ? (
-              <textarea
+              <AutoResizeTextarea
                 value={para.text}
                 onChange={e => updatePara(para.id, { text: e.target.value })}
                 placeholder="영어 본문을 입력하세요..."
-                rows={4}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none leading-relaxed"
+                minRows={4}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 leading-relaxed"
               />
             ) : (
               <div>
@@ -363,12 +364,12 @@ export default function NewPassagePage() {
             {/* Korean translation */}
             <div className="mt-3">
               <label className="text-[11px] font-bold text-blue-500 mb-1 block">한국어 번역</label>
-              <textarea
+              <AutoResizeTextarea
                 value={para.text_ko}
                 onChange={e => updatePara(para.id, { text_ko: e.target.value })}
                 placeholder="AI 번역 버튼을 누르거나 직접 입력하세요..."
-                rows={3}
-                className="w-full border border-blue-100 bg-blue-50 rounded-xl px-3 py-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none leading-relaxed"
+                minRows={2}
+                className="w-full border border-blue-100 bg-blue-50 rounded-xl px-3 py-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300 leading-normal"
               />
             </div>
           </div>

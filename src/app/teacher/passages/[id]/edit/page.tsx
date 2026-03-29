@@ -7,6 +7,7 @@ import {
   Check, Send, BookOpen, ChevronLeft, Highlighter, Scissors, BookA, X
 } from 'lucide-react'
 import { updatePassage } from '../../actions'
+import AutoResizeTextarea from '@/components/ui/AutoResizeTextarea'
 import { TOEFL_TOPICS } from '../../../vocab/constants'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -111,7 +112,7 @@ export default function EditPassagePage() {
         body: JSON.stringify({ text: para.text, topic }),
       })
       const data = await res.json()
-      if (data.text_ko) updatePara(pid, { text_ko: data.text_ko })
+      if (data.text_ko) updatePara(pid, { text_ko: data.text_ko.replace(/\n\n+/g, '\n') })
     } finally { updatePara(pid, { translating: false }) }
   }
 
@@ -208,8 +209,8 @@ export default function EditPassagePage() {
               </div>
             </div>
             {para.mode === 'edit' ? (
-              <textarea value={para.text} onChange={e => updatePara(para.id, { text: e.target.value })}
-                rows={4} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none leading-relaxed" />
+              <AutoResizeTextarea value={para.text} onChange={e => updatePara(para.id, { text: e.target.value })}
+                minRows={4} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 leading-relaxed" />
             ) : (
               <div>
                 <p className="text-[11px] text-amber-600 font-semibold mb-1.5">텍스트를 드래그하여 주석을 추가하세요</p>
@@ -229,8 +230,9 @@ export default function EditPassagePage() {
             )}
             <div className="mt-3">
               <label className="text-[11px] font-bold text-blue-500 mb-1 block">한국어 번역</label>
-              <textarea value={para.text_ko} onChange={e => updatePara(para.id, { text_ko: e.target.value })}
-                rows={3} className="w-full border border-blue-100 bg-blue-50 rounded-xl px-3 py-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none leading-relaxed" />
+              <AutoResizeTextarea value={para.text_ko} onChange={e => updatePara(para.id, { text_ko: e.target.value })}
+                placeholder="AI 번역 버튼을 누르거나 직접 입력하세요..."
+                minRows={2} className="w-full border border-blue-100 bg-blue-50 rounded-xl px-3 py-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300 leading-normal" />
             </div>
           </div>
         ))}
