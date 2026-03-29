@@ -34,6 +34,9 @@ export default function EditPassagePage() {
   const [selectedClasses, setSelectedClasses] = useState<Set<string>>(new Set())
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [addingVocabId, setAddingVocabId] = useState<string | null>(null)
+  const [newVocab, setNewVocab] = useState({ word: '', meaning_ko: '', context: '' })
+
   const [toolbar, setToolbar] = useState<Toolbar | null>(null)
   const [vocabQuery, setVocabQuery] = useState('')
   const [vocabResults, setVocabResults] = useState<VocabWord[]>([])
@@ -162,6 +165,20 @@ export default function EditPassagePage() {
     setParagraphs(prev => prev.map(p => p.id === paraId ? { ...p, annotations: p.annotations.filter((_, i) => i !== idx) } : p))
   }
 
+  function removeVocabItem(paraId: string, idx: number) {
+    setParagraphs(prev => prev.map(p =>
+      p.id === paraId ? { ...p, vocab_list: p.vocab_list.filter((_, i) => i !== idx) } : p
+    ))
+  }
+  function confirmAddVocab(paraId: string) {
+    if (!newVocab.word.trim()) return
+    setParagraphs(prev => prev.map(p =>
+      p.id === paraId ? { ...p, vocab_list: [...p.vocab_list, { ...newVocab }] } : p
+    ))
+    setAddingVocabId(null)
+    setNewVocab({ word: '', meaning_ko: '', context: '' })
+  }
+
   async function handleSave() {
     if (!title.trim()) return setError('제목을 입력하세요')
     const validParas = paragraphs.filter(p => p.text.trim())
@@ -278,9 +295,16 @@ export default function EditPassagePage() {
                 placeholder="AI 번역·해설 버튼을 누르거나 직접 입력하세요..."
                 rows={2} className="w-full border border-emerald-100 bg-emerald-50 rounded-xl px-3 py-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-300 leading-normal" />
             </div>
-            {para.vocab_list && para.vocab_list.length > 0 && (
-              <div className="mt-2">
-                <label className="text-[11px] font-bold text-purple-600 mb-1 block">📚 주요 어휘</label>
+            <div className="mt-2">
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-bold text-purple-600">📚 주요 어휘</label>
+                <button
+                  type="button"
+                  onClick={() => { setAddingVocabId(para.id); setNewVocab({ word: '', meaning_ko: '', context: '' }) }}
+                  className="text-[11px] font-bold text-purple-500 hover:text-purple-700 px-2 py-0.5 rounded-lg hover:bg-purple-50 transition"
+                >+ 추가</button>
+              </div>
+              {(para.vocab_list.length > 0 || addingVocabId === para.id) && (
                 <div className="overflow-x-auto rounded-xl border border-purple-100">
                   <table className="w-full text-xs border-collapse">
                     <thead>
@@ -288,6 +312,7 @@ export default function EditPassagePage() {
                         <th className="text-left px-2 py-1.5 text-purple-600 font-bold border-b border-purple-100 w-1/5">단어</th>
                         <th className="text-left px-2 py-1.5 text-purple-600 font-bold border-b border-purple-100 w-1/5">뜻</th>
                         <th className="text-left px-2 py-1.5 text-purple-600 font-bold border-b border-purple-100">문맥</th>
+                        <th className="border-b border-purple-100 w-6" />
                       </tr>
                     </thead>
                     <tbody>
@@ -296,13 +321,42 @@ export default function EditPassagePage() {
                           <td className="px-2 py-1.5 font-semibold text-gray-800 border-b border-purple-50">{v.word}</td>
                           <td className="px-2 py-1.5 text-purple-700 border-b border-purple-50">{v.meaning_ko}</td>
                           <td className="px-2 py-1.5 text-gray-600 border-b border-purple-50 leading-relaxed">{v.context}</td>
+                          <td className="px-1 border-b border-purple-50 text-center">
+                            <button type="button" onClick={() => removeVocabItem(para.id, i)}
+                              className="text-gray-300 hover:text-red-400 transition"><X size={10} /></button>
+                          </td>
                         </tr>
                       ))}
+                      {addingVocabId === para.id && (
+                        <tr className="bg-purple-50/60">
+                          <td className="px-1 py-1 border-b border-purple-100">
+                            <input autoFocus value={newVocab.word} onChange={e => setNewVocab(v => ({ ...v, word: e.target.value }))}
+                              placeholder="단어/구" className="w-full px-1.5 py-1 border border-purple-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-purple-400" />
+                          </td>
+                          <td className="px-1 py-1 border-b border-purple-100">
+                            <input value={newVocab.meaning_ko} onChange={e => setNewVocab(v => ({ ...v, meaning_ko: e.target.value }))}
+                              placeholder="한국어 뜻" className="w-full px-1.5 py-1 border border-purple-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-purple-400" />
+                          </td>
+                          <td className="px-1 py-1 border-b border-purple-100">
+                            <input value={newVocab.context} onChange={e => setNewVocab(v => ({ ...v, context: e.target.value }))}
+                              onKeyDown={e => e.key === 'Enter' && confirmAddVocab(para.id)}
+                              placeholder="문맥 설명" className="w-full px-1.5 py-1 border border-purple-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-purple-400" />
+                          </td>
+                          <td className="px-1 py-1 border-b border-purple-100">
+                            <div className="flex gap-0.5">
+                              <button type="button" onClick={() => confirmAddVocab(para.id)}
+                                className="text-purple-600 hover:text-purple-800 transition"><Check size={12} /></button>
+                              <button type="button" onClick={() => setAddingVocabId(null)}
+                                className="text-gray-300 hover:text-gray-500 transition"><X size={10} /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         ))}
       </div>
