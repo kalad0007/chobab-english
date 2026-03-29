@@ -183,8 +183,8 @@ export default function NewPassagePage() {
     setParagraphs(prev => prev.map(p =>
       p.id === paraId ? { ...p, vocab_list: [...p.vocab_list, { ...newVocab }] } : p
     ))
-    setAddingVocabId(null)
     setNewVocab({ word: '', meaning_ko: '', context: '' })
+    // 폼 유지 — 연속 입력 가능, X 버튼으로 닫음
   }
 
   async function searchQuestions(q: string) {
@@ -469,7 +469,7 @@ export default function NewPassagePage() {
                       {addingVocabId === para.id && (
                         <tr className="bg-purple-50/60">
                           <td className="px-1 py-1 border-b border-purple-100">
-                            <input autoFocus value={newVocab.word} onChange={e => setNewVocab(v => ({ ...v, word: e.target.value }))}
+                            <input key={para.vocab_list.length} autoFocus value={newVocab.word} onChange={e => setNewVocab(v => ({ ...v, word: e.target.value }))}
                               placeholder="단어/구" className="w-full px-1.5 py-1 border border-purple-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-purple-400" />
                           </td>
                           <td className="px-1 py-1 border-b border-purple-100">
