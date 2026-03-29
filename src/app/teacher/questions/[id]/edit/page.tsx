@@ -281,7 +281,7 @@ export default function EditQuestionPage() {
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">요약 내용</label>
                 <textarea value={summary} onChange={e => setSummary(e.target.value)}
                   placeholder="예: 환경오염이 기후변화에 미치는 영향을 다룬 학술 지문"
-                  rows={2}
+                  rows={4}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
               </div>
             </div>
@@ -297,27 +297,42 @@ export default function EditQuestionPage() {
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">요약 내용</label>
                 <textarea value={summary} onChange={e => setSummary(e.target.value)}
                   placeholder="예: 환경오염이 기후변화에 미치는 영향을 다룬 학술 지문"
-                  rows={2}
+                  rows={4}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
               </div>
             </div>
           )}
 
-          {/* 난이도 — 11-level grid */}
+          {/* 난이도 — 슬라이더 */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">난이도</label>
-            <div className="flex flex-wrap gap-1.5">
-              {DIFFICULTY_LEVELS.map(d => (
-                <button key={d.value} type="button" onClick={() => setDifficulty(d.value)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition border ${
-                    difficulty === d.value
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-white text-gray-500 border-gray-200 hover:border-blue-300'
-                  }`}>
-                  {d.label} <span className="font-normal opacity-70">{d.name}</span>
-                </button>
-              ))}
-            </div>
+            <label className="block text-sm font-semibold text-gray-700 mb-3">난이도</label>
+            {(() => {
+              const idx = Math.max(0, Math.min(DIFFICULTY_LEVELS.length - 1, Math.round((difficulty - 1.0) / 0.5)))
+              const d = DIFFICULTY_LEVELS[idx]
+              return (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className={`text-sm font-bold px-3 py-1 rounded-full ${d.color}`}>
+                      {d.cefr} &nbsp; {d.value} &nbsp; {d.name}
+                    </span>
+                    <span className="text-xs text-gray-400">{d.level}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={DIFFICULTY_LEVELS.length - 1}
+                    step={1}
+                    value={idx}
+                    onChange={e => setDifficulty(DIFFICULTY_LEVELS[Number(e.target.value)].value)}
+                    className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  />
+                  <div className="flex justify-between text-[10px] text-gray-400 px-0.5">
+                    <span>A1 기초</span>
+                    <span>C2+ Mastery</span>
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         </div>
 

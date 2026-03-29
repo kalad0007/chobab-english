@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { Underline } from 'lucide-react'
 
 interface Props {
@@ -13,13 +13,16 @@ interface Props {
 
 export default function UnderlineTextarea({ value, onChange, placeholder, rows = 5, className }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null)
+  // 모바일은 버튼 탭 시 포커스가 이동해 selection이 초기화되므로 별도 저장
+  const [savedSel, setSavedSel] = useState<[number, number] | null>(null)
 
   function handleUnderline() {
     const el = ref.current
     if (!el) return
 
-    const start = el.selectionStart
-    const end = el.selectionEnd
+    // 저장된 selection 우선, 없으면 현재 selection 사용
+    const start = savedSel?.[0] ?? el.selectionStart
+    const end   = savedSel?.[1] ?? el.selectionEnd
 
     if (start === end) {
       alert('밑줄을 그을 텍스트를 먼저 선택하세요.')
@@ -29,6 +32,7 @@ export default function UnderlineTextarea({ value, onChange, placeholder, rows =
     const selected = value.slice(start, end)
     const newValue = value.slice(0, start) + `<u>${selected}</u>` + value.slice(end)
     onChange(newValue)
+    setSavedSel(null)
 
     // 커서 위치 복원
     setTimeout(() => {
@@ -42,6 +46,8 @@ export default function UnderlineTextarea({ value, onChange, placeholder, rows =
       <div className="flex items-center gap-2">
         <button
           type="button"
+          // 데스크톱: mousedown 에서 preventDefault → textarea 포커스 유지
+          onMouseDown={e => e.preventDefault()}
           onClick={handleUnderline}
           title="선택한 텍스트에 밑줄 추가"
           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-lg hover:bg-gray-50 transition text-gray-600"
@@ -55,6 +61,11 @@ export default function UnderlineTextarea({ value, onChange, placeholder, rows =
         ref={ref}
         value={value}
         onChange={e => onChange(e.target.value)}
+        // 텍스트 선택할 때마다 저장 (모바일 터치 선택도 이 이벤트 발생)
+        onSelect={e => {
+          const t = e.currentTarget
+          setSavedSel([t.selectionStart, t.selectionEnd])
+        }}
         placeholder={placeholder}
         rows={rows}
         className={className ?? 'w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono'}
