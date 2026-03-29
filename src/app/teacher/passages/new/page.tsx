@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { createPassage } from '../actions'
 import AutoResizeTextarea from '@/components/ui/AutoResizeTextarea'
+import UnderlineTextarea from '@/components/ui/UnderlineTextarea'
 import { TOEFL_TOPICS } from '../../vocab/constants'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -397,22 +398,22 @@ export default function NewPassagePage() {
             {/* Korean translation */}
             <div className="mt-3">
               <label className="text-[11px] font-bold text-blue-500 mb-1 block">한국어 번역</label>
-              <AutoResizeTextarea
+              <UnderlineTextarea
                 value={para.text_ko}
-                onChange={e => updatePara(para.id, { text_ko: e.target.value })}
+                onChange={v => updatePara(para.id, { text_ko: v })}
                 placeholder="AI 번역·해설 버튼을 누르거나 직접 입력하세요..."
-                minRows={2}
+                rows={2}
                 className="w-full border border-blue-100 bg-blue-50 rounded-xl px-3 py-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300 leading-normal"
               />
             </div>
             {/* 독해 해설 */}
             <div className="mt-2">
               <label className="text-[11px] font-bold text-emerald-600 mb-1 block">독해 해설</label>
-              <AutoResizeTextarea
+              <UnderlineTextarea
                 value={para.explanation}
-                onChange={e => updatePara(para.id, { explanation: e.target.value })}
+                onChange={v => updatePara(para.id, { explanation: v })}
                 placeholder="AI 번역·해설 버튼을 누르거나 직접 입력하세요..."
-                minRows={2}
+                rows={2}
                 className="w-full border border-emerald-100 bg-emerald-50 rounded-xl px-3 py-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-300 leading-normal"
               />
             </div>

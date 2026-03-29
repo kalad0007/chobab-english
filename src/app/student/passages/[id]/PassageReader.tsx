@@ -351,7 +351,8 @@ export default function PassageReader({
                 {/* Translation */}
                 {showTrans && hasTrans && (
                   <div className="mt-3 pl-4 border-l-2 border-blue-200">
-                    <p className="text-sm text-blue-700 leading-normal whitespace-pre-line">{para.text_ko}</p>
+                    <p className="text-sm text-blue-700 leading-normal"
+                      dangerouslySetInnerHTML={{ __html: para.text_ko.replace(/\n/g, '<br>') }} />
                   </div>
                 )}
 
@@ -359,7 +360,8 @@ export default function PassageReader({
                 {showExp && hasExp && (
                   <div className="mt-3 pl-4 border-l-2 border-emerald-200">
                     <p className="text-[11px] font-bold text-emerald-600 mb-1">독해 해설</p>
-                    <p className="text-sm text-emerald-800 leading-normal">{para.explanation}</p>
+                    <p className="text-sm text-emerald-800 leading-normal"
+                      dangerouslySetInnerHTML={{ __html: para.explanation.replace(/\n/g, '<br>') }} />
                   </div>
                 )}
 
