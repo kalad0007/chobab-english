@@ -18,6 +18,7 @@ export interface ParagraphInput {
   order_num: number
   text: string
   text_ko: string
+  explanation: string
   annotations: Annotation[]
 }
 
@@ -57,6 +58,7 @@ export async function createPassage(input: PassageInput): Promise<{ error?: stri
     order_num: p.order_num,
     text: p.text.trim(),
     text_ko: p.text_ko.trim() || null,
+    explanation: p.explanation?.trim() || null,
     annotations: p.annotations,
   }))
 
@@ -103,6 +105,7 @@ export async function updatePassage(
     order_num: p.order_num,
     text: p.text.trim(),
     text_ko: p.text_ko.trim() || null,
+    explanation: p.explanation?.trim() || null,
     annotations: p.annotations,
   }))
   const { error: paraErr } = await admin.from('passage_paragraphs').insert(paraRows)

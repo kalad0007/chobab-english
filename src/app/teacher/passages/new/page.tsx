@@ -24,7 +24,7 @@ export default function NewPassagePage() {
   const [difficulty, setDifficulty] = useState(3.0)
   const [source, setSource] = useState('')
   const [paragraphs, setParagraphs] = useState<ParagraphState[]>([
-    { id: uid(), text: '', text_ko: '', annotations: [], mode: 'edit', translating: false },
+    { id: uid(), text: '', text_ko: '', explanation: '', annotations: [], mode: 'edit', translating: false },
   ])
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([])
   const [selectedClasses, setSelectedClasses] = useState<Set<string>>(new Set())
@@ -90,7 +90,7 @@ export default function NewPassagePage() {
   }
 
   function addParagraph() {
-    setParagraphs(prev => [...prev, { id: uid(), text: '', text_ko: '', annotations: [], mode: 'edit', translating: false }])
+    setParagraphs(prev => [...prev, { id: uid(), text: '', text_ko: '', explanation: '', annotations: [], mode: 'edit', translating: false }])
   }
 
   function removeParagraph(id: string) {
@@ -119,7 +119,8 @@ export default function NewPassagePage() {
         body: JSON.stringify({ text: para.text, topic }),
       })
       const data = await res.json()
-      if (data.text_ko) updatePara(id, { text_ko: data.text_ko.replace(/\n\n+/g, '\n') })
+      if (data.text_ko) updatePara(id, { text_ko: data.text_ko })
+      if (data.explanation) updatePara(id, { explanation: data.explanation })
     } finally {
       updatePara(id, { translating: false })
     }
@@ -174,7 +175,7 @@ export default function NewPassagePage() {
       if (data.title) setTitle(data.title)
       if (data.paragraphs?.length) {
         setParagraphs(data.paragraphs.map((text: string) => ({
-          id: uid(), text, text_ko: '', annotations: [], mode: 'edit' as const, translating: false,
+          id: uid(), text, text_ko: '', explanation: '', annotations: [], mode: 'edit' as const, translating: false,
         })))
       }
       setShowAiPanel(false)
@@ -194,7 +195,7 @@ export default function NewPassagePage() {
       title, topic_category: topic, difficulty, source,
       classIds: [...selectedClasses],
       paragraphs: validParas.map((p, i) => ({
-        order_num: i + 1, text: p.text, text_ko: p.text_ko, annotations: p.annotations,
+        order_num: i + 1, text: p.text, text_ko: p.text_ko, explanation: p.explanation, annotations: p.annotations,
       })),
     })
     setSaving(false)
@@ -306,7 +307,7 @@ export default function NewPassagePage() {
                   disabled={para.translating || !para.text.trim()}
                   className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 transition disabled:opacity-40">
                   {para.translating ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
-                  AI 번역
+                  AI 번역·해설
                 </button>
                 {/* Move up/down */}
                 <button onClick={() => moveParagraph(para.id, -1)} disabled={idx === 0}
@@ -367,9 +368,20 @@ export default function NewPassagePage() {
               <AutoResizeTextarea
                 value={para.text_ko}
                 onChange={e => updatePara(para.id, { text_ko: e.target.value })}
-                placeholder="AI 번역 버튼을 누르거나 직접 입력하세요..."
+                placeholder="AI 번역·해설 버튼을 누르거나 직접 입력하세요..."
                 minRows={2}
                 className="w-full border border-blue-100 bg-blue-50 rounded-xl px-3 py-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300 leading-normal"
+              />
+            </div>
+            {/* 독해 해설 */}
+            <div className="mt-2">
+              <label className="text-[11px] font-bold text-emerald-600 mb-1 block">독해 해설</label>
+              <AutoResizeTextarea
+                value={para.explanation}
+                onChange={e => updatePara(para.id, { explanation: e.target.value })}
+                placeholder="AI 번역·해설 버튼을 누르거나 직접 입력하세요..."
+                minRows={2}
+                className="w-full border border-emerald-100 bg-emerald-50 rounded-xl px-3 py-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-300 leading-normal"
               />
             </div>
           </div>

@@ -8,6 +8,7 @@ export interface ParagraphState {
   id: string
   text: string
   text_ko: string
+  explanation: string
   annotations: Annotation[]
   mode: 'edit' | 'annotate'
   translating: boolean

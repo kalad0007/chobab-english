@@ -53,7 +53,7 @@ export default function EditPassagePage() {
         setDifficulty(p.difficulty); setSource(p.source ?? '')
       }
       if (paras) setParagraphs(paras.map(r => ({
-        id: uid(), text: r.text, text_ko: r.text_ko ?? '',
+        id: uid(), text: r.text, text_ko: r.text_ko ?? '', explanation: (r as Record<string, unknown>).explanation as string ?? '',
         annotations: r.annotations ?? [], mode: 'edit' as const, translating: false,
       })))
       if (pc) setSelectedClasses(new Set(pc.map(r => r.class_id)))
@@ -91,7 +91,7 @@ export default function EditPassagePage() {
     setParagraphs(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p))
   }
   function addParagraph() {
-    setParagraphs(prev => [...prev, { id: uid(), text: '', text_ko: '', annotations: [], mode: 'edit', translating: false }])
+    setParagraphs(prev => [...prev, { id: uid(), text: '', text_ko: '', explanation: '', annotations: [], mode: 'edit', translating: false }])
   }
   function removeParagraph(pid: string) { setParagraphs(prev => prev.filter(p => p.id !== pid)) }
   function moveParagraph(pid: string, dir: -1 | 1) {
@@ -112,7 +112,8 @@ export default function EditPassagePage() {
         body: JSON.stringify({ text: para.text, topic }),
       })
       const data = await res.json()
-      if (data.text_ko) updatePara(pid, { text_ko: data.text_ko.replace(/\n\n+/g, '\n') })
+      if (data.text_ko) updatePara(pid, { text_ko: data.text_ko })
+      if (data.explanation) updatePara(pid, { explanation: data.explanation })
     } finally { updatePara(pid, { translating: false }) }
   }
 
@@ -137,7 +138,7 @@ export default function EditPassagePage() {
     setSaving(true); setError('')
     const result = await updatePassage(id, {
       title, topic_category: topic, difficulty, source, classIds: [...selectedClasses],
-      paragraphs: validParas.map((p, i) => ({ order_num: i + 1, text: p.text, text_ko: p.text_ko, annotations: p.annotations })),
+      paragraphs: validParas.map((p, i) => ({ order_num: i + 1, text: p.text, text_ko: p.text_ko, explanation: p.explanation, annotations: p.annotations })),
     })
     setSaving(false)
     if (result.error) return setError(result.error)
@@ -196,7 +197,7 @@ export default function EditPassagePage() {
                 </button>
                 <button onClick={() => translateParagraph(para.id)} disabled={para.translating || !para.text.trim()}
                   className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 transition disabled:opacity-40">
-                  {para.translating ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />} AI 번역
+                  {para.translating ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />} AI 번역·해설
                 </button>
                 <button onClick={() => moveParagraph(para.id, -1)} disabled={idx === 0}
                   className="p-1.5 rounded-lg text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition disabled:opacity-30"><ChevronUp size={13} /></button>
@@ -231,8 +232,14 @@ export default function EditPassagePage() {
             <div className="mt-3">
               <label className="text-[11px] font-bold text-blue-500 mb-1 block">한국어 번역</label>
               <AutoResizeTextarea value={para.text_ko} onChange={e => updatePara(para.id, { text_ko: e.target.value })}
-                placeholder="AI 번역 버튼을 누르거나 직접 입력하세요..."
+                placeholder="AI 번역·해설 버튼을 누르거나 직접 입력하세요..."
                 minRows={2} className="w-full border border-blue-100 bg-blue-50 rounded-xl px-3 py-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300 leading-normal" />
+            </div>
+            <div className="mt-2">
+              <label className="text-[11px] font-bold text-emerald-600 mb-1 block">독해 해설</label>
+              <AutoResizeTextarea value={para.explanation} onChange={e => updatePara(para.id, { explanation: e.target.value })}
+                placeholder="AI 번역·해설 버튼을 누르거나 직접 입력하세요..."
+                minRows={2} className="w-full border border-emerald-100 bg-emerald-50 rounded-xl px-3 py-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-300 leading-normal" />
             </div>
           </div>
         ))}

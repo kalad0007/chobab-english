@@ -16,24 +16,34 @@ export async function POST(req: NextRequest) {
 
   const msg = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1024,
+    max_tokens: 2048,
     messages: [{
       role: 'user',
-      content: `You are a TOEFL reading instructor. Translate this English academic paragraph into Korean using direct reading style (직독직해).
+      content: `You are a TOEFL reading instructor for Korean students. For the following English academic paragraph, provide TWO things:
 
-Rules:
-- Translate sentence by sentence, keeping academic register
-- Each sentence on its own line, matching the original sentence order
-- Do NOT add explanations or parenthetical notes
-- Topic context: ${topic ?? 'general academic'}
+1. A Korean translation (직독직해 style — translate sentence by sentence, one sentence per line, keep academic register, no parenthetical notes)
+2. A reading comprehension commentary in Korean (독해 해설 — explain key vocabulary in context, important grammar structures, main ideas, and how this paragraph fits the passage; write in flowing Korean prose, 3-5 sentences)
+
+Topic context: ${topic ?? 'general academic'}
 
 Paragraph:
 ${text.trim()}
 
-Return ONLY the Korean translation, nothing else.`,
+Return ONLY a JSON object in this exact format (no markdown, no code fences):
+{"text_ko":"Korean translation here, one sentence per line","explanation":"독해 해설 Korean commentary here"}`,
     }],
   })
 
-  const text_ko = (msg.content[0] as { type: string; text: string }).text?.trim()
-  return NextResponse.json({ text_ko })
+  const raw = (msg.content[0] as { type: string; text: string }).text?.trim() ?? ''
+  let text_ko = ''
+  let explanation = ''
+  try {
+    const parsed = JSON.parse(raw)
+    text_ko = (parsed.text_ko ?? '').replace(/\n\n+/g, '\n')
+    explanation = parsed.explanation ?? ''
+  } catch {
+    // fallback: treat as plain translation
+    text_ko = raw.replace(/\n\n+/g, '\n')
+  }
+  return NextResponse.json({ text_ko, explanation })
 }

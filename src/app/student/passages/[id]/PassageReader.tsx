@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, Eye, EyeOff, X } from 'lucide-react'
+import { ChevronLeft, X } from 'lucide-react'
 import { TOEFL_TOPICS } from '@/app/teacher/vocab/constants'
 
 const TOPIC_EMOJI: Record<string, string> = Object.fromEntries(TOEFL_TOPICS.map(t => [t.value, t.emoji]))
@@ -16,7 +16,7 @@ interface Annotation {
 
 interface Paragraph {
   id: string; order_num: number
-  text: string; text_ko: string
+  text: string; text_ko: string; explanation: string
   annotations: Annotation[]
 }
 
@@ -81,8 +81,16 @@ export default function PassageReader({
   passage: Passage
   paragraphs: Paragraph[]
 }) {
-  const [showKo, setShowKo] = useState(false)
+  const [transOpen, setTransOpen] = useState<Set<string>>(new Set())
+  const [expOpen, setExpOpen] = useState<Set<string>>(new Set())
   const [popup, setPopup] = useState<VocabPopup | null>(null)
+
+  function toggleTrans(id: string) {
+    setTransOpen(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+  function toggleExp(id: string) {
+    setExpOpen(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
 
   function handleVocabClick(ann: Annotation, e: React.MouseEvent) {
     if (!ann.word) return
@@ -103,19 +111,13 @@ export default function PassageReader({
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
-      <div className="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between z-10">
+      <div className="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 z-10">
         <Link href="/student/passages" className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition">
           <ChevronLeft size={20} />
         </Link>
-        <div className="text-center flex-1 px-4">
-          <p className="text-xs text-gray-400 font-medium">{emoji} {label} · Band {passage.difficulty.toFixed(1)}</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-gray-400 font-medium truncate">{emoji} {label} · Band {passage.difficulty.toFixed(1)}</p>
         </div>
-        <button
-          onClick={() => setShowKo(v => !v)}
-          className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border-2 transition ${showKo ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-500 hover:border-blue-300'}`}>
-          {showKo ? <Eye size={12} /> : <EyeOff size={12} />}
-          한국어
-        </button>
       </div>
 
       <div className="max-w-2xl mx-auto px-5 py-8">
@@ -135,19 +137,67 @@ export default function PassageReader({
 
         {/* Paragraphs */}
         <div className="space-y-8">
-          {paragraphs.map((para, idx) => (
-            <div key={para.id}>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">¶{idx + 1}</span>
-              </div>
-              <AnnotatedParagraph para={para} onVocabClick={handleVocabClick} />
-              {showKo && para.text_ko && (
-                <div className="mt-3 pl-4 border-l-2 border-blue-200">
-                  <p className="text-sm text-blue-700 leading-relaxed">{para.text_ko}</p>
+          {paragraphs.map((para, idx) => {
+            const showTrans = transOpen.has(para.id)
+            const showExp = expOpen.has(para.id)
+            const hasTrans = !!para.text_ko
+            const hasExp = !!para.explanation
+            return (
+              <div key={para.id}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">¶{idx + 1}</span>
                 </div>
-              )}
-            </div>
-          ))}
+
+                {/* English text */}
+                <AnnotatedParagraph para={para} onVocabClick={handleVocabClick} />
+
+                {/* Translation (revealed on toggle) */}
+                {showTrans && hasTrans && (
+                  <div className="mt-3 pl-4 border-l-2 border-blue-200">
+                    <p className="text-sm text-blue-700 leading-normal">{para.text_ko}</p>
+                  </div>
+                )}
+
+                {/* Explanation (revealed on toggle) */}
+                {showExp && hasExp && (
+                  <div className="mt-3 pl-4 border-l-2 border-emerald-200">
+                    <p className="text-[11px] font-bold text-emerald-600 mb-1">독해 해설</p>
+                    <p className="text-sm text-emerald-800 leading-normal">{para.explanation}</p>
+                  </div>
+                )}
+
+                {/* Toggle buttons */}
+                {(hasTrans || hasExp) && (
+                  <div className="flex gap-2 mt-3">
+                    {hasTrans && (
+                      <button
+                        onClick={() => toggleTrans(para.id)}
+                        className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border-2 transition ${
+                          showTrans
+                            ? 'border-blue-400 bg-blue-50 text-blue-700'
+                            : 'border-gray-200 text-gray-400 hover:border-blue-300 hover:text-blue-500'
+                        }`}
+                      >
+                        🇰🇷 번역 {showTrans ? '▲' : '▼'}
+                      </button>
+                    )}
+                    {hasExp && (
+                      <button
+                        onClick={() => toggleExp(para.id)}
+                        className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border-2 transition ${
+                          showExp
+                            ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
+                            : 'border-gray-200 text-gray-400 hover:border-emerald-300 hover:text-emerald-500'
+                        }`}
+                      >
+                        📖 독해 해설 {showExp ? '▲' : '▼'}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
 

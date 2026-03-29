@@ -28,7 +28,7 @@ export default async function PassagePage({ params }: { params: Promise<{ id: st
 
   const { data: paragraphs } = await admin
     .from('passage_paragraphs')
-    .select('id, order_num, text, text_ko, annotations')
+    .select('id, order_num, text, text_ko, explanation, annotations')
     .eq('passage_id', id)
     .order('order_num')
 
@@ -40,6 +40,7 @@ export default async function PassagePage({ params }: { params: Promise<{ id: st
         order_num: p.order_num,
         text: p.text,
         text_ko: p.text_ko ?? '',
+        explanation: (p as Record<string, unknown>).explanation as string ?? '',
         annotations: (p.annotations ?? []) as {
           type: 'highlight' | 'chunk' | 'vocab'
           start: number; end: number
