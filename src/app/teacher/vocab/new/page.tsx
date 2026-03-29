@@ -206,9 +206,9 @@ export default function NewVocabPage() {
               placeholder="예: indispensable"
               className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-lg font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400" />
             <button onClick={handleAiFill} disabled={filling}
-              className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold rounded-xl transition disabled:opacity-50">
+              className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold rounded-xl transition disabled:opacity-50 flex-shrink-0">
               {filling ? <Loader2 size={15} className="animate-spin" /> : <Wand2 size={15} />}
-              {filling ? '분석 중...' : 'AI 자동완성'}
+              <span className="hidden sm:inline">{filling ? '분석 중...' : 'AI 자동완성'}</span>
             </button>
           </div>
         </div>

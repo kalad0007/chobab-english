@@ -190,7 +190,7 @@ export default function QuestionsClient({ listItems }: Props) {
                     {new Date(rep.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })} · {setQs.length}문제
                   </p>
                 </div>
-                <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition flex-shrink-0">
+                <div className="hidden sm:flex gap-1.5 opacity-0 group-hover:opacity-100 transition flex-shrink-0">
                   <Link href={`/teacher/questions/set/${groupId}`}
                     className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition">
                     <Eye size={12} /> 세트 보기
@@ -246,7 +246,7 @@ export default function QuestionsClient({ listItems }: Props) {
                   {iq.attempt_count > 0 && ` · 정답률 ${Math.round((iq.correct_count / iq.attempt_count) * 100)}% · 출제 ${iq.attempt_count}회`}
                 </p>
               </div>
-              <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition flex-shrink-0">
+              <div className="hidden sm:flex gap-1.5 opacity-0 group-hover:opacity-100 transition flex-shrink-0">
                 <Link href={`/teacher/questions/${iq.id}`}
                   className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition">
                   <Eye size={12} /> 미리보기

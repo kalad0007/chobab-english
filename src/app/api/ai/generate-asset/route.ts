@@ -74,24 +74,30 @@ Return JSON only: {"title":"...", "script":"..."}`
   const ttsKey = process.env.GOOGLE_TTS_API_KEY
   let audioUrl: string | null = null
 
+  const admin = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
   if (ttsKey) {
     let audioBuffer: Buffer = Buffer.alloc(0)
 
     if (isDialogue) {
-      const lines = script.split('\n').filter(l => l.trim())
-      const buffers: Buffer[] = []
-      for (const line of lines) {
-        const trimmed = line.trim()
-        const isA = /^A:/i.test(trimmed)
-        const isB = /^B:/i.test(trimmed)
-        if (isA || isB) {
+      const dialogueLines = script.split('\n').filter(l => l.trim())
+        .map(line => {
+          const trimmed = line.trim()
+          const isA = /^A:/i.test(trimmed)
+          const isB = /^B:/i.test(trimmed)
+          if (!isA && !isB) return null
           const text = trimmed.replace(/^[AB]:\s*/i, '').trim()
-          if (text) {
-            const buf = await synthesize(text, isA ? VOICE_YW : VOICE_YM, ttsKey)
-            if (buf) buffers.push(buf)
-          }
-        }
-      }
+          return text ? { text, voice: isA ? VOICE_YW : VOICE_YM } : null
+        })
+        .filter(Boolean) as { text: string; voice: string }[]
+
+      const results = await Promise.all(
+        dialogueLines.map(({ text, voice }) => synthesize(text, voice, ttsKey))
+      )
+      const buffers = results.filter((b): b is Buffer => b !== null)
       if (buffers.length > 0) audioBuffer = Buffer.concat(buffers)
     } else {
       const buf = await synthesize(script, VOICE_YW, ttsKey)
@@ -99,10 +105,6 @@ Return JSON only: {"title":"...", "script":"..."}`
     }
 
     if (audioBuffer.length > 0) {
-      const admin = createSupabaseClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      )
       const fileName = `assets/${user.id}_${Date.now()}.mp3`
       const { error: uploadErr } = await admin.storage
         .from('question-audio').upload(fileName, audioBuffer, { contentType: 'audio/mpeg', upsert: true })
@@ -133,10 +135,6 @@ Generate 2 multiple-choice questions (4 options each). Return JSON array only:
   } catch { /* empty */ }
 
   // ── 4. Save asset to DB ───────────────────────────────────
-  const admin = createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
   const tags = [subtype, `band_${difficulty}`, ...keywords.split(/[\s,]+/).filter(Boolean).slice(0, 3)]
   const { data: asset } = await admin.from('learning_assets').insert({
     teacher_id: user.id, asset_type: 'audio', title,

@@ -190,7 +190,7 @@ export default function EditQuestionPage() {
       savedExplanation = JSON.stringify({
         title: fbTitle,
         difficulty,
-        timeLimit: fbTimeLimit,
+        timeLimit: Math.round(timeLimit / 60),
         format: questionSubtype === 'complete_the_words' ? 'paragraph' : 'sentences',
         explanation,
       })
@@ -284,11 +284,6 @@ export default function EditQuestionPage() {
                   placeholder="예: 환경오염이 기후변화에 미치는 영향을 다룬 학술 지문"
                   rows={2}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">제한 시간 (분)</label>
-                <input type="number" min={1} max={60} value={fbTimeLimit} onChange={e => setFbTimeLimit(Number(e.target.value))}
-                  className="w-full max-w-xs px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             </div>
           ) : (
