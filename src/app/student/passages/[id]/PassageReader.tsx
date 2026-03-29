@@ -405,40 +405,39 @@ export default function PassageReader({
                 {showVocab && hasVocab && (
                   <div className="mt-3 pl-4 border-l-2 border-purple-200">
                     <p className="text-[11px] font-bold text-purple-600 mb-1.5">📚 주요 어휘</p>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs border-collapse">
-                        <thead>
-                          <tr className="bg-purple-50">
-                            <th className="text-left px-2 py-1.5 text-purple-600 font-bold border border-purple-100 w-1/5">단어</th>
-                            <th className="text-left px-2 py-1.5 text-purple-600 font-bold border border-purple-100 w-1/5">뜻</th>
-                            <th className="text-left px-2 py-1.5 text-purple-600 font-bold border border-purple-100">문맥</th>
-                            <th className="border border-purple-100 w-8" />
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {para.vocab_list.map((v, i) => {
-                            const isSaved = savedWords.has(v.word)
-                            return (
-                              <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-purple-50/40'}>
-                                <td className="px-2 py-1.5 font-semibold text-gray-800 border border-purple-100">{v.word}</td>
-                                <td className="px-2 py-1.5 text-purple-700 border border-purple-100">{v.meaning_ko}</td>
-                                <td className="px-2 py-1.5 text-gray-600 border border-purple-100 leading-relaxed">{v.context}</td>
-                                <td className="px-1.5 text-center border border-purple-100">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-purple-50">
+                          <th className="text-left px-2 py-1.5 text-purple-600 font-bold border border-purple-100 w-1/4">단어</th>
+                          <th className="text-left px-2 py-1.5 text-purple-600 font-bold border border-purple-100 w-1/5">뜻</th>
+                          <th className="text-left px-2 py-1.5 text-purple-600 font-bold border border-purple-100">문맥</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {para.vocab_list.map((v, i) => {
+                          const isSaved = savedWords.has(v.word)
+                          return (
+                            <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-purple-50/40'}>
+                              <td className="px-2 py-2 border border-purple-100">
+                                <div className="flex items-center gap-1.5">
                                   <button
                                     onClick={() => toggleSaveWord(v.word, v.meaning_ko, v.context, passage.id, passage.title)}
                                     disabled={savingWord === v.word}
-                                    className={`transition ${isSaved ? 'text-purple-500' : 'text-gray-300 hover:text-purple-400'}`}
+                                    className={`flex-shrink-0 transition ${isSaved ? 'text-purple-500' : 'text-gray-300 active:text-purple-400'}`}
                                     title={isSaved ? '단어장에서 제거' : '단어장에 추가'}
                                   >
-                                    {isSaved ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
+                                    {isSaved ? <BookmarkCheck size={13} /> : <Bookmark size={13} />}
                                   </button>
-                                </td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
+                                  <span className="font-semibold text-gray-800">{v.word}</span>
+                                </div>
+                              </td>
+                              <td className="px-2 py-2 text-purple-700 border border-purple-100">{v.meaning_ko}</td>
+                              <td className="px-2 py-2 text-gray-600 border border-purple-100 leading-relaxed">{v.context}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 )}
 
