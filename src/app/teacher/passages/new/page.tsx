@@ -11,7 +11,7 @@ import AutoResizeTextarea from '@/components/ui/AutoResizeTextarea'
 import { TOEFL_TOPICS } from '../../vocab/constants'
 import { createClient } from '@/lib/supabase/client'
 import {
-  AnnotatedView, DIFFICULTY_OPTIONS, uid,
+  AnnotatedView, DIFFICULTY_OPTIONS, uid, autoChunkBySentences,
   type ParagraphState, type Toolbar, type VocabWord,
 } from '../_shared'
 import type { Annotation } from '../actions'
@@ -24,7 +24,7 @@ export default function NewPassagePage() {
   const [difficulty, setDifficulty] = useState(3.0)
   const [source, setSource] = useState('')
   const [paragraphs, setParagraphs] = useState<ParagraphState[]>([
-    { id: uid(), text: '', text_ko: '', explanation: '', annotations: [], mode: 'edit', translating: false },
+    { id: uid(), text: '', text_ko: '', explanation: '', annotations: [], mode: 'edit', translating: false, vocab_list: [] },
   ])
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([])
   const [selectedClasses, setSelectedClasses] = useState<Set<string>>(new Set())
@@ -94,7 +94,7 @@ export default function NewPassagePage() {
   }
 
   function addParagraph() {
-    setParagraphs(prev => [...prev, { id: uid(), text: '', text_ko: '', explanation: '', annotations: [], mode: 'edit', translating: false }])
+    setParagraphs(prev => [...prev, { id: uid(), text: '', text_ko: '', explanation: '', annotations: [], mode: 'edit', translating: false, vocab_list: [] }])
   }
 
   function removeParagraph(id: string) {
@@ -125,6 +125,10 @@ export default function NewPassagePage() {
       const data = await res.json()
       if (data.text_ko) updatePara(id, { text_ko: data.text_ko })
       if (data.explanation) updatePara(id, { explanation: data.explanation })
+      if (data.vocab) updatePara(id, { vocab_list: data.vocab })
+      // auto-chunk if not already chunked
+      const hasChunks = para.annotations.some(a => a.type === 'chunk')
+      if (!hasChunks) updatePara(id, { annotations: autoChunkBySentences(para.text) })
     } finally {
       updatePara(id, { translating: false })
     }
@@ -198,7 +202,9 @@ export default function NewPassagePage() {
       if (data.title) setTitle(data.title)
       if (data.paragraphs?.length) {
         setParagraphs(data.paragraphs.map((text: string) => ({
-          id: uid(), text, text_ko: '', explanation: '', annotations: [], mode: 'edit' as const, translating: false,
+          id: uid(), text, text_ko: '', explanation: '', vocab_list: [],
+          annotations: autoChunkBySentences(text),
+          mode: 'edit' as const, translating: false,
         })))
       }
       setShowAiPanel(false)
@@ -219,7 +225,9 @@ export default function NewPassagePage() {
       classIds: [...selectedClasses],
       questionIds: linkedQIds,
       paragraphs: validParas.map((p, i) => ({
-        order_num: i + 1, text: p.text, text_ko: p.text_ko, explanation: p.explanation, annotations: p.annotations,
+        order_num: i + 1, text: p.text, text_ko: p.text_ko, explanation: p.explanation,
+        annotations: p.annotations,
+        vocab_json: p.vocab_list,
       })),
     })
     setSaving(false)

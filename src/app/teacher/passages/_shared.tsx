@@ -4,6 +4,12 @@ import { useRef } from 'react'
 import type { Annotation } from './actions'
 
 // ── Shared types ──────────────────────────────────────────
+export interface VocabItem {
+  word: string
+  meaning_ko: string
+  context: string
+}
+
 export interface ParagraphState {
   id: string
   text: string
@@ -12,6 +18,7 @@ export interface ParagraphState {
   annotations: Annotation[]
   mode: 'edit' | 'annotate'
   translating: boolean
+  vocab_list: VocabItem[]
 }
 
 export interface Toolbar {
@@ -36,7 +43,20 @@ export function uid() { return Math.random().toString(36).slice(2) }
 
 // ── DOM utility ───────────────────────────────────────────
 export function getTextOffset(container: Node, targetNode: Node, targetOffset: number): number {
-  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT)
+  const walker = document.createTreeWalker(
+    container,
+    NodeFilter.SHOW_TEXT,
+    {
+      acceptNode(node: Node) {
+        let el = node.parentElement
+        while (el && el !== (container as Element)) {
+          if ((el as HTMLElement).dataset.sep === 'true') return NodeFilter.FILTER_REJECT
+          el = el.parentElement
+        }
+        return NodeFilter.FILTER_ACCEPT
+      }
+    }
+  )
   let total = 0
   let node = walker.nextNode()
   while (node) {
@@ -97,7 +117,7 @@ export function AnnotatedView({
         if (p.type === 'chunk') return (
           <span key={i}>
             <span className="bg-sky-100 text-sky-800 rounded px-0.5">{p.text}</span>
-            <span className="text-gray-400 font-bold mx-1 select-none">/</span>
+            <span data-sep="true" className="text-gray-400 font-bold mx-1 select-none">/</span>
           </span>
         )
         if (p.type === 'vocab') return (
@@ -112,4 +132,21 @@ export function AnnotatedView({
       )}
     </div>
   )
+}
+
+// ── Auto-chunking utility ─────────────────────────────────
+export function autoChunkBySentences(text: string): Annotation[] {
+  const annotations: Annotation[] = []
+  const re = /[.!?](?:\s|$)/g
+  let start = 0
+  let m: RegExpExecArray | null
+  while ((m = re.exec(text)) !== null) {
+    const end = m.index + 1
+    if (end > start) annotations.push({ type: 'chunk' as const, start, end })
+    start = m.index + m[0].length
+  }
+  if (start < text.length) {
+    annotations.push({ type: 'chunk' as const, start, end: text.length })
+  }
+  return annotations
 }

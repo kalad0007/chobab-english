@@ -11,7 +11,7 @@ import AutoResizeTextarea from '@/components/ui/AutoResizeTextarea'
 import { TOEFL_TOPICS } from '../../../vocab/constants'
 import { createClient } from '@/lib/supabase/client'
 import {
-  AnnotatedView, DIFFICULTY_OPTIONS, uid,
+  AnnotatedView, DIFFICULTY_OPTIONS, uid, autoChunkBySentences,
   type ParagraphState, type Toolbar, type VocabWord,
 } from '../../_shared'
 import type { Annotation } from '../../actions'
@@ -59,6 +59,7 @@ export default function EditPassagePage() {
       if (paras) setParagraphs(paras.map(r => ({
         id: uid(), text: r.text, text_ko: r.text_ko ?? '', explanation: (r as Record<string, unknown>).explanation as string ?? '',
         annotations: r.annotations ?? [], mode: 'edit' as const, translating: false,
+        vocab_list: (r as any).vocab_json ?? [],
       })))
       if (pc) setSelectedClasses(new Set(pc.map(r => r.class_id)))
       if (cls) setClasses(cls)
@@ -97,7 +98,7 @@ export default function EditPassagePage() {
     setParagraphs(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p))
   }
   function addParagraph() {
-    setParagraphs(prev => [...prev, { id: uid(), text: '', text_ko: '', explanation: '', annotations: [], mode: 'edit', translating: false }])
+    setParagraphs(prev => [...prev, { id: uid(), text: '', text_ko: '', explanation: '', annotations: [], mode: 'edit', translating: false, vocab_list: [] }])
   }
   function removeParagraph(pid: string) { setParagraphs(prev => prev.filter(p => p.id !== pid)) }
   function moveParagraph(pid: string, dir: -1 | 1) {
@@ -139,6 +140,10 @@ export default function EditPassagePage() {
       const data = await res.json()
       if (data.text_ko) updatePara(pid, { text_ko: data.text_ko })
       if (data.explanation) updatePara(pid, { explanation: data.explanation })
+      if (data.vocab) updatePara(pid, { vocab_list: data.vocab })
+      // auto-chunk if not already chunked
+      const hasChunks = para.annotations.some(a => a.type === 'chunk')
+      if (!hasChunks) updatePara(pid, { annotations: autoChunkBySentences(para.text) })
     } finally { updatePara(pid, { translating: false }) }
   }
 
@@ -165,7 +170,11 @@ export default function EditPassagePage() {
       title, topic_category: topic, difficulty, source,
       classIds: [...selectedClasses],
       questionIds: linkedQIds,
-      paragraphs: validParas.map((p, i) => ({ order_num: i + 1, text: p.text, text_ko: p.text_ko, explanation: p.explanation, annotations: p.annotations })),
+      paragraphs: validParas.map((p, i) => ({
+        order_num: i + 1, text: p.text, text_ko: p.text_ko, explanation: p.explanation,
+        annotations: p.annotations,
+        vocab_json: p.vocab_list,
+      })),
     })
     setSaving(false)
     if (result.error) return setError(result.error)

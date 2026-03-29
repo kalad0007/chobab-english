@@ -28,7 +28,7 @@ export default async function PassagePage({ params }: { params: Promise<{ id: st
 
   const [{ data: paragraphs }, { data: pqRows }] = await Promise.all([
     admin.from('passage_paragraphs')
-      .select('id, order_num, text, text_ko, explanation, annotations')
+      .select('id, order_num, text, text_ko, explanation, annotations, vocab_json')
       .eq('passage_id', id)
       .order('order_num'),
     admin.from('passage_questions')
@@ -76,6 +76,7 @@ export default async function PassagePage({ params }: { params: Promise<{ id: st
           start: number; end: number
           word?: string; definition_ko?: string; definition_en?: string; synonyms?: string[]
         }[],
+        vocab_list: (Array.isArray((p as any).vocab_json) ? (p as any).vocab_json : []) as { word: string; meaning_ko: string; context: string }[],
       }))}
       quizQuestions={quizQuestions}
     />

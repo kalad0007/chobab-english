@@ -14,10 +14,17 @@ interface Annotation {
   word?: string; definition_ko?: string; definition_en?: string; synonyms?: string[]
 }
 
+interface VocabItem {
+  word: string
+  meaning_ko: string
+  context: string
+}
+
 interface Paragraph {
   id: string; order_num: number
   text: string; text_ko: string; explanation: string
   annotations: Annotation[]
+  vocab_list: VocabItem[]
 }
 
 interface Passage {
@@ -61,6 +68,7 @@ function AnnotatedParagraph({
 }) {
   const parts = renderParts(para.text, para.annotations)
   let chunkIdx = 0
+  const totalChunks = parts.filter(p => p.type === 'chunk').length
 
   return (
     <p className="text-base leading-relaxed text-gray-800">
@@ -82,7 +90,7 @@ function AnnotatedParagraph({
                   {'█'.repeat(Math.min(p.text.length, 8))}
                 </span>
               )}
-              {revealed && <span className="text-gray-300 font-bold mx-1.5 select-none">/</span>}
+              {revealed && thisIdx < totalChunks - 1 && <span className="text-gray-300 font-bold mx-1.5 select-none">/</span>}
             </span>
           )
         }
@@ -336,8 +344,33 @@ export default function PassageReader({
 
                 {/* Translation */}
                 {showTrans && hasTrans && (
-                  <div className="mt-3 pl-4 border-l-2 border-blue-200">
-                    <p className="text-sm text-blue-700 leading-normal">{para.text_ko}</p>
+                  <div className="mt-3 pl-4 border-l-2 border-blue-200 space-y-3">
+                    <p className="text-sm text-blue-700 leading-normal whitespace-pre-line">{para.text_ko}</p>
+                    {para.vocab_list.length > 0 && (
+                      <div>
+                        <p className="text-[11px] font-bold text-gray-400 mb-1.5">📚 주요 어휘</p>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs border-collapse">
+                            <thead>
+                              <tr className="bg-blue-50">
+                                <th className="text-left px-2 py-1.5 text-blue-600 font-bold border border-blue-100 w-1/4">단어</th>
+                                <th className="text-left px-2 py-1.5 text-blue-600 font-bold border border-blue-100 w-1/4">뜻</th>
+                                <th className="text-left px-2 py-1.5 text-blue-600 font-bold border border-blue-100">문맥</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {para.vocab_list.map((v, i) => (
+                                <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-blue-50/30'}>
+                                  <td className="px-2 py-1.5 font-semibold text-gray-800 border border-blue-100">{v.word}</td>
+                                  <td className="px-2 py-1.5 text-blue-700 border border-blue-100">{v.meaning_ko}</td>
+                                  <td className="px-2 py-1.5 text-gray-600 border border-blue-100 leading-relaxed">{v.context}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

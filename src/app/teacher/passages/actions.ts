@@ -20,6 +20,7 @@ export interface ParagraphInput {
   text_ko: string
   explanation: string
   annotations: Annotation[]
+  vocab_json?: { word: string; meaning_ko: string; context: string }[]
 }
 
 export interface PassageInput {
@@ -61,6 +62,7 @@ export async function createPassage(input: PassageInput): Promise<{ error?: stri
     text_ko: p.text_ko.trim() || null,
     explanation: p.explanation?.trim() || null,
     annotations: p.annotations,
+    vocab_json: p.vocab_json && p.vocab_json.length > 0 ? p.vocab_json : null,
   }))
 
   const { error: paraErr } = await admin.from('passage_paragraphs').insert(paraRows)
@@ -113,6 +115,7 @@ export async function updatePassage(
     text_ko: p.text_ko.trim() || null,
     explanation: p.explanation?.trim() || null,
     annotations: p.annotations,
+    vocab_json: p.vocab_json && p.vocab_json.length > 0 ? p.vocab_json : null,
   }))
   const { error: paraErr } = await admin.from('passage_paragraphs').insert(paraRows)
   if (paraErr) return { error: paraErr.message }
