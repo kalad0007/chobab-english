@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, X, ChevronRight, RotateCcw, CheckCircle2, XCircle } from 'lucide-react'
+import { ChevronLeft, X, ChevronRight, RotateCcw, CheckCircle2, XCircle, Bookmark, BookmarkCheck } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 import { TOEFL_TOPICS } from '@/app/teacher/vocab/constants'
 
 const TOPIC_EMOJI: Record<string, string> = Object.fromEntries(TOEFL_TOPICS.map(t => [t.value, t.emoji]))
@@ -218,6 +219,41 @@ export default function PassageReader({
   const [transOpen, setTransOpen] = useState<Set<string>>(new Set())
   const [expOpen, setExpOpen] = useState<Set<string>>(new Set())
   const [vocabOpen, setVocabOpen] = useState<Set<string>>(new Set())
+  const [savedWords, setSavedWords] = useState<Set<string>>(new Set())
+  const [savingWord, setSavingWord] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function loadSaved() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase
+        .from('student_words')
+        .select('word')
+        .eq('student_id', user.id)
+      if (data) setSavedWords(new Set(data.map(r => r.word)))
+    }
+    loadSaved()
+  }, [])
+
+  async function toggleSaveWord(word: string, meaning_ko: string, context: string, passageId: string, passageTitle: string) {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    setSavingWord(word)
+    if (savedWords.has(word)) {
+      await supabase.from('student_words').delete()
+        .eq('student_id', user.id).eq('word', word)
+      setSavedWords(prev => { const n = new Set(prev); n.delete(word); return n })
+    } else {
+      await supabase.from('student_words').insert({
+        student_id: user.id, word, meaning_ko, context,
+        passage_id: passageId, passage_title: passageTitle,
+      })
+      setSavedWords(prev => new Set([...prev, word]))
+    }
+    setSavingWord(null)
+  }
   // chunk reveal: paraId → number of chunks revealed (undefined = all shown)
   const [chunkReveal, setChunkReveal] = useState<Record<string, number>>({})
   const [popup, setPopup] = useState<VocabPopup | null>(null)
@@ -376,16 +412,30 @@ export default function PassageReader({
                             <th className="text-left px-2 py-1.5 text-purple-600 font-bold border border-purple-100 w-1/5">단어</th>
                             <th className="text-left px-2 py-1.5 text-purple-600 font-bold border border-purple-100 w-1/5">뜻</th>
                             <th className="text-left px-2 py-1.5 text-purple-600 font-bold border border-purple-100">문맥</th>
+                            <th className="border border-purple-100 w-8" />
                           </tr>
                         </thead>
                         <tbody>
-                          {para.vocab_list.map((v, i) => (
-                            <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-purple-50/40'}>
-                              <td className="px-2 py-1.5 font-semibold text-gray-800 border border-purple-100">{v.word}</td>
-                              <td className="px-2 py-1.5 text-purple-700 border border-purple-100">{v.meaning_ko}</td>
-                              <td className="px-2 py-1.5 text-gray-600 border border-purple-100 leading-relaxed">{v.context}</td>
-                            </tr>
-                          ))}
+                          {para.vocab_list.map((v, i) => {
+                            const isSaved = savedWords.has(v.word)
+                            return (
+                              <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-purple-50/40'}>
+                                <td className="px-2 py-1.5 font-semibold text-gray-800 border border-purple-100">{v.word}</td>
+                                <td className="px-2 py-1.5 text-purple-700 border border-purple-100">{v.meaning_ko}</td>
+                                <td className="px-2 py-1.5 text-gray-600 border border-purple-100 leading-relaxed">{v.context}</td>
+                                <td className="px-1.5 text-center border border-purple-100">
+                                  <button
+                                    onClick={() => toggleSaveWord(v.word, v.meaning_ko, v.context, passage.id, passage.title)}
+                                    disabled={savingWord === v.word}
+                                    className={`transition ${isSaved ? 'text-purple-500' : 'text-gray-300 hover:text-purple-400'}`}
+                                    title={isSaved ? '단어장에서 제거' : '단어장에 추가'}
+                                  >
+                                    {isSaved ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
+                                  </button>
+                                </td>
+                              </tr>
+                            )
+                          })}
                         </tbody>
                       </table>
                     </div>
