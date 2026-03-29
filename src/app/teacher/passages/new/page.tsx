@@ -28,6 +28,10 @@ export default function NewPassagePage() {
   ])
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([])
   const [selectedClasses, setSelectedClasses] = useState<Set<string>>(new Set())
+  const [linkedQIds, setLinkedQIds] = useState<string[]>([])
+  const [qSearch, setQSearch] = useState('')
+  const [qResults, setQResults] = useState<{ id: string; content: string; summary: string | null }[]>([])
+  const [qSearching, setQSearching] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -161,6 +165,25 @@ export default function NewPassagePage() {
     ))
   }
 
+  async function searchQuestions(q: string) {
+    if (!q.trim()) { setQResults([]); return }
+    setQSearching(true)
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setQSearching(false); return }
+    const { data } = await supabase
+      .from('questions')
+      .select('id, content, summary')
+      .eq('teacher_id', user.id)
+      .eq('type', 'multiple_choice')
+      .eq('is_active', true)
+      .or(`content.ilike.%${q}%,summary.ilike.%${q}%`)
+      .not('id', 'in', `(${linkedQIds.length > 0 ? linkedQIds.join(',') : '00000000-0000-0000-0000-000000000000'})`)
+      .limit(5)
+    setQResults(data ?? [])
+    setQSearching(false)
+  }
+
   async function handleAiGenerate() {
     setAiGenerating(true); setError('')
     const topicObj = TOEFL_TOPICS.find(t => t.value === topic)
@@ -194,6 +217,7 @@ export default function NewPassagePage() {
     const result = await createPassage({
       title, topic_category: topic, difficulty, source,
       classIds: [...selectedClasses],
+      questionIds: linkedQIds,
       paragraphs: validParas.map((p, i) => ({
         order_num: i + 1, text: p.text, text_ko: p.text_ko, explanation: p.explanation, annotations: p.annotations,
       })),
@@ -392,6 +416,44 @@ export default function NewPassagePage() {
         className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gray-200 hover:border-blue-300 text-gray-400 hover:text-blue-500 rounded-2xl text-sm font-bold transition mb-6">
         <Plus size={16} /> 문단 추가
       </button>
+
+      {/* Quiz question linking */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4 space-y-3">
+        <h2 className="font-bold text-gray-900">📝 확인 퀴즈 연결 (선택)</h2>
+        <p className="text-xs text-gray-400">문제은행에서 객관식 문제를 연결하면 학생이 지문을 읽은 후 퀴즈를 풀 수 있습니다.</p>
+        <div className="flex gap-2">
+          <input
+            value={qSearch}
+            onChange={e => { setQSearch(e.target.value); searchQuestions(e.target.value) }}
+            placeholder="문제 내용으로 검색..."
+            className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+          {qSearching && <Loader2 size={16} className="animate-spin text-gray-400 self-center" />}
+        </div>
+        {qResults.length > 0 && (
+          <div className="border border-gray-100 rounded-xl divide-y divide-gray-50 shadow-sm">
+            {qResults.map(q => (
+              <button key={q.id} onClick={() => { setLinkedQIds(p => [...p, q.id]); setQResults([]); setQSearch('') }}
+                className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 transition">
+                {q.summary || q.content.slice(0, 80)}
+              </button>
+            ))}
+          </div>
+        )}
+        {linkedQIds.length > 0 && (
+          <div className="space-y-1">
+            {linkedQIds.map((qid, i) => (
+              <div key={qid} className="flex items-center gap-2 text-xs bg-gray-50 px-3 py-2 rounded-lg">
+                <span className="text-gray-400 font-bold w-4">{i + 1}</span>
+                <span className="flex-1 text-gray-600 truncate font-mono text-[10px]">{qid}</span>
+                <button onClick={() => setLinkedQIds(p => p.filter(id => id !== qid))} className="text-gray-300 hover:text-red-400 transition">
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Class selection & save */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">

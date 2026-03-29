@@ -28,6 +28,7 @@ export interface PassageInput {
   difficulty: number
   source: string
   classIds: string[]
+  questionIds: string[]
   paragraphs: ParagraphInput[]
 }
 
@@ -68,6 +69,11 @@ export async function createPassage(input: PassageInput): Promise<{ error?: stri
   if (input.classIds.length > 0) {
     const classRows = input.classIds.map(cid => ({ passage_id: passage.id, class_id: cid }))
     await admin.from('passage_classes').insert(classRows)
+  }
+
+  if (input.questionIds.length > 0) {
+    const qRows = input.questionIds.map((qid, i) => ({ passage_id: passage.id, question_id: qid, order_num: i + 1 }))
+    await admin.from('passage_questions').insert(qRows)
   }
 
   revalidatePath('/teacher/passages')
@@ -116,6 +122,13 @@ export async function updatePassage(
   if (input.classIds.length > 0) {
     await admin.from('passage_classes').insert(
       input.classIds.map(cid => ({ passage_id: id, class_id: cid }))
+    )
+  }
+
+  await admin.from('passage_questions').delete().eq('passage_id', id)
+  if (input.questionIds.length > 0) {
+    await admin.from('passage_questions').insert(
+      input.questionIds.map((qid, i) => ({ passage_id: id, question_id: qid, order_num: i + 1 }))
     )
   }
 

@@ -21,29 +21,35 @@ export async function POST(req: NextRequest) {
       role: 'user',
       content: `You are a TOEFL reading instructor for Korean students. For the following English academic paragraph, provide TWO things:
 
-1. A Korean translation (직독직해 style — translate sentence by sentence, one sentence per line, keep academic register, no parenthetical notes)
+1. Korean translation: translate each sentence into Korean on its own line (직독직해 style, no parenthetical notes, academic register)
 2. A reading comprehension commentary in Korean (독해 해설 — explain key vocabulary in context, important grammar structures, main ideas, and how this paragraph fits the passage; write in flowing Korean prose, 3-5 sentences)
 
-Topic context: ${topic ?? 'general academic'}
+Topic: ${topic ?? 'general academic'}
 
 Paragraph:
 ${text.trim()}
 
-Return ONLY a JSON object in this exact format (no markdown, no code fences):
-{"text_ko":"Korean translation here, one sentence per line","explanation":"독해 해설 Korean commentary here"}`,
+IMPORTANT: Return ONLY raw JSON with no markdown, no backticks, no code fences. Exactly this format:
+{"text_ko":"sentence1\\nsentence2\\nsentence3","explanation":"2-3 sentence Korean commentary here"}`,
     }],
   })
 
   const raw = (msg.content[0] as { type: string; text: string }).text?.trim() ?? ''
+  // Strip any markdown code fences the model may have added
+  const jsonStr = raw
+    .replace(/^```(?:json)?\s*\n?/i, '')
+    .replace(/\n?```\s*$/i, '')
+    .trim()
+
   let text_ko = ''
   let explanation = ''
   try {
-    const parsed = JSON.parse(raw)
-    text_ko = (parsed.text_ko ?? '').replace(/\n\n+/g, '\n')
+    const parsed = JSON.parse(jsonStr)
+    text_ko = (parsed.text_ko ?? '').replace(/\\n/g, '\n').replace(/\n\n+/g, '\n')
     explanation = parsed.explanation ?? ''
   } catch {
-    // fallback: treat as plain translation
-    text_ko = raw.replace(/\n\n+/g, '\n')
+    // fallback: whole response is the translation
+    text_ko = raw.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim()
   }
   return NextResponse.json({ text_ko, explanation })
 }
