@@ -8,9 +8,10 @@ import { Copy, Check, Loader2 } from 'lucide-react'
 interface Props {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   question: any
+  iconOnly?: boolean
 }
 
-export default function CopyButton({ question }: Props) {
+export default function CopyButton({ question, iconOnly }: Props) {
   const router = useRouter()
   const supabase = createClient()
   const [state, setState] = useState<'idle' | 'loading' | 'done'>('idle')
@@ -46,6 +47,21 @@ export default function CopyButton({ question }: Props) {
 
     // 2초 후 아이콘 원래대로
     setTimeout(() => setState('idle'), 2000)
+  }
+
+  if (iconOnly) {
+    return (
+      <button onClick={handleCopy} disabled={state === 'loading'} title="복사"
+        className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 text-gray-600 disabled:opacity-50">
+        {state === 'loading' ? (
+          <Loader2 size={14} className="animate-spin" />
+        ) : state === 'done' ? (
+          <Check size={14} className="text-emerald-600" />
+        ) : (
+          <Copy size={14} />
+        )}
+      </button>
+    )
   }
 
   return (

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORY_LABELS, getDiffInfo } from '@/lib/utils'
-import { Eye, Layers, Trash2, Loader2 } from 'lucide-react'
+import { Eye, Layers, Trash2, Loader2, Pencil } from 'lucide-react'
 import CopyButton from './CopyButton'
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -189,7 +189,23 @@ export default function QuestionsClient({ listItems }: Props) {
                   <p className="text-xs text-gray-300 mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
                     {new Date(rep.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })} · {setQs.length}문제
                   </p>
+                  {/* 모바일 전용 액션 버튼 (항상 표시) */}
+                  <div className="flex sm:hidden gap-1.5 mt-2">
+                    <Link href={`/teacher/questions/set/${groupId}`}
+                      className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600"
+                      title="세트 보기">
+                      <Eye size={14} />
+                    </Link>
+                    <button
+                      onClick={() => deleteSet(groupId)}
+                      disabled={deleting}
+                      className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 text-red-600 disabled:opacity-50"
+                      title="세트 삭제">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
+                {/* 데스크톱 전용 액션 버튼 (호버시 표시) */}
                 <div className="hidden sm:flex gap-1.5 opacity-0 group-hover:opacity-100 transition flex-shrink-0">
                   <Link href={`/teacher/questions/set/${groupId}`}
                     className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition">
@@ -245,7 +261,23 @@ export default function QuestionsClient({ listItems }: Props) {
                   {new Date(iq.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })}
                   {iq.attempt_count > 0 && ` · 정답률 ${Math.round((iq.correct_count / iq.attempt_count) * 100)}% · 출제 ${iq.attempt_count}회`}
                 </p>
+                {/* 모바일 전용 액션 버튼 (항상 표시) */}
+                <div className="flex sm:hidden gap-1.5 mt-2">
+                  <Link href={`/teacher/questions/${iq.id}`}
+                    className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 text-blue-600"
+                    title="미리보기">
+                    <Eye size={14} />
+                  </Link>
+                  <Link href={`/teacher/questions/${iq.id}/edit`}
+                    className="flex items-center justify-center w-8 h-8 rounded-lg border border-gray-200 text-gray-600"
+                    title="수정">
+                    <Pencil size={14} />
+                  </Link>
+                  <CopyButton question={iq} iconOnly />
+                  <DeleteButton id={iq.id} iconOnly />
+                </div>
               </div>
+              {/* 데스크톱 전용 액션 버튼 (호버시 표시) */}
               <div className="hidden sm:flex gap-1.5 opacity-0 group-hover:opacity-100 transition flex-shrink-0">
                 <Link href={`/teacher/questions/${iq.id}`}
                   className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition">
@@ -266,8 +298,7 @@ export default function QuestionsClient({ listItems }: Props) {
   )
 }
 
-// 인라인 단건 삭제 (기존 DeleteButton과 동일 로직)
-function DeleteButton({ id }: { id: string }) {
+function DeleteButton({ id, iconOnly }: { id: string; iconOnly?: boolean }) {
   const router = useRouter()
   const supabase = createClient()
   const [state, setState] = useState<'idle' | 'loading'>('idle')
@@ -278,6 +309,15 @@ function DeleteButton({ id }: { id: string }) {
     const { error } = await supabase.from('questions').update({ is_active: false }).eq('id', id)
     if (error) { alert('삭제 실패: ' + error.message); setState('idle'); return }
     router.refresh()
+  }
+
+  if (iconOnly) {
+    return (
+      <button onClick={handleDelete} disabled={state === 'loading'} title="삭제"
+        className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 text-red-600 disabled:opacity-50">
+        {state === 'loading' ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+      </button>
+    )
   }
 
   return (
