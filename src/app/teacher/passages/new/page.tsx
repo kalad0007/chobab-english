@@ -416,6 +416,31 @@ export default function NewPassagePage() {
                 className="w-full border border-emerald-100 bg-emerald-50 rounded-xl px-3 py-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-300 leading-normal"
               />
             </div>
+            {para.vocab_list && para.vocab_list.length > 0 && (
+              <div className="mt-2">
+                <label className="text-[11px] font-bold text-purple-600 mb-1 block">📚 주요 어휘</label>
+                <div className="overflow-x-auto rounded-xl border border-purple-100">
+                  <table className="w-full text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-purple-50">
+                        <th className="text-left px-2 py-1.5 text-purple-600 font-bold border-b border-purple-100 w-1/5">단어</th>
+                        <th className="text-left px-2 py-1.5 text-purple-600 font-bold border-b border-purple-100 w-1/5">뜻</th>
+                        <th className="text-left px-2 py-1.5 text-purple-600 font-bold border-b border-purple-100">문맥</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {para.vocab_list.map((v, i) => (
+                        <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-purple-50/40'}>
+                          <td className="px-2 py-1.5 font-semibold text-gray-800 border-b border-purple-50">{v.word}</td>
+                          <td className="px-2 py-1.5 text-purple-700 border-b border-purple-50">{v.meaning_ko}</td>
+                          <td className="px-2 py-1.5 text-gray-600 border-b border-purple-50 leading-relaxed">{v.context}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>
