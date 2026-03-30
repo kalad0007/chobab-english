@@ -238,16 +238,26 @@ export default async function QuestionPreviewPage({
         </p>
         {/* fill-blank 위저드는 passage로 이미 표시했으므로 content 숨김 */}
         {!(isFillBlank && question.passage) && (
-          question.question_subtype === 'sentence_completion' ? (
-            <div className="space-y-2">
-              {(question.content || '').split('\n').filter(Boolean).map((sentence, i) => (
-                <div key={i} className="flex items-baseline gap-3">
-                  <span className="text-xs font-bold text-gray-400 w-6 flex-shrink-0 text-right">{i + 1}.</span>
-                  <span className="text-sm text-gray-900 leading-7">{sentence}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
+          question.question_subtype === 'sentence_completion' ? (() => {
+            const sentences = (question.content || '').split('\n').filter(Boolean)
+            const answerWords = (question.answer || '').split(',').map(a => a.trim())
+            return (
+              <div className="space-y-2">
+                {sentences.map((sentence, i) => {
+                  const hint = answerWords[i] ? answerWords[i].slice(0, 3) : ''
+                  const displayed = hint
+                    ? sentence.replace('___', `${hint}___`)
+                    : sentence
+                  return (
+                    <div key={i} className="flex items-baseline gap-3">
+                      <span className="text-xs font-bold text-gray-400 w-6 flex-shrink-0 text-right">{i + 1}.</span>
+                      <span className="text-sm text-gray-900 leading-7 font-mono">{displayed}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })() : (
             <p className="text-gray-900 text-sm leading-7 whitespace-pre-wrap font-medium break-words">
               {question.content}
             </p>

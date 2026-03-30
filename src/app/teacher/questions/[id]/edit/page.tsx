@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORY_LABELS, DIFFICULTY_LEVELS, QUESTION_SUBTYPE_LABELS, getDiffInfo, usesAlphaOptions, optionLabel, DEFAULT_TIME_LIMITS, formatSeconds } from '@/lib/utils'
-import { Loader2, Volume2 } from 'lucide-react'
+import { Loader2, Volume2, Plus, Trash2 } from 'lucide-react'
 import AutoResizeTextarea from '@/components/ui/AutoResizeTextarea'
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -499,87 +499,184 @@ export default function EditQuestionPage() {
           </div>
         )}
 
-        {/* 지문 — 리스닝/스피킹은 숨김, fill-blank는 별도 처리 */}
-        {!isListening && !isSpeaking && (
+        {/* ── Sentence Completion 행 단위 편집기 ── */}
+        {questionSubtype === 'sentence_completion' && (() => {
+          const sentences = content.split('\n').filter(Boolean)
+          const answers = answer.split(',').map(a => a.trim())
+          const rows = Math.max(sentences.length, answers.length, 1)
+          const rowArr = Array.from({ length: rows }, (_, i) => ({
+            sentence: sentences[i] ?? '',
+            answer: answers[i] ?? '',
+          }))
+          function updateRow(i: number, field: 'sentence' | 'answer', val: string) {
+            const next = [...rowArr]
+            next[i] = { ...next[i], [field]: val }
+            setContent(next.map(r => r.sentence).join('\n'))
+            setAnswer(next.map(r => r.answer).join(','))
+          }
+          function addRow() {
+            setContent([...sentences, ''].join('\n'))
+            setAnswer([...answers, ''].join(','))
+          }
+          function removeRow(i: number) {
+            const ns = sentences.filter((_, j) => j !== i)
+            const na = answers.filter((_, j) => j !== i)
+            setContent(ns.join('\n'))
+            setAnswer(na.join(','))
+          }
+          return (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="font-bold text-gray-900">문장 목록 (빈칸 채우기)</h2>
+                <span className="text-xs text-gray-400">빈칸은 ___ 로 표시</span>
+              </div>
+              <div className="grid grid-cols-[1fr_auto_140px_auto] gap-x-2 gap-y-1.5 items-center">
+                <span className="text-[11px] font-bold text-gray-400 pl-7">문장 (___=빈칸)</span>
+                <span />
+                <span className="text-[11px] font-bold text-gray-400 text-center">정답 단어</span>
+                <span />
+                {rowArr.map((row, i) => (
+                  <>
+                    <div key={`s${i}`} className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-400 w-5 flex-shrink-0 text-right">{i + 1}.</span>
+                      <input
+                        value={row.sentence}
+                        onChange={e => updateRow(i, 'sentence', e.target.value)}
+                        placeholder="The scientist ___ to work late."
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                      />
+                    </div>
+                    <span key={`arr${i}`} className="text-gray-300 text-center">→</span>
+                    <div key={`a${i}`} className="relative">
+                      <input
+                        value={row.answer}
+                        onChange={e => updateRow(i, 'answer', e.target.value)}
+                        placeholder="정답"
+                        className="w-full px-3 py-2 border border-teal-200 rounded-lg text-sm font-bold text-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-teal-50"
+                      />
+                      {row.answer && (
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-teal-500 font-mono">
+                          {row.answer.slice(0, 3)}___
+                        </span>
+                      )}
+                    </div>
+                    <button key={`del${i}`} type="button" onClick={() => removeRow(i)}
+                      disabled={rowArr.length <= 1}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 disabled:opacity-20 transition">
+                      <Trash2 size={13} />
+                    </button>
+                  </>
+                ))}
+              </div>
+              <button type="button" onClick={addRow}
+                className="flex items-center gap-1.5 text-xs font-bold text-teal-600 hover:text-teal-800 px-3 py-1.5 rounded-lg hover:bg-teal-50 transition">
+                <Plus size={13} /> 문장 추가
+              </button>
+            </div>
+          )
+        })()}
+
+        {/* ── Complete the Words 단락 편집기 ── */}
+        {questionSubtype === 'complete_the_words' && (() => {
+          const blanks = Array.from(content.matchAll(/[a-zA-Z]+_{2,}/g)).map(m => m[0])
+          const answers = answer.split(',').map(a => a.trim())
+          function updateCwAnswer(i: number, val: string) {
+            const next = [...answers]
+            next[i] = val
+            setAnswer(next.join(','))
+          }
+          return (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+              <h2 className="font-bold text-gray-900">단락 (빈칸 포함)</h2>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">마스킹된 단락 <span className="font-normal">(예: te__, bel____)</span></label>
+                <textarea value={content} onChange={e => setContent(e.target.value)}
+                  placeholder="People te__ to bel____ that su__ extreme environ____ are ju__ barren zon__."
+                  rows={6} required
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-400 resize-none font-mono" />
+              </div>
+              {blanks.length > 0 && (
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-gray-500">감지된 빈칸 → 정답 입력</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {blanks.map((hint, i) => (
+                      <div key={i} className="flex items-center gap-2 bg-teal-50 rounded-lg px-3 py-2">
+                        <span className="text-xs font-bold text-teal-700 w-5 flex-shrink-0">{i + 1}.</span>
+                        <code className="text-xs text-teal-600 flex-shrink-0 min-w-[60px]">{hint}</code>
+                        <input
+                          value={answers[i] ?? ''}
+                          onChange={e => updateCwAnswer(i, e.target.value)}
+                          placeholder="완성된 단어"
+                          className="flex-1 px-2 py-1 border border-teal-200 rounded-lg text-xs font-bold text-teal-800 focus:outline-none focus:ring-1 focus:ring-teal-400 bg-white min-w-0"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-gray-400">단락을 수정하면 빈칸이 자동으로 다시 감지됩니다.</p>
+                </div>
+              )}
+            </div>
+          )
+        })()}
+
+        {/* 지문 — 리스닝/스피킹/fill-blank는 숨김 */}
+        {!isListening && !isSpeaking && !isFillBlank && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-          <h2 className="font-bold text-gray-900">
-            {isFillBlank
-              ? questionSubtype === 'complete_the_words' ? '단락 (빈칸 포함)' : '문장 목록 (빈칸 포함)'
-              : '지문 (선택)'}
-          </h2>
-          {isFillBlank ? (
-            <textarea value={content} onChange={e => setContent(e.target.value)}
-              placeholder={questionSubtype === 'complete_the_words'
-                ? '빈칸이 포함된 학술 단락을 입력하세요. 예: te__, bel____'
-                : '빈칸이 있는 문장을 한 줄씩 입력하세요. 예: The scientist ___ to work late.'}
-              rows={8} required
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono" />
-          ) : (
-            <UnderlineTextarea
-              value={passage}
-              onChange={setPassage}
-              placeholder="독해 지문이 있으면 여기에 입력하세요..."
-              rows={5}
-            />
-          )}
+          <h2 className="font-bold text-gray-900">지문 (선택)</h2>
+          <UnderlineTextarea
+            value={passage}
+            onChange={setPassage}
+            placeholder="독해 지문이 있으면 여기에 입력하세요..."
+            rows={5}
+          />
         </div>
         )}
 
-        {/* 문제 본문 (non-fill-blank only) / 정답 */}
+        {/* 문제 본문 / 정답 (fill-blank 유형 제외) */}
+        {!isFillBlank && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-          <h2 className="font-bold text-gray-900">
-            {isFillBlank ? '정답 목록' : '문제'}
-          </h2>
+          <h2 className="font-bold text-gray-900">문제</h2>
+          <AutoResizeTextarea value={content} onChange={e => setContent(e.target.value)}
+            placeholder="문제를 입력하세요..."
+            minRows={3} required
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
 
-          {!isFillBlank && (
-            <>
-              <AutoResizeTextarea value={content} onChange={e => setContent(e.target.value)}
-                placeholder="문제를 입력하세요..."
-                minRows={3} required
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
-
-              {type === 'multiple_choice' && (
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">보기</label>
-                  {options.map((opt, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <span className="w-6 h-6 flex items-center justify-center bg-gray-100 rounded-full text-xs font-bold text-gray-600 flex-shrink-0">
-                        {optionLabel(opt.num, usesAlphaOptions(category, questionSubtype))}
-                      </span>
-                      <input
-                        value={opt.text}
-                        onChange={e => {
-                          const next = [...options]
-                          next[i] = { ...next[i], text: e.target.value }
-                          setOptions(next)
-                        }}
-                        placeholder={`보기 ${opt.num}`}
-                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  ))}
+          {type === 'multiple_choice' && (
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">보기</label>
+              {options.map((opt, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="w-6 h-6 flex items-center justify-center bg-gray-100 rounded-full text-xs font-bold text-gray-600 flex-shrink-0">
+                    {optionLabel(opt.num, usesAlphaOptions(category, questionSubtype))}
+                  </span>
+                  <input
+                    value={opt.text}
+                    onChange={e => {
+                      const next = [...options]
+                      next[i] = { ...next[i], text: e.target.value }
+                      setOptions(next)
+                    }}
+                    placeholder={`보기 ${opt.num}`}
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
-              )}
-            </>
+              ))}
+            </div>
           )}
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              {isFillBlank
-                ? '정답 (쉼표로 구분, 빈칸 순서대로)'
-                : type === 'multiple_choice' ? '정답 번호' : '정답'}
+              {type === 'multiple_choice' ? '정답 번호' : '정답'}
             </label>
             <input
               value={answer} onChange={e => setAnswer(e.target.value)}
-              placeholder={isFillBlank ? '예: tend,believe,surface,recognize,...' : type === 'multiple_choice' ? (usesAlphaOptions(category, questionSubtype) ? '예: B 또는 2' : '예: 2') : '정답을 입력하세요'}
+              placeholder={type === 'multiple_choice' ? (usesAlphaOptions(category, questionSubtype) ? '예: B 또는 2' : '예: 2') : '정답을 입력하세요'}
               required
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            {isFillBlank && (
-              <p className="text-xs text-gray-400 mt-1">빈칸에 들어갈 완성된 단어를 순서대로 쉼표로 구분하여 입력하세요</p>
-            )}
           </div>
         </div>
+        )}
 
         {/* 해설 */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
