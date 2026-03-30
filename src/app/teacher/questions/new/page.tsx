@@ -708,7 +708,7 @@ export default function NewQuestionPage() {
       if (rows.length === 0) { setError('최소 1개 문제를 입력하세요.'); setLoading(false); return }
 
       // 지문이 있거나 스피킹(인터뷰/L&R 세트)이면서 문제가 2개 이상이면 같은 passage_group_id 부여
-      const groupId = rows.length > 1 && (passage || category === 'speaking') ? crypto.randomUUID() : null
+      const groupId = rows.length > 1 && (passage || (category as string) === 'speaking') ? crypto.randomUUID() : null
       const finalRows = rows.map(r => ({ ...r, passage_group_id: groupId }))
 
       const { error: dbError } = await supabase.from('questions').insert(finalRows)
