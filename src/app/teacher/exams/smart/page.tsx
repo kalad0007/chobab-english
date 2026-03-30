@@ -415,24 +415,20 @@ export default function SmartBuilderPage() {
     setPickerState(null)
   }
 
-  // ── 세트 선택 — idx부터 연속 슬롯에 채우기 ────────────
+  // ── 세트/다중 선택 — idx부터 연속 슬롯에 채우기 (상한값 내 자동 확장) ──
   function handlePickSelectSet(picked: PickedQuestion[]) {
     if (!pickerState) return
     const { module, slotType, idx } = pickerState
+    const maxCount = SLOT_RANGE[slotType]?.max ?? 20
     const setter = module === 'M1' ? setM1 : module === 'M2up' ? setM2Up : setM2Down
     setter(prev => {
       const arr = [...(prev[slotType as keyof ModuleSlots] ?? [])] as (SlotQ | null)[]
+      const needed = idx + picked.length
+      while (arr.length < needed && arr.length < maxCount) arr.push(null)
       picked.forEach((p, offset) => {
         const targetIdx = idx + offset
         if (targetIdx < arr.length) {
-          arr[targetIdx] = {
-            id: p.id,
-            content: p.content,
-            difficulty: p.difficulty,
-            question_subtype: p.question_subtype,
-            passage_id: null,
-            type: p.type,
-          }
+          arr[targetIdx] = { id: p.id, content: p.content, difficulty: p.difficulty, question_subtype: p.question_subtype, passage_id: null, type: p.type }
         }
       })
       return { ...prev, [slotType]: arr }
@@ -987,6 +983,8 @@ export default function SmartBuilderPage() {
             ? handlePickSelectSet
             : undefined
         }
+        onSelectMultiple={handlePickSelectSet}
+        multiSelect
         category="reading"
         allowedSubtypes={pickerState ? READING_SUBTYPES[pickerState.slotType] : undefined}
         excludeIds={allIds}

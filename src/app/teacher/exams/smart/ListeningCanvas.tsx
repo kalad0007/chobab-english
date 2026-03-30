@@ -384,22 +384,33 @@ export default function ListeningCanvas({
     idx: number
   } | null>(null)
 
+  function toSlotQ(picked: PickedQuestion): SlotQ {
+    return { id: picked.id, content: picked.content, difficulty: picked.difficulty, question_subtype: picked.question_subtype, audio_url: null, audio_id: null, type: picked.type }
+  }
+
   function handlePickSelect(picked: PickedQuestion) {
     if (!respPicker) return
     const { mod, idx } = respPicker
-    const q: SlotQ = {
-      id: picked.id,
-      content: picked.content,
-      difficulty: picked.difficulty,
-      question_subtype: picked.question_subtype,
-      audio_url: null,
-      audio_id: null,
-      type: picked.type,
-    }
     const setter = mod === 'LM1' ? setLM1 : mod === 'LM2up' ? setLM2Up : setLM2Down
     setter(prev => {
       const arr = [...prev.response] as (SlotQ | null)[]
-      arr[idx] = q
+      arr[idx] = toSlotQ(picked)
+      return { ...prev, response: arr }
+    })
+    setRespPicker(null)
+  }
+
+  // 다중 선택 → 클릭 슬롯부터 연속 채우기 (상한값 내 자동 확장)
+  function handlePickMultiple(qs: PickedQuestion[]) {
+    if (!respPicker || qs.length === 0) return
+    const { mod, idx } = respPicker
+    const maxCount = LISTEN_RANGE[mod].response.max
+    const setter = mod === 'LM1' ? setLM1 : mod === 'LM2up' ? setLM2Up : setLM2Down
+    setter(prev => {
+      const arr = [...prev.response] as (SlotQ | null)[]
+      const needed = idx + qs.length
+      while (arr.length < needed && arr.length < maxCount) arr.push(null)
+      qs.forEach((q, i) => { if (idx + i < arr.length) arr[idx + i] = toSlotQ(q) })
       return { ...prev, response: arr }
     })
     setRespPicker(null)
@@ -635,6 +646,8 @@ export default function ListeningCanvas({
         open={!!respPicker}
         onClose={() => setRespPicker(null)}
         onSelect={handlePickSelect}
+        onSelectMultiple={handlePickMultiple}
+        multiSelect
         category="listening"
         allowedSubtypes={['choose_response', 'announcement']}
         excludeIds={allIds}

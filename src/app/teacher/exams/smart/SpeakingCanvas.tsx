@@ -218,15 +218,16 @@ export default function SpeakingCanvas({
     setPickerState(null)
   }
 
-  // 다중 선택 or 세트 선택 → 클릭한 슬롯부터 연속으로 채우기
+  // 다중 선택 or 세트 선택 → 클릭한 슬롯부터 연속으로 채우기 (상한값 내 자동 확장)
   function handlePickMultiple(qs: PickedQuestion[]) {
     if (!pickerState || qs.length === 0) return
     const { slotType, idx } = pickerState
+    const maxCount = slotType === 'listenRepeat' ? LR_MAX : IV_MAX
     setSlots(prev => {
       const arr = [...prev[slotType]] as (SpeakingSlotQ | null)[]
-      qs.forEach((q, i) => {
-        if (idx + i < arr.length) arr[idx + i] = toSlotQ(q)
-      })
+      const needed = idx + qs.length
+      while (arr.length < needed && arr.length < maxCount) arr.push(null)
+      qs.forEach((q, i) => { if (idx + i < arr.length) arr[idx + i] = toSlotQ(q) })
       return { ...prev, [slotType]: arr }
     })
     setPickerState(null)
