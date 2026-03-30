@@ -210,7 +210,7 @@ export default function EditQuestionPage() {
       let data: { error?: string; audioUrl?: string } = {}
       try { data = await res.json() } catch { /* empty body */ }
       if (!res.ok) { setError(data.error ?? 'TTS 생성 실패'); return }
-      setAudioUrl(data.audioUrl)
+      setAudioUrl(data.audioUrl ?? '')
       // 스피킹: audio_script도 동기화
       if (isSpeaking && !isListenAndRepeat) setAudioScript(script)
     } finally {
