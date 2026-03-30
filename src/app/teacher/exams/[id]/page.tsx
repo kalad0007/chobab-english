@@ -23,11 +23,12 @@ const SUBTYPE_LABEL: Record<string, string> = {
 function QRow({ idx, q }: { idx: number; q: any }) {
   const label = SUBTYPE_LABEL[q.question_subtype] ?? q.question_subtype ?? q.category
   const diff = q.difficulty
+  const display = q.summary ?? q.content
   return (
     <div className="flex items-start gap-3 px-4 py-2.5 border-b border-gray-50 last:border-0">
       <span className="text-[11px] font-bold text-gray-300 flex-shrink-0 w-5 text-right mt-0.5">{idx}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-gray-700 line-clamp-1">{q.content}</p>
+        <p className="text-sm text-gray-700 line-clamp-1">{display}</p>
         <span className="text-[11px] text-indigo-400 mt-0.5 block">{label}</span>
       </div>
       {diff && (
@@ -108,7 +109,7 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
         if (allIds.size > 0) {
           const { data: qs } = await supabase
             .from('questions')
-            .select('id, content, category, question_subtype, difficulty')
+            .select('id, content, summary, category, question_subtype, difficulty')
             .in('id', [...allIds])
           for (const q of qs ?? []) qById[q.id] = q
         }
@@ -121,7 +122,7 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
   if (!cfg) {
     const { data: eq } = await supabase
       .from('exam_questions')
-      .select('*, questions(content, category, question_subtype, difficulty)')
+      .select('*, questions(content, summary, category, question_subtype, difficulty)')
       .eq('exam_id', examId)
       .order('order_num')
     examQuestions = eq
@@ -384,7 +385,7 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
                       <div key={eq.id} className="flex items-start gap-3 px-5 py-3">
                         <span className="text-xs font-bold text-gray-300 flex-shrink-0 w-5 text-right">{i + 1}</span>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-gray-700 line-clamp-2">{q?.content}</p>
+                          <p className="text-sm text-gray-700 line-clamp-2">{q?.summary ?? q?.content}</p>
                           <span className="text-xs text-purple-500 mt-0.5 block">{SUBTYPE_LABEL[q?.question_subtype] ?? q?.category}</span>
                         </div>
                       </div>
