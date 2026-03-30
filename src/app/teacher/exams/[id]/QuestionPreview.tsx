@@ -128,9 +128,11 @@ export function ClickableQRow({ idx, q }: Props) {
                 </div>
               )}
 
-              {/* 문제 본문 */}
+              {/* 문제 본문 — email_writing은 "문제 번역"/"모범답안" 이후 숨김 */}
               <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap font-medium">
-                {q.content}
+                {q.question_subtype === 'email_writing'
+                  ? (q.content ?? '').split(/문제 번역|모범답안/)[0].trim()
+                  : q.content}
               </div>
 
               {/* 음성 스크립트 (스피킹 / 리스닝) */}
@@ -178,8 +180,8 @@ export function ClickableQRow({ idx, q }: Props) {
                 </div>
               )}
 
-              {/* 정답 (보기 없는 경우) */}
-              {q.answer && (!q.options || q.options.length === 0) && (
+              {/* 정답 (보기 없는 경우, email_writing 제외) */}
+              {q.answer && (!q.options || q.options.length === 0) && q.question_subtype !== 'email_writing' && (
                 <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm">
                   <span className="text-xs font-bold text-emerald-600 block mb-1">정답</span>
                   <span className="text-emerald-800 font-medium">{q.answer}</span>
