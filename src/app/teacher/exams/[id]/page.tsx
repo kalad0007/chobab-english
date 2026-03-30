@@ -2,6 +2,7 @@ import { createClient, getUserFromCookie } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { ArrowLeft, Users, BookOpen, Headphones, PenLine, Mic, TrendingUp, Award } from 'lucide-react'
 import ExamActions from './ExamActions'
+import { getDiffInfo } from '@/lib/utils'
 
 const SUBTYPE_LABEL: Record<string, string> = {
   complete_the_words:  'Complete the Words',
@@ -22,8 +23,8 @@ const SUBTYPE_LABEL: Record<string, string> = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function QRow({ idx, q }: { idx: number; q: any }) {
   const label = SUBTYPE_LABEL[q.question_subtype] ?? q.question_subtype ?? q.category
-  const diff = q.difficulty
   const display = q.summary ?? q.content
+  const diffInfo = q.difficulty != null ? getDiffInfo(q.difficulty) : null
   return (
     <div className="flex items-start gap-3 px-4 py-2.5 border-b border-gray-50 last:border-0">
       <span className="text-[11px] font-bold text-gray-300 flex-shrink-0 w-5 text-right mt-0.5">{idx}</span>
@@ -31,10 +32,10 @@ function QRow({ idx, q }: { idx: number; q: any }) {
         <p className="text-sm text-gray-700 line-clamp-1">{display}</p>
         <span className="text-[11px] text-indigo-400 mt-0.5 block">{label}</span>
       </div>
-      {diff && (
-        <span className={`text-[10px] font-bold flex-shrink-0 px-1.5 py-0.5 rounded-full ${
-          diff === 'hard' ? 'bg-rose-50 text-rose-500' : diff === 'medium' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
-        }`}>{diff === 'hard' ? '상' : diff === 'medium' ? '중' : '하'}</span>
+      {diffInfo && (
+        <span className={`text-[10px] font-bold flex-shrink-0 px-1.5 py-0.5 rounded-full ${diffInfo.color}`}>
+          {diffInfo.label}
+        </span>
       )}
     </div>
   )
