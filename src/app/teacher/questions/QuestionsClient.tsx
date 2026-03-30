@@ -184,7 +184,7 @@ export default function QuestionsClient({ listItems }: Props) {
                   {rep.summary ? (
                     <p className="text-sm text-gray-800 font-medium line-clamp-2">{rep.summary}</p>
                   ) : (
-                    <p className="text-sm text-gray-500 italic line-clamp-2">{(rep.passage ?? rep.content ?? '').replace(/\n/g, ' ').slice(0, 120)}…</p>
+                    <p className="text-sm text-gray-500 italic line-clamp-2">{(rep.content ?? '').replace(/\n/g, ' ').slice(0, 120)}…</p>
                   )}
                   <p className="text-xs text-gray-300 mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
                     {new Date(rep.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })} · {setQs.length}문제

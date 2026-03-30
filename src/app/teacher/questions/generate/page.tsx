@@ -69,7 +69,7 @@ const SPEAKING_SET_LABELS: Record<string, { setLabel: string; perSetLabel: strin
 }
 
 // Per-subtype word/message count config for teacher-adjustable stepper
-const WORD_COUNT_CONFIG: Record<string, { default: number; step: number; min: number; max: number; unit: string }> = {
+const WORD_COUNT_CONFIG: Record<string, { default: number; step: number; min: number; max: number; unit: string; label?: string }> = {
   complete_the_words:    { default: 100, step: 5,  min: 50,  max: 300, unit: '단어' },
   daily_life_email:          { default: 80, step: 5, min: 40, max: 200, unit: '단어' },
   daily_life_text_chain:     { default: 8,  step: 1, min: 4,  max: 30,  unit: '메시지' },
@@ -82,9 +82,11 @@ const WORD_COUNT_CONFIG: Record<string, { default: number; step: number; min: nu
   academic_talk:         { default: 150, step: 5,  min: 80,  max: 400, unit: '단어' },
   campus_announcement:   { default: 150, step: 5,  min: 80,  max: 400, unit: '단어' },
   sentence_reordering:   { default: 10,  step: 1,  min: 5,   max: 15,  unit: '단어' },
-  email_writing:         { default: 150, step: 5,  min: 100, max: 300, unit: '단어' },
-  academic_discussion:   { default: 100, step: 5,  min: 80,  max: 250, unit: '단어' },
+  email_writing:         { default: 150, step: 5,  min: 100, max: 300, unit: '단어', label: '모범 이메일 답변 길이' },
 }
+
+// Academic Discussion 세부 단어 수 기본값
+const ACAD_DISC_DEFAULT = { prof: 100, studentA: 70, studentB: 70, answer: 100 }
 
 export default function GenerateQuestionsPage() {
   const router = useRouter()
@@ -96,6 +98,7 @@ export default function GenerateQuestionsPage() {
   const [questionsPerPassage, setQuestionsPerPassage] = useState(3)
   const [topic, setTopic] = useState('')
   const [wordCount, setWordCount] = useState(0)
+  const [acadDiscWords, setAcadDiscWords] = useState({ ...ACAD_DISC_DEFAULT })
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [questions, setQuestions] = useState<GeneratedQuestion[]>([])
@@ -107,6 +110,7 @@ export default function GenerateQuestionsPage() {
     setReadingTopType(null)
     setSubtype(null)
     setWordCount(0)
+    setAcadDiscWords({ ...ACAD_DISC_DEFAULT })
     setQuestions([])
     setSelected(new Set())
   }
@@ -142,7 +146,7 @@ export default function GenerateQuestionsPage() {
       const res = await fetch('/api/ai/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, subtype, difficulty, count, topic, questionsPerPassage: isMultiQpp ? questionsPerPassage : 1, wordCount: wordCount > 0 ? wordCount : undefined }),
+        body: JSON.stringify({ category, subtype, difficulty, count, topic, questionsPerPassage: isMultiQpp ? questionsPerPassage : 1, wordCount: wordCount > 0 ? wordCount : undefined, acadDiscWords: subtype === 'academic_discussion' ? acadDiscWords : undefined }),
       })
 
       if (!res.ok) throw new Error(await res.text())
@@ -308,14 +312,59 @@ export default function GenerateQuestionsPage() {
           </div>
         )}
 
-        {/* 단어 수 조절 (subtype에 config 있을 때만) */}
-        {subtype && WORD_COUNT_CONFIG[subtype] && (() => {
+        {/* Academic Discussion 세부 단어 수 */}
+        {subtype === 'academic_discussion' && (
+          <div className="space-y-3">
+            <label className="block text-sm font-semibold text-gray-700">생성 단어 수 설정</label>
+            <div className="grid grid-cols-2 gap-3">
+              {([
+                { key: 'prof',    label: '교수 질문', min: 50,  max: 200, step: 10 },
+                { key: 'studentA', label: '학생 A 의견', min: 30, max: 150, step: 5 },
+                { key: 'studentB', label: '학생 B 의견', min: 30, max: 150, step: 5 },
+                { key: 'answer',  label: '모범 답변', min: 50,  max: 300, step: 10 },
+              ] as const).map(({ key, label, min, max, step }) => {
+                const val = acadDiscWords[key]
+                const def = ACAD_DISC_DEFAULT[key]
+                return (
+                  <div key={key} className="bg-gray-50 rounded-xl p-3">
+                    <p className="text-xs font-semibold text-gray-600 mb-2">{label}</p>
+                    <div className="flex items-center gap-2">
+                      <button type="button"
+                        onClick={() => setAcadDiscWords(w => ({ ...w, [key]: Math.max(min, w[key] - step) }))}
+                        disabled={val <= min}
+                        className="w-8 h-8 rounded-lg border border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-100 disabled:opacity-40 transition flex items-center justify-center text-base">
+                        −
+                      </button>
+                      <span className="text-sm font-bold text-gray-800 min-w-[50px] text-center">{val}단어</span>
+                      <button type="button"
+                        onClick={() => setAcadDiscWords(w => ({ ...w, [key]: Math.min(max, w[key] + step) }))}
+                        disabled={val >= max}
+                        className="w-8 h-8 rounded-lg border border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-100 disabled:opacity-40 transition flex items-center justify-center text-base">
+                        +
+                      </button>
+                      {val !== def && (
+                        <button type="button"
+                          onClick={() => setAcadDiscWords(w => ({ ...w, [key]: def }))}
+                          className="text-[10px] text-gray-400 hover:text-gray-600 underline">
+                          초기화
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 단어 수 조절 (academic_discussion 제외, subtype에 config 있을 때만) */}
+        {subtype && subtype !== 'academic_discussion' && WORD_COUNT_CONFIG[subtype] && (() => {
           const cfg = WORD_COUNT_CONFIG[subtype]
           const cur = wordCount > 0 ? wordCount : cfg.default
           return (
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                생성 길이
+                {cfg.label ?? '생성 길이'}
                 <span className="ml-2 text-xs font-normal text-gray-400">기본값: {cfg.default}{cfg.unit}</span>
               </label>
               <div className="flex items-center gap-3">

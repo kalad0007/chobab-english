@@ -25,7 +25,7 @@ function getDiffDesc(d: number): string {
   return 'A1 수준 (TOEFL 30-45점)'
 }
 
-function buildPrompt(category: string, subtype: string, difficulty: number, count: number, topic: string, questionsPerPassage: number = 1, wordCount: number = 0, passageContext: string = ''): string {
+function buildPrompt(category: string, subtype: string, difficulty: number, count: number, topic: string, questionsPerPassage: number = 1, wordCount: number = 0, passageContext: string = '', acadDiscWords: { prof: number; studentA: number; studentB: number; answer: number } | null = null): string {
   const diffDesc = getDiffDesc(difficulty)
   const topicNote = topic ? `주제/소재: ${topic}` : ''
   const passageContextNote = passageContext
@@ -43,7 +43,7 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
   const wc8  = wordCount > 0 ? wordCount : 150   // academic_talk / campus_announcement script
   const wc9  = wordCount > 0 ? wordCount : 10    // sentence_reordering answer words
   const wc10 = wordCount > 0 ? wordCount : 150   // email_writing model answer
-  const wc11 = wordCount > 0 ? wordCount : 100   // academic_discussion model answer
+  const adw = { prof: 100, studentA: 70, studentB: 70, answer: 100, ...acadDiscWords }  // academic_discussion per-section word counts
 
   const subtypePrompts: Record<string, string> = {
     complete_the_words: `TOEFL "Complete the Words" (단락형 빈칸) 문제를 ${n}개 생성하세요.
@@ -260,10 +260,10 @@ Respond with pure JSON only (no markdown):
     academic_discussion: `TOEFL "Write for an Academic Discussion" 문제를 ${n}개 생성하세요.
 형식 규칙:
 - passage 필드에 교수 + 학생2명 포스트를 넣으세요:
-  "Dr. [교수 성]:\\n[교수 토론 질문 — 80-100단어]\\n\\n[학생1 이름]:\\n[학생1 의견 — 50-70단어]\\n\\n[학생2 이름]:\\n[학생2 의견 — 50-70단어]"
+  "Dr. [교수 성]:\\n[교수 토론 질문 — 정확히 ${adw.prof}단어]\\n\\n[학생1 이름]:\\n[학생1 의견 — 정확히 ${adw.studentA}단어]\\n\\n[학생2 이름]:\\n[학생2 의견 — 정확히 ${adw.studentB}단어]"
 - content 필드에는 학생 지시문만 넣으세요:
-  "Write a post responding to the professor's question. Express and support your opinion. Make a contribution to the discussion in your own words. An effective response will contain at least ${wc11} words."
-- answer 필드에 ${wc11}단어 이상의 모범 답안을 넣으세요
+  "Write a post responding to the professor's question. Express and support your opinion. Make a contribution to the discussion in your own words. An effective response will contain at least ${adw.answer} words."
+- answer 필드에 ${adw.answer}단어 이상의 모범 답안을 넣으세요
 - 교수 포스트는 수업 맥락 소개 + 명확한 토론 질문 포함
 - 두 학생은 서로 다른 입장을 표명하며 간결한 근거 제시
 - options는 null
@@ -362,10 +362,10 @@ export async function POST(req: NextRequest) {
 
   const anthropic = new Anthropic({ apiKey })
 
-  const { category, subtype, difficulty, count, topic, questionsPerPassage, wordCount, passageContext } = await req.json()
+  const { category, subtype, difficulty, count, topic, questionsPerPassage, wordCount, passageContext, acadDiscWords } = await req.json()
 
   const topicValue = topic ?? ''
-  const prompt = buildPrompt(category, subtype ?? '', difficulty, count, topicValue, questionsPerPassage ?? 1, wordCount ?? 0, passageContext ?? '')
+  const prompt = buildPrompt(category, subtype ?? '', difficulty, count, topicValue, questionsPerPassage ?? 1, wordCount ?? 0, passageContext ?? '', acadDiscWords ?? null)
     + `\n\n【필수 추가 필드】위 JSON의 각 문제 객체에 반드시 다음 두 필드를 포함하세요:
 - "summary": 지문·음성·시나리오를 한국어로 1-2문장 요약 (예: "환경오염이 기후변화에 미치는 영향을 논의하는 학술 지문", "도서관 연장 운영에 관한 두 학생의 캠퍼스 대화")
 - "subcategory": 주제 키워드 1-2개 (예: "환경", "IT", "경제", "캠퍼스생활", "과학"${topicValue ? ` — 입력된 주제 "${topicValue}"를 우선 사용` : ''})
