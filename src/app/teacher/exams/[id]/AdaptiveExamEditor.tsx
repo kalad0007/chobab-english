@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { BookOpen, Headphones, PenLine, Mic, Plus, X, Search, Loader2 } from 'lucide-react'
+import { BookOpen, Headphones, PenLine, Mic, Plus, X, Search, Loader2, ChevronUp, ChevronDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { updateExamDescription } from './actions'
 import { ClickableQRow, type PreviewQuestion } from './QuestionPreview'
@@ -70,11 +70,39 @@ function SectionHead({ icon, title, count, color, border, onAdd }: {
   )
 }
 
+// ── 행 액션 버튼 묶음 ─────────────────────────────────
+function RowActions({ onMoveUp, onMoveDown, onRemove, isFirst, isLast }: {
+  onMoveUp: () => void; onMoveDown: () => void; onRemove: () => void
+  isFirst: boolean; isLast: boolean
+}) {
+  return (
+    <div className="flex-shrink-0 flex items-center gap-0.5 mr-2 opacity-0 group-hover:opacity-100 transition">
+      <button onClick={onMoveUp} disabled={isFirst}
+        className="w-6 h-6 rounded-md hover:bg-gray-100 disabled:opacity-20 text-gray-400 flex items-center justify-center transition"
+        title="위로">
+        <ChevronUp size={12} />
+      </button>
+      <button onClick={onMoveDown} disabled={isLast}
+        className="w-6 h-6 rounded-md hover:bg-gray-100 disabled:opacity-20 text-gray-400 flex items-center justify-center transition"
+        title="아래로">
+        <ChevronDown size={12} />
+      </button>
+      <button onClick={onRemove}
+        className="w-6 h-6 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-400 flex items-center justify-center transition"
+        title="제거">
+        <X size={12} />
+      </button>
+    </div>
+  )
+}
+
 // ── 서브그룹 (제목 + 문제 rows) ────────────────────────
-function SubGroupEditable({ title, ids, qMap, onRemove }: {
+function SubGroupEditable({ title, ids, qMap, onRemove, onMove }: {
   title: string; ids: string[]
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  qMap: QMap; onRemove: (id: string) => void
+  qMap: QMap
+  onRemove: (id: string) => void
+  onMove: (id: string, dir: -1 | 1) => void
 }) {
   if (ids.length === 0) return null
   return (
@@ -89,13 +117,12 @@ function SubGroupEditable({ title, ids, qMap, onRemove }: {
           <div className="flex-1 min-w-0">
             <ClickableQRow idx={i + 1} q={toPreview(qMap[id] ?? { id, content: id })} />
           </div>
-          <button
-            onClick={() => onRemove(id)}
-            className="flex-shrink-0 w-7 h-7 mr-2 rounded-full bg-transparent hover:bg-red-50 text-transparent group-hover:text-red-400 flex items-center justify-center transition"
-            title="제거"
-          >
-            <X size={13} />
-          </button>
+          <RowActions
+            isFirst={i === 0} isLast={i === ids.length - 1}
+            onMoveUp={() => onMove(id, -1)}
+            onMoveDown={() => onMove(id, 1)}
+            onRemove={() => onRemove(id)}
+          />
         </div>
       ))}
     </div>
@@ -252,6 +279,29 @@ export default function AdaptiveExamEditor({ examId, initialCfg, initialQById }:
     save(newCfg)
   }
 
+  function moveInArray(path: string[], id: string, dir: -1 | 1) {
+    const newCfg = JSON.parse(JSON.stringify(cfg))
+    let node = newCfg
+    for (let i = 0; i < path.length - 1; i++) node = node[path[i]]
+    const key = path[path.length - 1]
+    const arr: string[] = node[key]
+    const idx = arr.indexOf(id)
+    const newIdx = idx + dir
+    if (newIdx < 0 || newIdx >= arr.length) return
+    ;[arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]]
+    save(newCfg)
+  }
+
+  function moveInSet(modKey: string, setType: string, setIdx: number, id: string, dir: -1 | 1) {
+    const newCfg = JSON.parse(JSON.stringify(cfg))
+    const arr: string[] = newCfg[modKey][setType][setIdx].questionIds
+    const idx = arr.indexOf(id)
+    const newIdx = idx + dir
+    if (newIdx < 0 || newIdx >= arr.length) return
+    ;[arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]]
+    save(newCfg)
+  }
+
   // ── 추가 헬퍼 ──────────────────────────────────────
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -318,10 +368,12 @@ export default function AdaptiveExamEditor({ examId, initialCfg, initialQById }:
               <div className="flex-1 min-w-0">
                 <ClickableQRow idx={i + 1} q={toPreview(qMap[id] ?? { id, content: id })} />
               </div>
-              <button onClick={() => removeFromArray([modKey, 'response'], id)}
-                className="flex-shrink-0 w-7 h-7 mr-2 rounded-full hover:bg-red-50 text-transparent group-hover:text-red-400 flex items-center justify-center transition">
-                <X size={13} />
-              </button>
+              <RowActions
+                isFirst={i === 0} isLast={i === respIds.length - 1}
+                onMoveUp={() => moveInArray([modKey, 'response'], id, -1)}
+                onMoveDown={() => moveInArray([modKey, 'response'], id, 1)}
+                onRemove={() => removeFromArray([modKey, 'response'], id)}
+              />
             </div>
           ))}
         </div>
@@ -337,10 +389,12 @@ export default function AdaptiveExamEditor({ examId, initialCfg, initialQById }:
                 <div className="flex-1 min-w-0">
                   <ClickableQRow idx={i + 1} q={toPreview(qMap[id] ?? { id, content: id })} />
                 </div>
-                <button onClick={() => removeFromSet(modKey, 'conversation', si, id)}
-                  className="flex-shrink-0 w-7 h-7 mr-2 rounded-full hover:bg-red-50 text-transparent group-hover:text-red-400 flex items-center justify-center transition">
-                  <X size={13} />
-                </button>
+                <RowActions
+                  isFirst={i === 0} isLast={i === s.questionIds.length - 1}
+                  onMoveUp={() => moveInSet(modKey, 'conversation', si, id, -1)}
+                  onMoveDown={() => moveInSet(modKey, 'conversation', si, id, 1)}
+                  onRemove={() => removeFromSet(modKey, 'conversation', si, id)}
+                />
               </div>
             ))}
           </div>
@@ -357,10 +411,12 @@ export default function AdaptiveExamEditor({ examId, initialCfg, initialQById }:
                 <div className="flex-1 min-w-0">
                   <ClickableQRow idx={i + 1} q={toPreview(qMap[id] ?? { id, content: id })} />
                 </div>
-                <button onClick={() => removeFromSet(modKey, 'academicTalk', si, id)}
-                  className="flex-shrink-0 w-7 h-7 mr-2 rounded-full hover:bg-red-50 text-transparent group-hover:text-red-400 flex items-center justify-center transition">
-                  <X size={13} />
-                </button>
+                <RowActions
+                  isFirst={i === 0} isLast={i === s.questionIds.length - 1}
+                  onMoveUp={() => moveInSet(modKey, 'academicTalk', si, id, -1)}
+                  onMoveDown={() => moveInSet(modKey, 'academicTalk', si, id, 1)}
+                  onRemove={() => removeFromSet(modKey, 'academicTalk', si, id)}
+                />
               </div>
             ))}
           </div>
@@ -408,7 +464,7 @@ export default function AdaptiveExamEditor({ examId, initialCfg, initialQById }:
                   <Plus size={10} /> 추가
                 </button>
               </div>
-              <SubGroupEditable title="" ids={cfg.m1Ids} qMap={qMap} onRemove={id => removeFromArray(['m1Ids'], id)} />
+              <SubGroupEditable title="" ids={cfg.m1Ids} qMap={qMap} onRemove={id => removeFromArray(['m1Ids'], id)} onMove={(id, d) => moveInArray(['m1Ids'], id, d)} />
             </div>
           )}
           {(cfg.m2upIds?.length ?? 0) > 0 && (
@@ -420,7 +476,7 @@ export default function AdaptiveExamEditor({ examId, initialCfg, initialQById }:
                   <Plus size={10} /> 추가
                 </button>
               </div>
-              <SubGroupEditable title="" ids={cfg.m2upIds} qMap={qMap} onRemove={id => removeFromArray(['m2upIds'], id)} />
+              <SubGroupEditable title="" ids={cfg.m2upIds} qMap={qMap} onRemove={id => removeFromArray(['m2upIds'], id)} onMove={(id, d) => moveInArray(['m2upIds'], id, d)} />
             </div>
           )}
           {(cfg.m2downIds?.length ?? 0) > 0 && (
@@ -432,7 +488,7 @@ export default function AdaptiveExamEditor({ examId, initialCfg, initialQById }:
                   <Plus size={10} /> 추가
                 </button>
               </div>
-              <SubGroupEditable title="" ids={cfg.m2downIds} qMap={qMap} onRemove={id => removeFromArray(['m2downIds'], id)} />
+              <SubGroupEditable title="" ids={cfg.m2downIds} qMap={qMap} onRemove={id => removeFromArray(['m2downIds'], id)} onMove={(id, d) => moveInArray(['m2downIds'], id, d)} />
             </div>
           )}
         </div>
@@ -466,7 +522,7 @@ export default function AdaptiveExamEditor({ examId, initialCfg, initialQById }:
                   <Plus size={10} /> 추가
                 </button>
               </div>
-              <SubGroupEditable title="" ids={cfg.writing.reorderingIds} qMap={qMap} onRemove={id => removeFromArray(['writing', 'reorderingIds'], id)} />
+              <SubGroupEditable title="" ids={cfg.writing.reorderingIds} qMap={qMap} onRemove={id => removeFromArray(['writing', 'reorderingIds'], id)} onMove={(id, d) => moveInArray(['writing', 'reorderingIds'], id, d)} />
             </div>
           )}
           {(cfg.writing?.emailIds?.length ?? 0) > 0 && (
@@ -481,7 +537,7 @@ export default function AdaptiveExamEditor({ examId, initialCfg, initialQById }:
                   <Plus size={10} /> 추가
                 </button>
               </div>
-              <SubGroupEditable title="" ids={cfg.writing.emailIds} qMap={qMap} onRemove={id => removeFromArray(['writing', 'emailIds'], id)} />
+              <SubGroupEditable title="" ids={cfg.writing.emailIds} qMap={qMap} onRemove={id => removeFromArray(['writing', 'emailIds'], id)} onMove={(id, d) => moveInArray(['writing', 'emailIds'], id, d)} />
             </div>
           )}
         </div>
@@ -504,7 +560,7 @@ export default function AdaptiveExamEditor({ examId, initialCfg, initialQById }:
                   <Plus size={10} /> 추가
                 </button>
               </div>
-              <SubGroupEditable title="" ids={cfg.speaking.listenRepeatIds} qMap={qMap} onRemove={id => removeFromArray(['speaking', 'listenRepeatIds'], id)} />
+              <SubGroupEditable title="" ids={cfg.speaking.listenRepeatIds} qMap={qMap} onRemove={id => removeFromArray(['speaking', 'listenRepeatIds'], id)} onMove={(id, d) => moveInArray(['speaking', 'listenRepeatIds'], id, d)} />
             </div>
           )}
           {(cfg.speaking?.interviewIds?.length ?? 0) > 0 && (
@@ -519,7 +575,7 @@ export default function AdaptiveExamEditor({ examId, initialCfg, initialQById }:
                   <Plus size={10} /> 추가
                 </button>
               </div>
-              <SubGroupEditable title="" ids={cfg.speaking.interviewIds} qMap={qMap} onRemove={id => removeFromArray(['speaking', 'interviewIds'], id)} />
+              <SubGroupEditable title="" ids={cfg.speaking.interviewIds} qMap={qMap} onRemove={id => removeFromArray(['speaking', 'interviewIds'], id)} onMove={(id, d) => moveInArray(['speaking', 'interviewIds'], id, d)} />
             </div>
           )}
         </div>
