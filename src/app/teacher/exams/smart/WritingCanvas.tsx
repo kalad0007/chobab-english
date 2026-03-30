@@ -198,19 +198,31 @@ export default function WritingCanvas({
     idx: number
   } | null>(null)
 
+  function toSlotQ(p: PickedQuestion): WritingSlotQ {
+    return { id: p.id, content: p.content, difficulty: p.difficulty, question_subtype: p.question_subtype, type: p.type }
+  }
+
   function handlePickSelect(picked: PickedQuestion) {
     if (!pickerState) return
     const { slotType, idx } = pickerState
-    const q: WritingSlotQ = {
-      id: picked.id,
-      content: picked.content,
-      difficulty: picked.difficulty,
-      question_subtype: picked.question_subtype,
-      type: picked.type,
-    }
     setSlots(prev => {
       const arr = [...prev[slotType]] as (WritingSlotQ | null)[]
-      arr[idx] = q
+      arr[idx] = toSlotQ(picked)
+      return { ...prev, [slotType]: arr }
+    })
+    setPickerState(null)
+  }
+
+  // 다중 선택 → 클릭 슬롯부터 연속 채우기 (상한값 내 자동 확장)
+  function handlePickMultiple(qs: PickedQuestion[]) {
+    if (!pickerState || qs.length === 0) return
+    const { slotType, idx } = pickerState
+    const maxCount = W_RANGE[slotType].max
+    setSlots(prev => {
+      const arr = [...prev[slotType]] as (WritingSlotQ | null)[]
+      const needed = idx + qs.length
+      while (arr.length < needed && arr.length < maxCount) arr.push(null)
+      qs.forEach((q, i) => { if (idx + i < arr.length) arr[idx + i] = toSlotQ(q) })
       return { ...prev, [slotType]: arr }
     })
     setPickerState(null)
@@ -409,6 +421,8 @@ export default function WritingCanvas({
         open={!!pickerState}
         onClose={() => setPickerState(null)}
         onSelect={handlePickSelect}
+        onSelectMultiple={handlePickMultiple}
+        multiSelect
         category="writing"
         allowedSubtypes={pickerState ? WRITING_SUBTYPES[pickerState.slotType] : undefined}
         excludeIds={allIds}
