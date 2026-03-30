@@ -272,9 +272,28 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
                 {/* 미니 모듈 분포바 */}
                 {s.key === 'reading' && cfg && (
                   <div className="flex gap-0.5 h-1.5 rounded-full overflow-hidden">
-                    {(cfg.m1Ids?.length ?? 0) > 0 && <div className="bg-blue-400 rounded-l-full" style={{ flex: cfg.m1Ids.length }} />}
+                    {(cfg.m1Ids?.length ?? 0) > 0 && <div className="bg-blue-400" style={{ flex: cfg.m1Ids.length }} />}
                     {(cfg.m2upIds?.length ?? 0) > 0 && <div className="bg-sky-300" style={{ flex: cfg.m2upIds.length }} />}
-                    {(cfg.m2downIds?.length ?? 0) > 0 && <div className="bg-indigo-300 rounded-r-full" style={{ flex: cfg.m2downIds.length }} />}
+                    {(cfg.m2downIds?.length ?? 0) > 0 && <div className="bg-indigo-300" style={{ flex: cfg.m2downIds.length }} />}
+                  </div>
+                )}
+                {s.key === 'listening' && cfg && (
+                  <div className="flex gap-0.5 h-1.5 rounded-full overflow-hidden">
+                    {calcMod(cfg.listening_m1) > 0 && <div className="bg-emerald-400" style={{ flex: calcMod(cfg.listening_m1) }} />}
+                    {calcMod(cfg.listening_m2up) > 0 && <div className="bg-teal-300" style={{ flex: calcMod(cfg.listening_m2up) }} />}
+                    {calcMod(cfg.listening_m2down) > 0 && <div className="bg-cyan-300" style={{ flex: calcMod(cfg.listening_m2down) }} />}
+                  </div>
+                )}
+                {s.key === 'writing' && cfg && (
+                  <div className="flex gap-0.5 h-1.5 rounded-full overflow-hidden">
+                    {(cfg.writing?.reorderingIds?.length ?? 0) > 0 && <div className="bg-purple-400" style={{ flex: cfg.writing.reorderingIds.length }} />}
+                    {(cfg.writing?.emailIds?.length ?? 0) > 0 && <div className="bg-violet-300" style={{ flex: cfg.writing.emailIds.length }} />}
+                  </div>
+                )}
+                {s.key === 'speaking' && cfg && (
+                  <div className="flex gap-0.5 h-1.5 rounded-full overflow-hidden">
+                    {(cfg.speaking?.listenRepeatIds?.length ?? 0) > 0 && <div className="bg-orange-400" style={{ flex: cfg.speaking.listenRepeatIds.length }} />}
+                    {(cfg.speaking?.interviewIds?.length ?? 0) > 0 && <div className="bg-amber-300" style={{ flex: cfg.speaking.interviewIds.length }} />}
                   </div>
                 )}
               </div>
