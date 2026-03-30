@@ -128,8 +128,11 @@ export function ClickableQRow({ idx, q }: Props) {
               {q.options && q.options.length > 0 && (
                 <div className="space-y-2">
                   {q.options.map((opt, i) => {
+                    // options may be stored as {num, text} objects or plain strings
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const optText: string = typeof opt === 'string' ? opt : (opt as any)?.text ?? String(opt)
                     const letter = String.fromCharCode(65 + i) // A, B, C, D
-                    const isAnswer = q.answer === letter || q.answer === opt || q.answer === String(i + 1)
+                    const isAnswer = q.answer === letter || q.answer === optText || q.answer === String(i + 1)
                     return (
                       <div
                         key={i}
@@ -142,7 +145,7 @@ export function ClickableQRow({ idx, q }: Props) {
                         <span className={`font-bold flex-shrink-0 ${isAnswer ? 'text-emerald-600' : 'text-gray-400'}`}>
                           {letter}
                         </span>
-                        <span>{opt}</span>
+                        <span>{optText}</span>
                         {isAnswer && <span className="ml-auto text-emerald-500 text-xs font-bold flex-shrink-0">정답</span>}
                       </div>
                     )
