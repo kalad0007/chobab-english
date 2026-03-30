@@ -18,18 +18,26 @@ interface GeneratedQuestion {
   audio_script?: string | null
 }
 
+// Reading 상위 유형 (Daily Life는 하위 선택 있음)
+const READING_TOP_TYPES = [
+  { value: 'complete_the_words',  label: '1-1A · Complete the Words',  desc: '지문 속 단어 뒷부분 마스킹 (단락형 빈칸)', badge: 'bg-teal-100 text-teal-700' },
+  { value: 'sentence_completion', label: '1-1B · Sentence Completion',  desc: '독립 문장 1개에 빈칸 1개 (문법/어휘)', badge: 'bg-blue-100 text-blue-700' },
+  { value: 'daily_life',          label: '1-2 · Daily Life',            desc: '이메일·문자·공지·가이드·기사·학교공지 6가지 형식 + MCQ', badge: 'bg-cyan-100 text-cyan-700' },
+  { value: 'academic_passage',    label: '1-3 · Academic Passage',      desc: '200-300단어 학술 지문 + 여러 문제 세트', badge: 'bg-indigo-100 text-indigo-700' },
+]
+
+// Daily Life 하위 형식
+const DAILY_LIFE_FORMATS = [
+  { value: 'daily_life_email',         label: 'Email',          desc: '격식 이메일 (From/To/Subject)', badge: 'bg-cyan-100 text-cyan-700' },
+  { value: 'daily_life_text_chain',    label: 'Text Chain',     desc: '그룹 채팅 (3-4명, 타임스탬프)', badge: 'bg-sky-100 text-sky-700' },
+  { value: 'daily_life_notice',        label: 'Notice',         desc: '공지문 (공식 안내/규정)', badge: 'bg-cyan-100 text-cyan-700' },
+  { value: 'daily_life_guide',         label: 'Guide',          desc: '가이드/매뉴얼 (단계별 안내)', badge: 'bg-sky-100 text-sky-700' },
+  { value: 'daily_life_article',       label: 'Article',        desc: '짧은 기사 (뉴스/잡지)', badge: 'bg-cyan-100 text-cyan-700' },
+  { value: 'daily_life_campus_notice', label: 'Campus Notice',  desc: '학교 공지문 (학사/행사)', badge: 'bg-sky-100 text-sky-700' },
+]
+
 const SUBTYPE_OPTIONS: Record<string, { value: string; label: string; desc: string; badge: string }[]> = {
-  reading: [
-    { value: 'complete_the_words',       label: 'Complete the Words',       desc: '단락형 빈칸 — 지문 속 단어 뒷부분 마스킹', badge: 'bg-teal-100 text-teal-700' },
-    { value: 'sentence_completion',      label: 'Sentence Completion',      desc: '독립 문장 빈칸 — 짧은 문장, 각 1개 빈칸', badge: 'bg-blue-100 text-blue-700' },
-    { value: 'daily_life_email',         label: 'Daily Life — Email',       desc: '이메일 형식 실용문 + 독해 문제', badge: 'bg-cyan-100 text-cyan-700' },
-    { value: 'daily_life_text_chain',    label: 'Daily Life — Text Chain',  desc: '그룹 채팅 형식 (3-4명) + 독해 문제', badge: 'bg-sky-100 text-sky-700' },
-    { value: 'daily_life_notice',        label: 'Daily Life — Notice',      desc: '공식 공지문 (규정·정책·안내) + 독해 문제', badge: 'bg-cyan-100 text-cyan-700' },
-    { value: 'daily_life_guide',         label: 'Daily Life — Guide',       desc: '가이드/매뉴얼 (단계별 안내) + 독해 문제', badge: 'bg-sky-100 text-sky-700' },
-    { value: 'daily_life_article',       label: 'Daily Life — Article',     desc: '뉴스·잡지 기사 + 독해 문제', badge: 'bg-cyan-100 text-cyan-700' },
-    { value: 'daily_life_campus_notice', label: 'Daily Life — Campus Notice', desc: '대학 교내 공지문 + 독해 문제', badge: 'bg-sky-100 text-sky-700' },
-    { value: 'academic_passage',         label: 'Academic Passage',         desc: '200-300단어 학술 지문 + 여러 문제 세트', badge: 'bg-indigo-100 text-indigo-700' },
-  ],
+  reading: [], // Reading은 READING_TOP_TYPES + DAILY_LIFE_FORMATS로 별도 처리
   listening: [
     { value: 'choose_response',    label: 'Choose a Response',  desc: '짧은 한마디 듣고 적절한 대답 선택',       badge: 'bg-emerald-100 text-emerald-700' },
     { value: 'conversation',       label: 'Conversation',        desc: '두 사람의 캠퍼스 일상 대화 + 문제 세트', badge: 'bg-green-100 text-green-700' },
@@ -81,6 +89,7 @@ const WORD_COUNT_CONFIG: Record<string, { default: number; step: number; min: nu
 export default function GenerateQuestionsPage() {
   const router = useRouter()
   const [category, setCategory] = useState('reading')
+  const [readingTopType, setReadingTopType] = useState<string | null>(null)
   const [subtype, setSubtype] = useState<string | null>(null)
   const [difficulty, setDifficulty] = useState(3.0)
   const [count, setCount] = useState(3)
@@ -95,10 +104,25 @@ export default function GenerateQuestionsPage() {
 
   function handleCategoryChange(newCat: string) {
     setCategory(newCat)
+    setReadingTopType(null)
     setSubtype(null)
     setWordCount(0)
     setQuestions([])
     setSelected(new Set())
+  }
+
+  function handleReadingTopType(val: string) {
+    if (val === 'daily_life') {
+      // Daily Life 클릭: 상위 선택만, subtype은 하위에서 선택
+      setReadingTopType(val)
+      setSubtype(null)
+      setWordCount(0)
+    } else {
+      // 단일 유형: 바로 subtype으로 설정
+      setReadingTopType(val)
+      setSubtype(val)
+      setWordCount(WORD_COUNT_CONFIG[val]?.default ?? 0)
+    }
   }
 
   function handleSubtypeToggle(val: string) {
@@ -158,7 +182,6 @@ export default function GenerateQuestionsPage() {
   }
 
   const subtypeList = SUBTYPE_OPTIONS[category] ?? []
-  const selectedSubtypeInfo = subtypeList.find(s => s.value === subtype)
   const isMultiQpp = subtype !== null && MULTI_QPP_SUBTYPES.includes(subtype)
   const speakingLabels = subtype ? SPEAKING_SET_LABELS[subtype] : null
   const setCountLabel = speakingLabels?.setLabel ?? '문제 Set 개수'
@@ -197,47 +220,91 @@ export default function GenerateQuestionsPage() {
           </div>
         </div>
 
-        {/* 세부 유형 카드 */}
-        {subtypeList.length > 0 && (
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+        {/* 세부 유형 카드 — Reading */}
+        {category === 'reading' && (
+          <div className="space-y-3">
+            <label className="block text-sm font-semibold text-gray-700">
               문제 유형 <span className="text-xs font-normal text-gray-400">(선택 — 미선택 시 학술 지문으로 생성)</span>
             </label>
             <div className="grid grid-cols-2 gap-2">
+              {READING_TOP_TYPES.map(opt => {
+                const isSelected = readingTopType === opt.value
+                return (
+                  <button key={opt.value} type="button"
+                    onClick={() => handleReadingTopType(opt.value)}
+                    className={`text-left p-3 rounded-xl border-2 transition ${
+                      isSelected ? 'border-purple-500 bg-purple-50' : 'border-gray-100 hover:border-gray-200 bg-white'
+                    }`}>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${opt.badge}`}>{opt.label}</span>
+                      {isSelected && (
+                        <span className="w-4 h-4 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                          <Check size={10} className="text-white" />
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">{opt.desc}</p>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Daily Life 하위 형식 */}
+            {readingTopType === 'daily_life' && (
+              <div className="pl-1">
+                <label className="block text-xs font-semibold text-gray-600 mb-2">Daily Life 형식 선택</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {DAILY_LIFE_FORMATS.map(fmt => {
+                    const isSelected = subtype === fmt.value
+                    return (
+                      <button key={fmt.value} type="button"
+                        onClick={() => handleSubtypeToggle(fmt.value)}
+                        className={`text-left p-3 rounded-xl border-2 transition ${
+                          isSelected ? 'border-cyan-500 bg-cyan-50' : 'border-gray-100 hover:border-gray-200 bg-white'
+                        }`}>
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${fmt.badge}`}>{fmt.label}</span>
+                          {isSelected && (
+                            <span className="w-4 h-4 bg-cyan-600 rounded-full flex items-center justify-center flex-shrink-0">
+                              <Check size={10} className="text-white" />
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">{fmt.desc}</p>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 세부 유형 카드 — Listening / Writing / Speaking */}
+        {category !== 'reading' && subtypeList.length > 0 && (
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              문제 유형 <span className="text-xs font-normal text-gray-400">(선택)</span>
+            </label>
+            <div className="grid grid-cols-2 gap-2">
               {subtypeList.map(opt => (
-                <button
-                  key={opt.value}
-                  type="button"
+                <button key={opt.value} type="button"
                   onClick={() => handleSubtypeToggle(opt.value)}
                   className={`text-left p-3 rounded-xl border-2 transition ${
-                    subtype === opt.value
-                      ? 'border-purple-500 bg-purple-50'
-                      : 'border-gray-100 hover:border-gray-200 bg-white'
-                  }`}
-                >
-                  <div className="flex items-start gap-2">
-                    <div className={`flex-1 min-w-0`}>
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${opt.badge}`}>
-                          {opt.label}
-                        </span>
-                        {subtype === opt.value && (
-                          <span className="w-4 h-4 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-                            <Check size={10} className="text-white" />
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">{opt.desc}</p>
-                    </div>
+                    subtype === opt.value ? 'border-purple-500 bg-purple-50' : 'border-gray-100 hover:border-gray-200 bg-white'
+                  }`}>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${opt.badge}`}>{opt.label}</span>
+                    {subtype === opt.value && (
+                      <span className="w-4 h-4 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Check size={10} className="text-white" />
+                      </span>
+                    )}
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">{opt.desc}</p>
                 </button>
               ))}
             </div>
-            {selectedSubtypeInfo && (
-              <p className="text-xs text-purple-700 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 mt-2">
-                선택: <strong>{selectedSubtypeInfo.label}</strong> — {selectedSubtypeInfo.desc}
-              </p>
-            )}
           </div>
         )}
 
