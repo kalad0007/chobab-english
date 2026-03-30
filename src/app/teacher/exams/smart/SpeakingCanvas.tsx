@@ -203,20 +203,30 @@ export default function SpeakingCanvas({
     idx: number
   } | null>(null)
 
+  function toSlotQ(q: PickedQuestion): SpeakingSlotQ {
+    return { id: q.id, content: q.content, difficulty: q.difficulty, question_subtype: q.question_subtype, audio_url: q.audio_url ?? null, type: q.type }
+  }
+
   function handlePickSelect(picked: PickedQuestion) {
     if (!pickerState) return
     const { slotType, idx } = pickerState
-    const q: SpeakingSlotQ = {
-      id: picked.id,
-      content: picked.content,
-      difficulty: picked.difficulty,
-      question_subtype: picked.question_subtype,
-      audio_url: null,
-      type: picked.type,
-    }
     setSlots(prev => {
       const arr = [...prev[slotType]] as (SpeakingSlotQ | null)[]
-      arr[idx] = q
+      arr[idx] = toSlotQ(picked)
+      return { ...prev, [slotType]: arr }
+    })
+    setPickerState(null)
+  }
+
+  // 다중 선택 or 세트 선택 → 클릭한 슬롯부터 연속으로 채우기
+  function handlePickMultiple(qs: PickedQuestion[]) {
+    if (!pickerState || qs.length === 0) return
+    const { slotType, idx } = pickerState
+    setSlots(prev => {
+      const arr = [...prev[slotType]] as (SpeakingSlotQ | null)[]
+      qs.forEach((q, i) => {
+        if (idx + i < arr.length) arr[idx + i] = toSlotQ(q)
+      })
       return { ...prev, [slotType]: arr }
     })
     setPickerState(null)
@@ -393,10 +403,13 @@ export default function SpeakingCanvas({
         open={!!pickerState}
         onClose={() => setPickerState(null)}
         onSelect={handlePickSelect}
+        onSelectSet={pickerState?.slotType === 'interview' ? handlePickMultiple : undefined}
+        onSelectMultiple={handlePickMultiple}
+        multiSelect
         category="speaking"
         allowedSubtypes={pickerState ? SPEAKING_SUBTYPES[pickerState.slotType] : undefined}
         excludeIds={allIds}
-        title="Speaking 문제 직접 선택"
+        title={pickerState?.slotType === 'interview' ? 'Interview 문제 선택' : 'Listen & Repeat 문제 선택'}
       />
     </div>
   )

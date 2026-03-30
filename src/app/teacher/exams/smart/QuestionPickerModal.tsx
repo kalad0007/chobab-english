@@ -30,6 +30,8 @@ interface Props {
   onClose: () => void
   onSelect: (q: PickedQuestion) => void
   onSelectSet?: (qs: PickedQuestion[]) => void
+  onSelectMultiple?: (qs: PickedQuestion[]) => void  // 다중 선택 → 연속 슬롯 채우기
+  multiSelect?: boolean
   category: 'reading' | 'listening' | 'writing' | 'speaking'
   allowedSubtypes?: string[]
   excludeIds?: string[]
@@ -37,7 +39,7 @@ interface Props {
 }
 
 export default function QuestionPickerModal({
-  open, onClose, onSelect, onSelectSet,
+  open, onClose, onSelect, onSelectSet, onSelectMultiple, multiSelect,
   category, allowedSubtypes, excludeIds = [], title,
 }: Props) {
   const [mode, setMode]           = useState<'individual' | 'set'>('individual')
@@ -49,7 +51,7 @@ export default function QuestionPickerModal({
   const [total, setTotal]         = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading]     = useState(false)
-  const [selected, setSelected]   = useState<PickedQuestion | null>(null)
+  const [selected, setSelected]   = useState<PickedQuestion[]>([])
 
   // set 모드용
   const [sets, setSets]           = useState<PassageSet[]>([])
@@ -122,7 +124,7 @@ export default function QuestionPickerModal({
     setSubtype('')
     setDiffFilter('')
     setPage(1)
-    setSelected(null)
+    setSelected([])
     setSelectedSet(null)
     setMode('individual')
   }, [open, category])
@@ -178,7 +180,7 @@ export default function QuestionPickerModal({
         {/* 모드 탭 */}
         <div className="flex px-5 pt-3 gap-2 flex-shrink-0">
           <button
-            onClick={() => { setMode('individual'); setSelected(null); setSelectedSet(null) }}
+            onClick={() => { setMode('individual'); setSelected([]); setSelectedSet(null) }}
             className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition ${
               mode === 'individual'
                 ? 'bg-blue-600 text-white'
@@ -188,7 +190,7 @@ export default function QuestionPickerModal({
           </button>
           {onSelectSet && (
             <button
-              onClick={() => { setMode('set'); setSelected(null); setSelectedSet(null) }}
+              onClick={() => { setMode('set'); setSelected([]); setSelectedSet(null) }}
               className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
                 mode === 'set'
                   ? 'bg-indigo-600 text-white'
@@ -259,15 +261,21 @@ export default function QuestionPickerModal({
               <div className="flex items-center justify-center h-32 text-sm text-gray-400">검색 결과가 없습니다.</div>
             ) : displayList.map(q => {
               const info = getDiffInfo(q.difficulty)
-              const isSel = selected?.id === q.id
+              const isSel = selected.some(s => s.id === q.id)
               const qTimeSec = q.time_limit ?? DEFAULT_TIME_LIMITS[q.question_subtype ?? ''] ?? 30
               return (
                 <button key={q.id}
-                  onClick={() => setSelected(isSel ? null : q)}
+                  onClick={() => {
+                    if (multiSelect) {
+                      setSelected(prev => isSel ? prev.filter(s => s.id !== q.id) : [...prev, q])
+                    } else {
+                      setSelected(isSel ? [] : [q])
+                    }
+                  }}
                   className={`w-full text-left flex items-start gap-3 px-3 py-2.5 rounded-xl border-2 transition ${
                     isSel ? 'border-blue-500 bg-blue-50' : 'border-gray-100 bg-white hover:border-blue-200'
                   }`}>
-                  <div className={`w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5 ${isSel ? 'bg-blue-600' : 'bg-gray-200'}`}>
+                  <div className={`w-5 h-5 rounded-${multiSelect ? 'md' : 'full'} flex-shrink-0 flex items-center justify-center mt-0.5 ${isSel ? 'bg-blue-600' : 'bg-gray-200'}`}>
                     {isSel && <Check size={10} className="text-white" />}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -397,10 +405,19 @@ export default function QuestionPickerModal({
             </button>
             {mode === 'individual' ? (
               <button
-                onClick={() => { if (selected) { onSelect(selected); onClose() } }}
-                disabled={!selected}
+                onClick={() => {
+                  if (selected.length === 0) return
+                  if (multiSelect && onSelectMultiple) {
+                    onSelectMultiple(selected); onClose()
+                  } else {
+                    onSelect(selected[0]); onClose()
+                  }
+                }}
+                disabled={selected.length === 0}
                 className="px-4 py-2 rounded-xl text-sm font-bold bg-blue-600 hover:bg-blue-700 disabled:bg-blue-200 text-white transition">
-                이 문제로 채우기
+                {multiSelect && selected.length > 1
+                  ? `${selected.length}개 슬롯 채우기`
+                  : '이 문제로 채우기'}
               </button>
             ) : (
               <button
