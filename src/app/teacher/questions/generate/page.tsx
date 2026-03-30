@@ -41,13 +41,13 @@ const SUBTYPE_OPTIONS: Record<string, { value: string; label: string; desc: stri
   listening: [
     { value: 'choose_response',    label: 'Choose a Response',  desc: '짧은 한마디 듣고 적절한 대답 선택',       badge: 'bg-emerald-100 text-emerald-700' },
     { value: 'conversation',       label: 'Conversation',        desc: '두 사람의 캠퍼스 일상 대화 + 문제 세트', badge: 'bg-green-100 text-green-700' },
-    { value: 'academic_talk',      label: 'Academic Talk',       desc: '교수/강연자 학술 강의 + 문제 세트',     badge: 'bg-lime-100 text-lime-700' },
     { value: 'campus_announcement', label: 'Campus Announcement', desc: '캠퍼스 공지 형식 리스닝 + 문제 세트',   badge: 'bg-teal-100 text-teal-700' },
+    { value: 'academic_talk',      label: 'Academic Talk',       desc: '교수/강연자 학술 강의 + 문제 세트',     badge: 'bg-lime-100 text-lime-700' },
   ],
   writing: [
     { value: 'sentence_reordering', label: 'Build a Sentence', desc: '단어 칩 배열 → 올바른 문장 완성', badge: 'bg-purple-100 text-purple-700' },
     { value: 'email_writing', label: 'Write an Email', desc: '상황 + 조건 3가지 → 이메일 쓰기', badge: 'bg-violet-100 text-violet-700' },
-    { value: 'academic_discussion', label: 'Write for an Academic Discussion', desc: '교수 질문 + 학생 2명 의견 → 토론 참여', badge: 'bg-rose-100 text-rose-700' },
+    { value: 'academic_discussion', label: 'Academic Discussion', desc: '교수 질문 + 학생 2명 의견 → 토론 참여', badge: 'bg-rose-100 text-rose-700' },
   ],
   speaking: [
     { value: 'listen_and_repeat', label: 'Listen and Repeat', desc: '원어민 문장 듣고 그대로 따라 말하기', badge: 'bg-orange-100 text-orange-700' },
