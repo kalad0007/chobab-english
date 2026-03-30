@@ -1,50 +1,10 @@
 import { createClient, getUserFromCookie } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { CATEGORY_LABELS, QUESTION_SUBTYPE_LABELS } from '@/lib/utils'
 import { Sparkles, Plus, BookOpen } from 'lucide-react'
 import type { Question } from '@/types/database'
 import QuestionsClient from './QuestionsClient'
+import QuestionsFilter from './QuestionsFilter'
 
-const CATEGORY_COLORS: Record<string, string> = {
-  reading:    'bg-blue-100 text-blue-700',
-  listening:  'bg-emerald-100 text-emerald-700',
-  speaking:   'bg-orange-100 text-orange-700',
-  writing:    'bg-purple-100 text-purple-700',
-}
-
-const CATEGORY_ICON: Record<string, string> = {
-  reading: '📖', listening: '🎧', speaking: '🎤', writing: '✍️',
-}
-
-const SOURCE_LABEL: Record<string, string> = {
-  teacher:        '직접 출제',
-  ai_generated:   'AI 생성',
-  toefl_official: 'TOEFL 기출',
-}
-
-// 카테고리별 주요 서브타입 필터 옵션
-const SUBTYPE_FILTER: Record<string, { value: string; label: string }[]> = {
-  reading: [
-    { value: 'complete_the_words',  label: 'Complete the Words' },
-    { value: 'sentence_completion', label: 'Sentence Completion' },
-    { value: 'daily_life',          label: 'Daily Life' },
-    { value: 'academic_passage',    label: 'Academic Passage' },
-  ],
-  listening: [
-    { value: 'choose_response', label: 'Choose a Response' },
-    { value: 'conversation',    label: 'Conversation' },
-    { value: 'academic_talk',   label: 'Academic Talk' },
-  ],
-  speaking: [
-    { value: 'listen_and_repeat', label: 'Listen & Repeat' },
-    { value: 'take_an_interview', label: 'Interview' },
-  ],
-  writing: [
-    { value: 'sentence_reordering',  label: 'Build a Sentence' },
-    { value: 'email_writing',        label: 'Write an Email' },
-    { value: 'academic_discussion',  label: 'Academic Discussion' },
-  ],
-}
 
 export const dynamic = 'force-dynamic'
 
@@ -107,19 +67,6 @@ export default async function QuestionsPage({
   }
   const passageSets = Array.from(setMap.entries()).map(([groupId, qs]) => ({ groupId, questions: qs }))
 
-  // 카테고리별 개수
-  const { data: counts } = await supabase
-    .from('questions')
-    .select('category')
-    .eq('teacher_id', user.id)
-    .eq('is_active', true)
-
-  const countByCategory: Record<string, number> = {}
-  for (const row of counts ?? []) {
-    countByCategory[row.category] = (countByCategory[row.category] ?? 0) + 1
-  }
-
-  const subtypeOptions = category ? (SUBTYPE_FILTER[category] ?? []) : []
 
   return (
     <div className="p-4 md:p-7">
@@ -154,43 +101,9 @@ export default async function QuestionsPage({
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-5">
-        {/* 카테고리 사이드바 */}
-        <div className="md:w-44 flex-shrink-0">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest px-2 mb-2 hidden md:block">카테고리</p>
-          <div className="flex md:flex-col gap-1 overflow-x-auto pb-1 md:pb-0">
-            <Link
-              href="/teacher/questions"
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap ${!category ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
-            >
-              <span>전체</span>
-              <span className="text-xs text-gray-400">{Object.values(countByCategory).reduce((a, b) => a + b, 0)}</span>
-            </Link>
-            {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-              <div key={key}>
-                <Link
-                  href={`/teacher/questions?category=${key}`}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap ${category === key && !subtype ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
-                >
-                  <span>{label}</span>
-                  <span className="text-xs text-gray-400">{countByCategory[key] ?? 0}</span>
-                </Link>
-                {category === key && (SUBTYPE_FILTER[key] ?? []).map(opt => (
-                  <Link
-                    key={opt.value}
-                    href={`/teacher/questions?category=${key}&subtype=${opt.value}`}
-                    className={`flex items-center gap-1.5 pl-6 pr-3 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${subtype === opt.value ? 'text-blue-600 font-semibold' : 'text-gray-400 hover:text-gray-600'}`}
-                  >
-                    · {opt.label}
-                  </Link>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-
+      <div className="flex flex-col gap-5">
         {/* 문제 목록 */}
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0">
           {/* 검색/필터 */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4 space-y-3">
             {/* 키워드 검색 */}
@@ -209,26 +122,13 @@ export default async function QuestionsPage({
               </button>
             </form>
 
-            {/* 서브타입 필터 chips */}
-            {subtypeOptions.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                <Link
-                  href={`/teacher/questions?category=${category ?? ''}${q ? `&q=${q}` : ''}`}
-                  className={`px-3 py-1 rounded-full text-xs font-semibold transition ${!subtype ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                >
-                  전체 유형
-                </Link>
-                {subtypeOptions.map(opt => (
-                  <Link
-                    key={opt.value}
-                    href={`/teacher/questions?category=${category ?? ''}&subtype=${opt.value}${q ? `&q=${q}` : ''}`}
-                    className={`px-3 py-1 rounded-full text-xs font-semibold transition ${subtype === opt.value ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                  >
-                    {opt.label}
-                  </Link>
-                ))}
-              </div>
-            )}
+            {/* 카테고리 + 서브타입 필터 */}
+            <QuestionsFilter
+              currentCategory={category}
+              currentSubtype={subtype}
+              currentSource={source}
+              currentQ={q}
+            />
 
             {/* 출처 필터 chips */}
             <div className="flex flex-wrap gap-1.5">

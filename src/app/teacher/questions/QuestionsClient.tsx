@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { CATEGORY_LABELS, getDiffInfo } from '@/lib/utils'
 import { Eye, Layers, Trash2, Loader2, Pencil } from 'lucide-react'
 import CopyButton from './CopyButton'
+import QuickTtsButton from './QuickTtsButton'
 
 const CATEGORY_COLORS: Record<string, string> = {
   reading:   'bg-blue-100 text-blue-700',
@@ -30,6 +31,7 @@ interface QuestionRow {
   summary?: string | null
   passage?: string | null
   audio_url?: string | null
+  audio_script?: string | null
   source?: string | null
   passage_group_id?: string | null
   question_subtype?: string | null
@@ -189,6 +191,16 @@ export default function QuestionsClient({ listItems }: Props) {
                   <p className="text-xs text-gray-300 mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
                     {new Date(rep.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })} · {setQs.length}문제
                   </p>
+                  {rep.category === 'listening' && !setQs.some(q => q.audio_url) && rep.audio_script && (
+                    <QuickTtsButton
+                      questionId={rep.id}
+                      audioScript={rep.audio_script}
+                      allQuestionIds={setQs.map(q => q.id)}
+                      onDone={() => router.refresh()}
+                      subtype={rep.question_subtype ?? undefined}
+                      hideVoiceSelector={rep.question_subtype === 'conversation'}
+                    />
+                  )}
                   {/* 모바일 전용 액션 버튼 (항상 표시) */}
                   <div className="flex sm:hidden gap-1.5 mt-2">
                     <Link href={`/teacher/questions/set/${groupId}`}
@@ -226,6 +238,7 @@ export default function QuestionsClient({ listItems }: Props) {
           const iq = item.question
           const diff = getDiffInfo(iq.difficulty)
           const isChecked = selected.has(iq.id)
+          const showQuickTts = iq.category === 'listening' && iq.question_subtype === 'choose_response' && !iq.audio_url && iq.audio_script
           return (
             <div key={iq.id}
               className={`bg-white rounded-xl border shadow-sm p-4 flex items-start gap-3 transition group ${isChecked ? 'border-red-300 bg-red-50' : 'border-gray-100 hover:border-blue-200'}`}>
@@ -261,6 +274,13 @@ export default function QuestionsClient({ listItems }: Props) {
                   {new Date(iq.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })}
                   {iq.attempt_count > 0 && ` · 정답률 ${Math.round((iq.correct_count / iq.attempt_count) * 100)}% · 출제 ${iq.attempt_count}회`}
                 </p>
+                {showQuickTts && (
+                  <QuickTtsButton
+                    questionId={iq.id}
+                    audioScript={iq.audio_script!}
+                    onDone={() => { /* router.refresh()로 목록 갱신 */ router.refresh() }}
+                  />
+                )}
                 {/* 모바일 전용 액션 버튼 (항상 표시) */}
                 <div className="flex sm:hidden gap-1.5 mt-2">
                   <Link href={`/teacher/questions/${iq.id}`}

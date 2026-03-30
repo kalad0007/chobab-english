@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CATEGORY_LABELS, DIFFICULTY_LEVELS, usesAlphaOptions, optionLabel } from '@/lib/utils'
-import { Sparkles, Check, Loader2 } from 'lucide-react'
+import { Sparkles, Check, Loader2, Volume2 } from 'lucide-react'
 
 interface GeneratedQuestion {
   content: string
@@ -82,11 +82,11 @@ const WORD_COUNT_CONFIG: Record<string, { default: number; step: number; min: nu
   academic_talk:         { default: 150, step: 5,  min: 80,  max: 400, unit: '단어' },
   campus_announcement:   { default: 150, step: 5,  min: 80,  max: 400, unit: '단어' },
   sentence_reordering:   { default: 10,  step: 1,  min: 5,   max: 15,  unit: '단어' },
-  email_writing:         { default: 150, step: 5,  min: 100, max: 300, unit: '단어', label: '모범 이메일 답변 길이' },
+  email_writing:         { default: 80,  step: 5,  min: 40,  max: 300, unit: '단어', label: '모범 이메일 답변 길이' },
 }
 
 // Academic Discussion 세부 단어 수 기본값
-const ACAD_DISC_DEFAULT = { prof: 100, studentA: 70, studentB: 70, answer: 100 }
+const ACAD_DISC_DEFAULT = { prof: 80, studentA: 70, studentB: 70, answer: 100 }
 
 export default function GenerateQuestionsPage() {
   const router = useRouter()
@@ -104,6 +104,8 @@ export default function GenerateQuestionsPage() {
   const [questions, setQuestions] = useState<GeneratedQuestion[]>([])
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [error, setError] = useState('')
+  const [audioUrls, setAudioUrls] = useState<Record<number, string>>({})
+  const [generatingAudioSet, setGeneratingAudioSet] = useState<Set<number>>(new Set())
 
   function handleCategoryChange(newCat: string) {
     setCategory(newCat)
@@ -153,6 +155,8 @@ export default function GenerateQuestionsPage() {
       const data = await res.json()
       setQuestions(data.questions)
       setSelected(new Set(data.questions.map((_: GeneratedQuestion, i: number) => i)))
+      setAudioUrls({})
+      setGeneratingAudioSet(new Set())
     } catch (err) {
       setError('문제 생성 실패: ' + (err instanceof Error ? err.message : String(err)))
     } finally {
@@ -160,10 +164,31 @@ export default function GenerateQuestionsPage() {
     }
   }
 
+  async function handleGenerateAudio(idx: number) {
+    const q = questions[idx]
+    if (!q?.audio_script) return
+    setGeneratingAudioSet(prev => new Set([...prev, idx]))
+    try {
+      const res = await fetch('/api/ai/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ script: q.audio_script, subtype: q.question_subtype }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.audioUrl) setAudioUrls(prev => ({ ...prev, [idx]: data.audioUrl }))
+      }
+    } finally {
+      setGeneratingAudioSet(prev => { const next = new Set(prev); next.delete(idx); return next })
+    }
+  }
+
   async function handleSave() {
     setSaving(true)
     setError('')
-    const toSave = questions.filter((_, i) => selected.has(i))
+    const toSave = questions
+      .map((q, i) => ({ ...q, audio_url: audioUrls[i] ?? null }))
+      .filter((_, i) => selected.has(i))
 
     try {
       const res = await fetch('/api/ai/save-questions', {
@@ -446,7 +471,7 @@ export default function GenerateQuestionsPage() {
               <span className="ml-2 text-xs font-normal text-gray-400">총 {count * questionsPerPassage}개 문제 생성</span>
             </label>
             <div className="flex gap-2">
-              {[1, 2, 3, 4, 5, 6].map(n => (
+              {(subtype === 'listen_and_repeat' ? [1, 2, 3, 4, 5, 6, 7, 8] : [1, 2, 3, 4, 5, 6]).map(n => (
                 <button key={n} type="button" onClick={() => setQuestionsPerPassage(n)}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-bold border-2 transition ${
                     questionsPerPassage === n
@@ -511,8 +536,36 @@ export default function GenerateQuestionsPage() {
                         </div>
                       )}
                       {q.audio_script && !q.passage && (
-                        <div className="bg-emerald-50 border-l-2 border-emerald-400 p-3 rounded text-xs text-gray-600 mb-3 whitespace-pre-wrap">
-                          {q.audio_script}
+                        <div className="mb-3">
+                          <div className="bg-emerald-50 border-l-2 border-emerald-400 p-3 rounded text-xs text-gray-600 whitespace-pre-wrap">
+                            {q.audio_script}
+                          </div>
+                          {q.question_subtype === 'listen_and_repeat' && (
+                            <div className="mt-1.5" onClick={e => e.stopPropagation()}>
+                              {audioUrls[i] ? (
+                                <div className="flex items-center gap-2">
+                                  <audio controls src={audioUrls[i]} className="h-8 flex-1 min-w-0" />
+                                  <button
+                                    onClick={() => handleGenerateAudio(i)}
+                                    disabled={generatingAudioSet.has(i)}
+                                    className="p-1.5 rounded-lg text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition disabled:opacity-40"
+                                    title="음성 재생성"
+                                  >
+                                    {generatingAudioSet.has(i) ? <Loader2 size={13} className="animate-spin" /> : <Volume2 size={13} />}
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => handleGenerateAudio(i)}
+                                  disabled={generatingAudioSet.has(i)}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg text-xs font-semibold text-orange-700 transition disabled:opacity-50"
+                                >
+                                  {generatingAudioSet.has(i) ? <Loader2 size={12} className="animate-spin" /> : <Volume2 size={12} />}
+                                  {generatingAudioSet.has(i) ? '생성 중...' : '음성 생성'}
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
                       <p className="text-sm font-semibold text-gray-800 mb-2 break-words">{q.content}</p>
@@ -521,12 +574,26 @@ export default function GenerateQuestionsPage() {
                           <span className="font-semibold">{optionLabel(opt.num, usesAlphaOptions(q.category, q.question_subtype))}.</span> {opt.text}
                         </p>
                       ))}
-                      <div className="flex items-center gap-3 mt-2">
-                        <span className="text-xs text-green-700 font-semibold bg-green-50 px-2 py-0.5 rounded break-all line-clamp-2">
-                          정답: {usesAlphaOptions(q.category, q.question_subtype) && /^\d+$/.test(q.answer) ? optionLabel(Number(q.answer), true) : q.answer}
-                        </span>
-                        {q.explanation && <span className="text-xs text-gray-400 line-clamp-2 break-words">{q.explanation}</span>}
-                      </div>
+                      {(q.question_subtype === 'email_writing' || q.question_subtype === 'academic_discussion') ? (
+                        <div className="mt-2 space-y-1.5">
+                          <p className="text-xs font-semibold text-green-700">모범 답안</p>
+                          <p className="text-xs text-gray-800 bg-green-50 px-3 py-2 rounded whitespace-pre-wrap leading-5">{q.answer}</p>
+                          {q.explanation && (
+                            <p className="text-xs text-gray-400 whitespace-pre-wrap leading-4">
+                              {q.question_subtype === 'academic_discussion'
+                                ? q.explanation.split('\n\n===번역===')[0].trim()
+                                : q.explanation}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3 mt-2">
+                          <span className="text-xs text-green-700 font-semibold bg-green-50 px-2 py-0.5 rounded break-all line-clamp-3">
+                            정답: {usesAlphaOptions(q.category, q.question_subtype) && /^\d+$/.test(q.answer) ? optionLabel(Number(q.answer), true) : q.answer}
+                          </span>
+                          {q.explanation && <span className="text-xs text-gray-400 line-clamp-3 break-words">{q.explanation}</span>}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

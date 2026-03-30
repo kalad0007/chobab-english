@@ -11,13 +11,14 @@ export async function POST(req: NextRequest) {
   const ESSAY_SUBTYPES = new Set([
     'complete_the_words', 'sentence_completion', 'email_writing',
     'sentence_reordering', 'listen_and_repeat', 'take_an_interview',
+    'academic_discussion',
   ])
 
   const rows = questions.map((q: {
     content: string; passage?: string | null; options?: { num: number; text: string }[] | null;
     answer: string; explanation?: string | null; category: string; difficulty: number;
-    question_subtype?: string | null; audio_script?: string | null; speaking_prompt?: string | null;
-    summary?: string | null; subcategory?: string | null;
+    question_subtype?: string | null; audio_script?: string | null; audio_url?: string | null;
+    speaking_prompt?: string | null; summary?: string | null; subcategory?: string | null;
     vocab_words?: { word: string; def: string; example?: string }[] | null;
   }) => ({
     teacher_id: user.id,
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
     difficulty: q.difficulty,
     question_subtype: q.question_subtype ?? null,
     audio_script: q.audio_script ?? null,
-    audio_url: null,
+    audio_url: q.audio_url ?? null,
     audio_play_limit: null,
     speaking_prompt: q.speaking_prompt ?? null,
     preparation_time: null,

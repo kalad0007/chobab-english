@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { CATEGORY_LABELS, QUESTION_SUBTYPE_LABELS, SPEAKING_TASK_TIMES, DIFFICULTY_LEVELS, DEFAULT_TIME_LIMITS, formatSeconds } from '@/lib/utils'
 import { Volume2, Loader2, Plus, Trash2, ChevronDown, ChevronUp, Info, Wand2, Check } from 'lucide-react'
 import UnderlineTextarea from '@/components/ui/UnderlineTextarea'
+import InlineFillBlankEditor from '@/components/ui/InlineFillBlankEditor'
 import Link from 'next/link'
 
 // ────────── 2026 유형 상수 ──────────
@@ -272,89 +273,21 @@ function QuestionEditor({
     )
   }
 
-  // ── Complete the Words (빈칸 채우기) ──
-  if (isCompleteWords(q.questionSubtype)) {
+  // ── Complete the Words / Sentence Completion — 인터랙티브 편집기 ──
+  if (isCompleteWords(q.questionSubtype) || q.questionSubtype === 'sentence_completion') {
     return (
       <div className="space-y-4">
-        <div className="bg-teal-50 border border-teal-200 rounded-xl p-3 flex items-start gap-2">
-          <Info size={14} className="text-teal-600 mt-0.5 flex-shrink-0" />
-          <p className="text-xs text-teal-700">
-            지문에 빈칸(__)을 표시하세요. 예: <code className="bg-white px-1 rounded">te__</code> (tend),
-            <code className="bg-white px-1 rounded ml-1">bel____</code> (believe).
-            70-100 단어의 학술 단락, 두번째 문장부터 두번째 단어마다 뒷부분을 제거합니다.
-          </p>
-        </div>
-        <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1">
-            빈칸이 포함된 단락 <span className="text-red-500">*</span>
-            <span className="text-gray-400 font-normal ml-1">(공유 지문과 별개로 이 문제 전용 단락)</span>
-          </label>
-          <textarea value={q.content} onChange={e => onUpdate({ content: e.target.value })}
-            placeholder={`Footage captured by submarines has shown us that strange creatures thrive in the deepest parts of the ocean. People te__ to bel____ that su__ extreme environ____ are ju__ barren zon__. In rea____, research h__ clearly sh___ that li__ is abundant there.`}
-            rows={6}
-            className="w-full px-3 py-2.5 border border-teal-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none font-mono bg-white" />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1">
-            정답 단어 (빈칸 순서대로, 쉼표로 구분) <span className="text-red-500">*</span>
-          </label>
-          <input value={q.answer} onChange={e => onUpdate({ answer: e.target.value })}
-            placeholder="tend, believe, such, environments, just, zones, reality, has, shows, life"
-            className="w-full px-3 py-2.5 border border-teal-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white" />
-          <p className="text-xs text-gray-400 mt-1">빈칸 __ 이 나오는 순서대로 완성된 단어를 입력</p>
-        </div>
-        <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1">해설</label>
-          <textarea value={q.explanation} onChange={e => onUpdate({ explanation: e.target.value })}
-            placeholder="각 빈칸 단어 설명..." rows={2}
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none" />
-          <VocabEditorInline words={q.vocabWords} onChange={w => onUpdate({ vocabWords: w })} />
-        </div>
-      </div>
-    )
-  }
-
-  // ── Sentence Completion (10문장 세트) ──
-  if (q.questionSubtype === 'sentence_completion') {
-    return (
-      <div className="space-y-4">
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-start gap-2">
-          <Info size={14} className="text-blue-600 mt-0.5 flex-shrink-0" />
-          <p className="text-xs text-blue-700">
-            <strong>10개 문장을 줄바꿈(Enter)으로 구분</strong>하여 입력하세요. 각 문장에 <code className="bg-white px-1 rounded">___</code> 빈칸 1개를 포함하세요.<br />
-            예: <code className="bg-white px-1 rounded">The scientist ___ to work late.</code>
-          </p>
-        </div>
-        <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1">
-            문장 목록 (빈칸 ___ 포함, 10개 권장) <span className="text-red-500">*</span>
-          </label>
-          <textarea
-            value={q.content}
-            onChange={e => onUpdate({ content: e.target.value })}
-            placeholder={'The professor ___ her students to submit their essays early.\nThe new policy ___ all employees to work from home twice a week.\nResearchers ___ that the drug could reduce symptoms significantly.\nMany students ___ additional resources to prepare for the exam.\nThe company ___ a new headquarters in the city center last year.\nThe government ___ stricter environmental regulations in 2023.\nThe athlete ___ months of intense training before the competition.\nShe ___ a scholarship to study abroad at a top university.\nThe committee ___ a decision after hours of deliberation.\nHe ___ his colleagues with a detailed report of the findings.'}
-            rows={12}
-            className="w-full px-3 py-3 border border-blue-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono"
-          />
-          <p className="text-xs text-gray-400 mt-1">각 줄 = 문장 1개. 학생에게 번호 붙은 목록으로 표시됩니다.</p>
-        </div>
-        <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1">
-            정답 (빈칸 순서대로, 쉼표로 구분) <span className="text-red-500">*</span>
-          </label>
-          <input
-            value={q.answer}
-            onChange={e => onUpdate({ answer: e.target.value })}
-            placeholder="encouraged,required,found,used,built,introduced,completed,received,made,impressed"
-            className="w-full px-3 py-2.5 border border-blue-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <p className="text-xs text-gray-400 mt-1">문장 순서대로 각 빈칸의 정답 단어를 쉼표로 구분</p>
-        </div>
+        <InlineFillBlankEditor
+          subtype={q.questionSubtype as 'complete_the_words' | 'sentence_completion'}
+          content={q.content}
+          answer={q.answer}
+          onChange={(c, a) => onUpdate({ content: c, answer: a })}
+        />
         <div>
           <label className="block text-xs font-semibold text-gray-600 mb-1">해설 (선택)</label>
           <textarea value={q.explanation} onChange={e => onUpdate({ explanation: e.target.value })}
             placeholder="각 빈칸의 단어 의미 및 문법 설명..." rows={2}
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none" />
           <VocabEditorInline words={q.vocabWords} onChange={w => onUpdate({ vocabWords: w })} />
         </div>
       </div>

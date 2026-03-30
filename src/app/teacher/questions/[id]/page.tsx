@@ -6,6 +6,7 @@ import { ArrowLeft, Pencil, Volume2 } from 'lucide-react'
 import type { Question } from '@/types/database'
 import BuildASentencePlayer from '@/components/ui/BuildASentencePlayer'
 import VocabWords from '@/components/ui/VocabWords'
+import EmailPassageRenderer from '@/components/ui/EmailPassageRenderer'
 
 const CATEGORY_COLORS: Record<string, string> = {
   reading:   'bg-blue-100 text-blue-700',
@@ -105,19 +106,23 @@ export default async function QuestionPreviewPage({
   // fill-blank 메타 파싱 (위저드 저장 포맷: {title, timeLimit, format, explanation})
   let fbMeta: { title?: string; timeLimit?: number; explanation?: string } = {}
   let explanationText = question.explanation ?? ''
+  let krTranslation = ''  // academic_discussion 한글 번역
   if (isFillBlank) {
     const rawExp = question.explanation ?? ''
     if (rawExp.startsWith('{')) {
       try {
         const parsed = JSON.parse(rawExp)
         if (parsed.format !== undefined) {
-          // 위저드 메타
           fbMeta = parsed
           explanationText = parsed.explanation ?? ''
         }
-        // else: AI 일반 텍스트 → explanationText 유지
       } catch { /* ignore */ }
     }
+  } else if (question.question_subtype === 'academic_discussion') {
+    const KR_DELIMITER = '\n\n===번역==='
+    const parts = (question.explanation ?? '').split(KR_DELIMITER)
+    explanationText = parts[0].trim()
+    krTranslation = parts[1]?.replace(/^\n\n/, '').trim() ?? ''
   }
 
   return (
@@ -221,11 +226,17 @@ export default async function QuestionPreviewPage({
           </p>
           {renderPassage(question.passage, question.question_subtype)}
         </div>
-      ) : !isSentenceReordering && !isFillBlank && question.passage ? (
-        <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5 mb-4">
-          <p className="text-xs font-bold text-amber-700 mb-3 uppercase tracking-wide">지문</p>
-          {renderPassage(question.passage, question.question_subtype)}
-        </div>
+      ) : !isSentenceReordering && !isFillBlank && question.passage && question.question_subtype !== 'email_writing' && question.question_subtype !== 'listen_and_repeat' ? (
+        (question.question_subtype === 'daily_life_email' || question.question_subtype === 'daily_life_campus_email') ? (
+          <div className="mb-4">
+            <EmailPassageRenderer text={question.passage} />
+          </div>
+        ) : (
+          <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5 mb-4">
+            <p className="text-xs font-bold text-amber-700 mb-3 uppercase tracking-wide">지문</p>
+            {renderPassage(question.passage, question.question_subtype)}
+          </div>
+        )
       ) : null}
 
       {/* 문제 (sentence_reordering / fill-blank 위저드는 위에서 이미 표시) */}
@@ -244,10 +255,12 @@ export default async function QuestionPreviewPage({
             return (
               <div className="space-y-2">
                 {sentences.map((sentence, i) => {
-                  const hint = answerWords[i] ? answerWords[i].slice(0, 3) : ''
-                  const displayed = hint
-                    ? sentence.replace('___', `${hint}___`)
-                    : sentence
+                  // If content already has hint letters (e.g. lea___), use as-is; otherwise auto-add 3-char hint
+                  const alreadyHinted = /[a-zA-Z']+_{2,}/.test(sentence)
+                  const hint = !alreadyHinted && answerWords[i] ? answerWords[i].slice(0, 3) : ''
+                  const displayed = alreadyHinted
+                    ? sentence
+                    : hint ? sentence.replace(/_{2,}/, `${hint}___`) : sentence
                   return (
                     <div key={i} className="flex items-baseline gap-3">
                       <span className="text-xs font-bold text-gray-400 w-6 flex-shrink-0 text-right">{i + 1}.</span>
@@ -286,8 +299,8 @@ export default async function QuestionPreviewPage({
           )
         })()}
 
-        {/* Speaking 프롬프트 */}
-        {question.speaking_prompt && (
+        {/* Speaking 프롬프트 — listen_and_repeat는 audio_script와 동일하므로 생략 */}
+        {question.speaking_prompt && question.question_subtype !== 'listen_and_repeat' && (
           <div className="mt-4 p-4 bg-orange-50 rounded-xl border border-orange-100">
             <p className="text-xs font-bold text-orange-700 mb-2">🎤 말하기 프롬프트</p>
             <p className="text-sm text-orange-900">{question.speaking_prompt}</p>
@@ -303,17 +316,36 @@ export default async function QuestionPreviewPage({
         </summary>
         <div className="px-5 pb-5 space-y-3 border-t border-gray-100 pt-4">
           <div>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">정답</p>
-            <p className="text-sm text-gray-900 font-mono bg-green-50 px-3 py-2 rounded-lg">
-              {isFillBlank
-                ? (question.answer ?? '').split(',').map((a, i) => (
-                    <span key={i} className="inline-block mr-2 mb-1 bg-green-100 text-green-800 px-2 py-0.5 rounded font-semibold text-xs">{i+1}. {a.trim()}</span>
-                  ))
-                : usesAlphaOptions(question.category, question.question_subtype) && /^\d+$/.test(question.answer ?? '')
-                  ? optionLabel(Number(question.answer), true)
-                  : question.answer}
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">
+              {(question.question_subtype === 'email_writing' || question.question_subtype === 'academic_discussion') ? '모범 답안' : '정답'}
             </p>
+            {(question.question_subtype === 'email_writing' || question.question_subtype === 'academic_discussion') ? (
+              <p className="text-sm text-gray-900 bg-green-50 px-3 py-2.5 rounded-lg whitespace-pre-wrap leading-6">{question.answer}</p>
+            ) : (
+              <p className="text-sm text-gray-900 font-mono bg-green-50 px-3 py-2 rounded-lg">
+                {isFillBlank
+                  ? (question.answer ?? '').split(',').map((a, i) => (
+                      <span key={i} className="inline-block mr-2 mb-1 bg-green-100 text-green-800 px-2 py-0.5 rounded font-semibold text-xs">{i+1}. {a.trim()}</span>
+                    ))
+                  : usesAlphaOptions(question.category, question.question_subtype) && /^\d+$/.test(question.answer ?? '')
+                    ? optionLabel(Number(question.answer), true)
+                    : question.answer}
+              </p>
+            )}
           </div>
+          {/* email_writing / academic_discussion 한글 번역 */}
+          {question.question_subtype === 'email_writing' && question.passage && (
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">한글 번역</p>
+              <p className="text-sm text-gray-700 bg-blue-50 px-3 py-2.5 rounded-lg whitespace-pre-wrap leading-6">{question.passage}</p>
+            </div>
+          )}
+          {question.question_subtype === 'academic_discussion' && krTranslation && (
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">한글 번역</p>
+              <p className="text-sm text-gray-700 bg-blue-50 px-3 py-2.5 rounded-lg whitespace-pre-wrap leading-6">{krTranslation}</p>
+            </div>
+          )}
           {explanationText && (
             <div>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">해설</p>

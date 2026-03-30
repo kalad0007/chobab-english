@@ -8,6 +8,9 @@ import DeleteButton from '../../DeleteButton'
 import SetDeleteButton from './SetDeleteButton'
 import AIAddButton from './AIAddButton'
 import VocabWords from '@/components/ui/VocabWords'
+import SetOrderButtons from './SetOrderButtons'
+import TtsAutoButton from './TtsAutoButton'
+import EmailPassageRenderer from '@/components/ui/EmailPassageRenderer'
 
 const CATEGORY_COLORS: Record<string, string> = {
   reading:   'bg-blue-100 text-blue-700',
@@ -32,15 +35,18 @@ export default async function SetPreviewPage({
     .eq('passage_group_id', groupId)
     .eq('teacher_id', user.id)
     .eq('is_active', true)
+    .order('set_order', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: true })
 
   if (!qs || qs.length === 0) notFound()
 
-  type QRow = Question & { passage_group_id?: string; audio_script?: string | null; audio_url?: string | null; vocab_words?: { word: string; def: string; example?: string }[] | null }
+  type QRow = Question & { passage_group_id?: string; audio_script?: string | null; audio_url?: string | null; speaking_prompt?: string | null; vocab_words?: { word: string; def: string; example?: string }[] | null }
   const questions = qs as QRow[]
   const rep = questions[0]
   const diff = getDiffInfo(rep.difficulty)
   const subtypeLabel = QUESTION_SUBTYPE_LABELS[rep.category]?.[rep.question_subtype ?? '']
+  const isListenRepeat = rep.question_subtype === 'listen_and_repeat'
+  const isTakeInterview = rep.question_subtype === 'take_an_interview'
 
   return (
     <div className="p-4 md:p-7 max-w-3xl">
@@ -51,12 +57,8 @@ export default async function SetPreviewPage({
             <ArrowLeft size={18} />
           </Link>
           <div>
-            <h1 className="text-xl font-extrabold text-gray-900">
-              {rep.category === 'listening' ? '리스닝 세트 미리보기' : '지문 세트 미리보기'}
-            </h1>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {rep.category === 'listening' ? '음성 1개 + 문제 ' : '지문 1개 + 문제 '}{questions.length}개
-            </p>
+            <h1 className="text-xl font-extrabold text-gray-900">세트 미리보기</h1>
+            <p className="text-xs text-gray-400 mt-0.5">문제 {questions.length}개 세트</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -84,6 +86,26 @@ export default async function SetPreviewPage({
           {questions.length}문제 세트
         </span>
       </div>
+
+      {/* Take an Interview: 인터뷰 소개 지문 */}
+      {isTakeInterview && (
+        <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5 mb-6">
+          <p className="text-xs font-bold text-orange-500 uppercase tracking-wide mb-2">인터뷰 소개 (공유)</p>
+          <p className="text-sm text-orange-900 leading-7">{rep.passage ?? '(소개 지문 없음)'}</p>
+        </div>
+      )}
+
+      {/* Listen & Repeat: Set title + 공유 지시문 */}
+      {isListenRepeat && (
+        <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5 mb-6">
+          <p className="text-xs font-bold text-orange-500 uppercase tracking-wide mb-1">세트 타이틀</p>
+          <p className="text-base font-bold text-orange-900 mb-3">{rep.passage ?? '(세트 미지정)'}</p>
+          <div className="border-t border-orange-100 pt-3">
+            <p className="text-xs font-bold text-orange-500 uppercase tracking-wide mb-1">공유 지시문</p>
+            <p className="text-sm text-orange-800 font-medium">{rep.content}</p>
+          </div>
+        </div>
+      )}
 
       {/* 리스닝: 음성 스크립트 + 플레이어 (공유) */}
       {rep.category === 'listening' && (rep.audio_script || rep.audio_url) && (
@@ -120,12 +142,19 @@ export default async function SetPreviewPage({
         </div>
       )}
 
-      {/* 지문 (리딩) */}
-      {rep.category !== 'listening' && rep.passage && (
-        <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5 mb-6">
-          <p className="text-xs font-bold text-amber-700 mb-3 uppercase tracking-wide">지문 (공유)</p>
-          <p className="text-gray-800 text-sm leading-7 whitespace-pre-wrap">{rep.passage}</p>
-        </div>
+      {/* 지문 (리딩, listen_and_repeat, take_an_interview 제외) */}
+      {rep.category !== 'listening' && !isListenRepeat && !isTakeInterview && rep.passage && (
+        (rep.question_subtype === 'daily_life_email' || rep.question_subtype === 'daily_life_campus_email') ? (
+          <div className="mb-6">
+            <p className="text-xs font-bold text-amber-700 mb-2 uppercase tracking-wide">지문 (공유)</p>
+            <EmailPassageRenderer text={rep.passage} />
+          </div>
+        ) : (
+          <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5 mb-6">
+            <p className="text-xs font-bold text-amber-700 mb-3 uppercase tracking-wide">지문 (공유)</p>
+            <p className="text-gray-800 text-sm leading-7 whitespace-pre-wrap">{rep.passage}</p>
+          </div>
+        )
       )}
 
       {/* 문제 목록 */}
@@ -134,7 +163,15 @@ export default async function SetPreviewPage({
           <div key={q.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             {/* 문제 헤더 */}
             <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
-              <span className="text-sm font-bold text-gray-700">문제 {idx + 1}</span>
+              <div className="flex items-center gap-2">
+                <SetOrderButtons
+                  questionId={q.id}
+                  idx={idx}
+                  total={questions.length}
+                  allIds={questions.map(q => q.id)}
+                />
+                <span className="text-sm font-bold text-gray-700">문제 {idx + 1}</span>
+              </div>
               <div className="flex gap-1.5">
                 <Link href={`/teacher/questions/${q.id}`}
                   className="px-3 py-1 text-xs font-semibold bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition">
@@ -150,20 +187,47 @@ export default async function SetPreviewPage({
 
             {/* 문제 내용 */}
             <div className="px-5 py-4">
-              <p className="text-sm text-gray-900 leading-7 font-medium whitespace-pre-wrap">{q.content}</p>
-
-              {/* 선택지 */}
-              {Array.isArray(q.options) && (q.options as { num: number; text: string }[]).length > 0 && (
-                <div className="mt-3 space-y-2">
-                  {(q.options as { num: number; text: string }[]).map(opt => (
-                    <div key={opt.num} className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100">
-                      <span className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-gray-100 rounded-full text-xs font-bold text-gray-600">
-                        {optionLabel(opt.num, usesAlphaOptions(q.category, q.question_subtype))}
-                      </span>
-                      <span className="text-sm text-gray-800">{opt.text}</span>
-                    </div>
-                  ))}
+              {isListenRepeat ? (
+                /* Listen & Repeat: 문장(audio_script) + TTS 상태 */
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-900 leading-7 font-medium">{q.audio_script ?? '(문장 없음)'}</p>
+                  {q.audio_script && (
+                    <TtsAutoButton
+                      questionId={q.id}
+                      audioScript={q.audio_script}
+                      initialAudioUrl={q.audio_url ?? null}
+                    />
+                  )}
                 </div>
+              ) : isTakeInterview ? (
+                /* Take an Interview: 질문 텍스트(content) + TTS 상태 */
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-900 leading-7 font-medium whitespace-pre-wrap">{q.content}</p>
+                  {((q as QRow).speaking_prompt ?? q.content) && (
+                    <TtsAutoButton
+                      questionId={q.id}
+                      audioScript={(q as QRow).speaking_prompt ?? q.content ?? ''}
+                      initialAudioUrl={q.audio_url ?? null}
+                    />
+                  )}
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm text-gray-900 leading-7 font-medium whitespace-pre-wrap">{q.content}</p>
+                  {/* 선택지 */}
+                  {Array.isArray(q.options) && (q.options as { num: number; text: string }[]).length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {(q.options as { num: number; text: string }[]).map(opt => (
+                        <div key={opt.num} className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100">
+                          <span className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-gray-100 rounded-full text-xs font-bold text-gray-600">
+                            {optionLabel(opt.num, usesAlphaOptions(q.category, q.question_subtype))}
+                          </span>
+                          <span className="text-sm text-gray-800">{opt.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
 

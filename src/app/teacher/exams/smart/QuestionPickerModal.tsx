@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Search, X, ChevronLeft, ChevronRight, Check, Layers, Clock } from 'lucide-react'
-import { DIFFICULTY_LEVELS, QUESTION_SUBTYPE_LABELS, getDiffInfo, DEFAULT_TIME_LIMITS, formatSeconds } from '@/lib/utils'
+import { DIFFICULTY_LEVELS, QUESTION_SUBTYPE_LABELS, ACTIVE_SUBTYPES, getDiffInfo, DEFAULT_TIME_LIMITS, formatSeconds } from '@/lib/utils'
 
 export interface PickedQuestion {
   id: string
@@ -58,8 +58,18 @@ export default function QuestionPickerModal({
   const [selectedSet, setSelectedSet] = useState<PassageSet | null>(null)
 
   const subtypeMap = QUESTION_SUBTYPE_LABELS[category] ?? {}
-  const subtypeOptions = (allowedSubtypes ?? Object.keys(subtypeMap))
-    .map(k => ({ key: k, label: subtypeMap[k] ?? k }))
+  const activeSubtypes = ACTIVE_SUBTYPES[category] ?? []
+  const subtypeOptions = allowedSubtypes
+    ? allowedSubtypes.map(k => ({ key: k, label: subtypeMap[k] ?? k }))
+    : activeSubtypes.map(o => ({ key: o.value, label: o.label }))
+
+  const CAT_COLORS: Record<string, { active: string; inactive: string }> = {
+    reading:   { active: 'bg-blue-600 text-white',    inactive: 'bg-gray-100 text-gray-600 hover:bg-blue-50 hover:text-blue-600' },
+    listening: { active: 'bg-emerald-600 text-white',  inactive: 'bg-gray-100 text-gray-600 hover:bg-emerald-50 hover:text-emerald-600' },
+    writing:   { active: 'bg-purple-600 text-white',   inactive: 'bg-gray-100 text-gray-600 hover:bg-purple-50 hover:text-purple-600' },
+    speaking:  { active: 'bg-orange-600 text-white',   inactive: 'bg-gray-100 text-gray-600 hover:bg-orange-50 hover:text-orange-600' },
+  }
+  const catColor = CAT_COLORS[category] ?? CAT_COLORS.reading
 
   // ── 개별 문제 검색 ──────────────────────────────────
   const doFetch = useCallback(async (p: number) => {
@@ -201,17 +211,17 @@ export default function QuestionPickerModal({
             />
           </div>
 
-          {subtypeOptions.length > 0 && (
-            <div className="flex flex-wrap gap-1">
+          {subtypeOptions.length > 1 && (
+            <div className="flex flex-wrap gap-1.5">
               <button
                 onClick={() => { setSubtype(''); setPage(1) }}
-                className={`text-[11px] px-2 py-0.5 rounded-full font-semibold transition ${!subtype ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-                전체
+                className={`text-xs px-3 py-1 rounded-full font-semibold transition ${!subtype ? catColor.active : catColor.inactive}`}>
+                전체 유형
               </button>
               {subtypeOptions.map(o => (
                 <button key={o.key}
                   onClick={() => { setSubtype(subtype === o.key ? '' : o.key); setPage(1) }}
-                  className={`text-[11px] px-2 py-0.5 rounded-full font-semibold transition ${subtype === o.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                  className={`text-xs px-3 py-1 rounded-full font-semibold transition ${subtype === o.key ? catColor.active : catColor.inactive}`}>
                   {o.label.replace(/ ★NEW.*/, '').replace(/ \(.*\)/, '')}
                 </button>
               ))}
@@ -219,19 +229,19 @@ export default function QuestionPickerModal({
           )}
 
           {mode === 'individual' && (
-            <div className="flex gap-1 flex-wrap">
+            <div className="flex gap-1.5 flex-wrap">
               <button
                 onClick={() => { setDiffFilter(''); setPage(1) }}
-                className={`text-[11px] px-2 py-1 rounded-lg font-bold transition ${!diffFilter ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                className={`text-xs px-3 py-1 rounded-full font-bold transition ${!diffFilter ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
                 전체 난이도
               </button>
               {DIFFICULTY_LEVELS.map(l => (
                 <button key={l.value}
                   onClick={() => { setDiffFilter(diffFilter === String(l.value) ? '' : String(l.value)); setPage(1) }}
-                  className={`text-[11px] px-2 py-1 rounded-lg font-bold transition ${
+                  className={`text-xs px-3 py-1 rounded-full font-bold transition ${
                     diffFilter === String(l.value)
-                      ? `${l.color} ring-2 ring-offset-1 ring-blue-400`
-                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                      ? `${l.color} ring-2 ring-offset-1 ring-current`
+                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                   }`}>
                   {l.level}
                 </button>

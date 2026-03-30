@@ -104,7 +104,7 @@ function AudioSetCard({
   onRemove: () => void
 }) {
   if (!set) return (
-    <div className={`rounded-xl border-2 border-dashed ${accent === 'emerald' ? 'border-emerald-100' : 'border-blue-100'} p-3 text-xs text-gray-300 flex items-center justify-center h-20`}>
+    <div className={`rounded-xl border-2 border-dashed ${accent === 'emerald' ? 'border-emerald-100' : 'border-blue-100'} px-3 py-2 text-xs text-gray-300 flex items-center justify-center h-10`}>
       {label} 세트 {idx + 1} (빈 슬롯)
     </div>
   )
@@ -137,11 +137,11 @@ function AudioSetCard({
 
       {/* 오디오 플레이어 */}
       {set.audioUrl ? (
-        <div className="px-3 py-1.5 border-b border-gray-50">
-          <audio controls src={set.audioUrl} className="w-full h-7" />
+        <div className="px-3 py-1 border-b border-gray-50">
+          <audio controls src={set.audioUrl} className="w-full h-6" />
         </div>
       ) : (
-        <div className="px-3 py-1.5 border-b border-gray-50 flex items-center gap-1.5 text-[10px] text-gray-300">
+        <div className="px-3 py-1 border-b border-gray-50 flex items-center gap-1.5 text-[10px] text-gray-300">
           <Volume2 size={10} />
           <span>오디오 없음</span>
         </div>
@@ -150,7 +150,7 @@ function AudioSetCard({
       {/* 하위 문제 목록 */}
       <div className="divide-y divide-gray-50">
         {set.questions.map((q, i) => (
-          <div key={q.id} className="flex items-start gap-2 px-3 py-1.5">
+          <div key={q.id} className="flex items-start gap-2 px-3 py-1">
             <span className="text-[10px] font-bold text-gray-400 w-3 mt-0.5">{i + 1}</span>
             <p className="text-xs text-gray-600 line-clamp-1 flex-1">{q.content}</p>
             <BandBadge d={q.difficulty} />

@@ -317,6 +317,31 @@ export const QUESTION_SUBTYPE_LABELS: Record<string, Record<string, string>> = {
   },
 }
 
+// 현행 활성 문제 유형 목록 (QuestionsFilter / QuestionPickerModal 공용)
+export const ACTIVE_SUBTYPES: Record<string, { value: string; label: string }[]> = {
+  reading: [
+    { value: 'complete_the_words',  label: 'Complete the Words' },
+    { value: 'sentence_completion', label: 'Sentence Completion' },
+    { value: 'daily_life',          label: 'Daily Life' },
+    { value: 'academic_passage',    label: 'Academic Passage' },
+  ],
+  listening: [
+    { value: 'choose_response',     label: 'Choose a Response' },
+    { value: 'conversation',        label: 'Conversation' },
+    { value: 'campus_announcement', label: 'Campus Announcement' },
+    { value: 'academic_talk',       label: 'Academic Talk' },
+  ],
+  writing: [
+    { value: 'sentence_reordering', label: 'Build a Sentence' },
+    { value: 'email_writing',       label: 'Write an Email' },
+    { value: 'academic_discussion', label: 'Academic Discussion' },
+  ],
+  speaking: [
+    { value: 'listen_and_repeat',   label: 'Listen & Repeat' },
+    { value: 'take_an_interview',   label: 'Interview' },
+  ],
+}
+
 // 특수 렌더링이 필요한 문제 유형
 export const SPECIAL_QUESTION_SUBTYPES = {
   prose_summary: true,    // 6지선다, 3개 선택

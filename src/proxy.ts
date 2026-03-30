@@ -1,20 +1,38 @@
+import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-// 쿠키 존재 여부만 확인 — Supabase API 호출 없음
-// 서버 컴포넌트에서 getSession()으로 세션을 읽음
-function hasSession(request: NextRequest): boolean {
-  const projectRef = 'wapwtzdrxhrwriqyvfyh'
-  return request.cookies.getAll().some(c => c.name.startsWith(`sb-${projectRef}-auth-token`))
-}
-
 export async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl
+  let supabaseResponse = NextResponse.next({ request })
 
-  if (!hasSession(request) && (pathname.startsWith('/teacher') || pathname.startsWith('/student'))) {
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+
+  // 세션 확인 — getSession()은 쿠키에서 읽기만 (네트워크 없음, 타임아웃 없음)
+  // 토큰 갱신은 클라이언트 Supabase 인스턴스(autoRefreshToken 기본값 true)가 담당
+  const { data: { session } } = await supabase.auth.getSession()
+
+  const { pathname } = request.nextUrl
+  if (!session?.user && (pathname.startsWith('/teacher') || pathname.startsWith('/student'))) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  return NextResponse.next({ request })
+  return supabaseResponse
 }
 
 export const config = {

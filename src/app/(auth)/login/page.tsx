@@ -46,6 +46,10 @@ export default function LoginPage() {
   const supabase = createClient()
 
   const [tab, setTab] = useState<'login' | 'quick'>('login')
+
+  function blockKorean(value: string) {
+    return value.replace(/[ㄱ-ㅎㅏ-ㅣ가-힣]/g, '')
+  }
   const [savedAccounts, setSavedAccounts] = useState<SavedAccount[]>([])
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -169,8 +173,9 @@ export default function LoginPage() {
                 <input
                   type="email"
                   value={email}
-                  onChange={e => setEmail(e.target.value)}
+                  onChange={e => setEmail(blockKorean(e.target.value))}
                   placeholder="example@email.com"
+                  lang="en"
                   required
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                 />
@@ -180,8 +185,9 @@ export default function LoginPage() {
                 <input
                   type="password"
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={e => setPassword(blockKorean(e.target.value))}
                   placeholder="••••••••"
+                  lang="en"
                   required
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                 />

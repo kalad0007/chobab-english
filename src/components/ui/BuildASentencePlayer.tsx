@@ -135,7 +135,7 @@ export default function BuildASentencePlayer({
       </div>
 
       {/* 결과 패널 */}
-      {showResult && correctAnswer && (
+      {showResult && correctAnswer && selected.length > 0 && (
         <div className={`rounded-xl px-4 py-3 space-y-2 ${isFullyCorrect ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
           <div className="flex items-center gap-2">
             {isFullyCorrect

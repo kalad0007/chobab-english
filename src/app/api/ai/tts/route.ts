@@ -45,6 +45,7 @@ async function synthesize(text: string, voiceName: string, apiKey: string): Prom
 
 // Google Cloud Text-to-Speech Neural2 → Supabase Storage
 export async function POST(req: NextRequest) {
+  try {
   const user = await getUserFromCookie()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -136,4 +137,8 @@ export async function POST(req: NextRequest) {
     .getPublicUrl(fileName)
 
   return NextResponse.json({ audioUrl: publicUrl })
+  } catch (err) {
+    console.error('TTS route error:', err)
+    return NextResponse.json({ error: 'TTS 처리 중 오류가 발생했습니다.' }, { status: 500 })
+  }
 }

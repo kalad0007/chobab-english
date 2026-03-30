@@ -9,6 +9,7 @@ import AudioPlayer from '@/components/ui/AudioPlayer'
 import SpeakingRecorder from '@/components/ui/SpeakingRecorder'
 import BuildASentencePlayer from '@/components/ui/BuildASentencePlayer'
 import FillBlankPlayer from '@/components/ui/FillBlankPlayer'
+import EmailPassageRenderer from '@/components/ui/EmailPassageRenderer'
 
 interface Question {
   id: string
@@ -49,6 +50,7 @@ export default function ExamTakePage() {
   const [submitting, setSubmitting] = useState(false)
   // 리스닝 재생 횟수 추적
   const [playedCounts, setPlayedCounts] = useState<Record<string, number>>({})
+
 
   useEffect(() => {
     async function load() {
@@ -258,6 +260,12 @@ export default function ExamTakePage() {
 
   const isListening = q?.category === 'listening'
   const isSpeaking = q?.category === 'speaking'
+  const isInterview = q?.question_subtype === 'take_an_interview'
+  const isFirstInInterviewBlock = isInterview && (
+    current === 0 ||
+    questions[current - 1]?.question_subtype !== 'take_an_interview' ||
+    questions[current - 1]?.passage !== q?.passage
+  )
 
   return (
     <div className="min-h-screen bg-slate-50 p-3 md:p-5 pt-16 md:pt-5">
@@ -289,8 +297,11 @@ export default function ExamTakePage() {
                     {isListening && (
                       <span className="text-xs font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">🎧 리스닝</span>
                     )}
-                    {isSpeaking && (
+                    {isSpeaking && !isInterview && (
                       <span className="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">🎤 스피킹</span>
+                    )}
+                    {isInterview && (
+                      <span className="text-xs font-bold bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">🎤 인터뷰</span>
                     )}
                   </div>
                   {/* 문제별 카운트다운 타이머 */}
@@ -322,15 +333,37 @@ export default function ExamTakePage() {
                   </div>
                 )}
 
-                {/* 지문 (fill-blank JSON 타입은 별도 렌더링) */}
-                {q.passage && q.question_subtype !== 'complete_the_words' && q.question_subtype !== 'sentence_completion' && (
-                  <div className="bg-blue-50 border-l-4 border-blue-400 rounded-r-xl p-4 text-sm text-gray-700 leading-7 mb-5">
-                    {renderWithUnderlines(q.passage)}
+                {/* 인터뷰 세트 소개 — 첫 질문에만 표시 */}
+                {isFirstInInterviewBlock && q.passage && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-5">
+                    <p className="text-xs font-bold text-orange-600 uppercase tracking-wide mb-1">🎤 인터뷰</p>
+                    <p className="text-sm font-semibold text-orange-900">{q.passage}</p>
                   </div>
                 )}
 
-                {/* 문제 본문 (sentence_reordering / fill-blank는 별도 처리) */}
-                {q.question_subtype !== 'sentence_reordering' && q.question_subtype !== 'complete_the_words' && q.question_subtype !== 'sentence_completion' && (
+                {/* 지문 (fill-blank JSON 타입은 별도 렌더링, take_an_interview는 위에서 처리) */}
+                {q.passage && q.question_subtype !== 'complete_the_words' && q.question_subtype !== 'sentence_completion' && !isInterview && (
+                  q.question_subtype === 'daily_life_email' || q.question_subtype === 'daily_life_campus_email' ? (
+                    <div className="mb-5">
+                      <EmailPassageRenderer text={q.passage} />
+                    </div>
+                  ) : (
+                    <div className="bg-blue-50 border-l-4 border-blue-400 rounded-r-xl p-4 text-sm text-gray-700 leading-7 mb-5">
+                      {renderWithUnderlines(q.passage)}
+                    </div>
+                  )
+                )}
+
+                {/* take_an_interview: 오디오 없으면 speaking_prompt 텍스트로 폴백 */}
+                {isInterview && !q.audio_url && q.speaking_prompt && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-5">
+                    <p className="text-xs font-semibold text-orange-600 mb-1">면접 질문</p>
+                    <p className="text-base font-semibold text-gray-900">{q.speaking_prompt}</p>
+                  </div>
+                )}
+
+                {/* 문제 본문 (sentence_reordering / fill-blank는 별도 처리, take_an_interview는 오디오로만 전달) */}
+                {q.question_subtype !== 'sentence_reordering' && q.question_subtype !== 'complete_the_words' && q.question_subtype !== 'sentence_completion' && !isInterview && (
                   <p className="text-base font-semibold text-gray-900 leading-7 mb-5">
                     {renderWithUnderlines(q.content)}
                   </p>
