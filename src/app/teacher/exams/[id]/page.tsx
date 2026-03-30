@@ -1,9 +1,10 @@
 import { createClient, getUserFromCookie } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { ArrowLeft, Users, BookOpen, Headphones, PenLine, Mic, TrendingUp, Award } from 'lucide-react'
+import { ArrowLeft, Users, TrendingUp, Award, BookOpen, Headphones, PenLine, Mic } from 'lucide-react'
 import ExamActions from './ExamActions'
 import { getDiffInfo } from '@/lib/utils'
 import { ClickableQRow, type PreviewQuestion } from './QuestionPreview'
+import AdaptiveExamEditor from './AdaptiveExamEditor'
 
 const SUBTYPE_LABEL: Record<string, string> = {
   complete_the_words:  'Complete the Words',
@@ -40,21 +41,6 @@ function toPreview(q: any): PreviewQuestion {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function SubGroup({ title, ids, qById }: { title: string; ids: string[]; qById: Record<string, any> }) {
-  if (ids.length === 0) return null
-  return (
-    <div>
-      {title && (
-        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide px-4 py-1.5 bg-gray-50/80 border-y border-gray-100">
-          {title} <span className="text-gray-300 font-normal">({ids.length})</span>
-        </p>
-      )}
-      {ids.map((id, i) => (
-        <ClickableQRow key={id} idx={i + 1} q={toPreview(qById[id] ?? { id, content: id, question_subtype: '' })} />
-      ))}
-    </div>
-  )
-}
 
 export default async function ExamDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: examId } = await params
@@ -160,30 +146,6 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
     { key: 'writing',   icon: PenLine,     label: 'Writing',   count: writeCount,  color: 'from-purple-500 to-violet-600', bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-100' },
     { key: 'speaking',  icon: Mic,         label: 'Speaking',  count: speakCount,  color: 'from-orange-500 to-amber-500',  bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-100' },
   ] : []
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function ListeningModSection({ mod, label }: { mod: any; label: string }) {
-    if (!mod || calcMod(mod) === 0) return null
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const convSets: any[] = mod.conversation ?? []
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const talkSets: any[] = mod.academicTalk ?? []
-    return (
-      <div className="mb-3 last:mb-0">
-        <div className="px-4 py-1.5 bg-emerald-50/60 border-y border-emerald-100/60">
-          <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wide">{label}</span>
-          <span className="text-[11px] text-emerald-500 ml-1">· {calcMod(mod)}문제</span>
-        </div>
-        <SubGroup title="Choose a Response" ids={mod.response ?? []} qById={qById} />
-        {convSets.map((s, i) => (
-          <SubGroup key={i} title={`Conversation Set ${i + 1}`} ids={s.questionIds ?? []} qById={qById} />
-        ))}
-        {talkSets.map((s, i) => (
-          <SubGroup key={i} title={`Academic Talk Set ${i + 1}`} ids={s.questionIds ?? []} qById={qById} />
-        ))}
-      </div>
-    )
-  }
 
   return (
     <div className="min-h-screen bg-gray-50/50">
@@ -310,89 +272,7 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
           <div className="lg:col-span-3 space-y-4">
 
             {cfg ? (
-              <>
-                {/* Reading */}
-                {readCount > 0 && (
-                  <div className="bg-white rounded-2xl border border-blue-100 shadow-sm overflow-hidden">
-                    <div className="flex items-center justify-between px-5 py-3.5 bg-blue-50/50 border-b border-blue-100">
-                      <div className="flex items-center gap-2 font-bold text-blue-800 text-sm">
-                        <BookOpen size={15} /> Reading
-                      </div>
-                      <span className="text-xs font-semibold text-blue-400">{readCount}문제</span>
-                    </div>
-                    {(cfg.m1Ids?.length ?? 0) > 0 && (
-                      <div>
-                        <div className="px-4 py-1.5 bg-blue-50/30 border-b border-blue-50">
-                          <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wide">Module 1</span>
-                          <span className="text-[11px] text-blue-400 ml-1">· {cfg.m1Ids.length}문제</span>
-                        </div>
-                        <SubGroup title="Complete the Words / Sentence Completion / Daily Life / Academic" ids={cfg.m1Ids} qById={qById} />
-                      </div>
-                    )}
-                    {(cfg.m2upIds?.length ?? 0) > 0 && (
-                      <div>
-                        <div className="px-4 py-1.5 bg-sky-50/50 border-b border-blue-50">
-                          <span className="text-[11px] font-bold text-sky-600 uppercase tracking-wide">Module 2 — 향상반</span>
-                          <span className="text-[11px] text-sky-400 ml-1">· {cfg.m2upIds.length}문제</span>
-                        </div>
-                        <SubGroup title="" ids={cfg.m2upIds} qById={qById} />
-                      </div>
-                    )}
-                    {(cfg.m2downIds?.length ?? 0) > 0 && (
-                      <div>
-                        <div className="px-4 py-1.5 bg-indigo-50/50 border-b border-blue-50">
-                          <span className="text-[11px] font-bold text-indigo-600 uppercase tracking-wide">Module 2 — 보완반</span>
-                          <span className="text-[11px] text-indigo-400 ml-1">· {cfg.m2downIds.length}문제</span>
-                        </div>
-                        <SubGroup title="" ids={cfg.m2downIds} qById={qById} />
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Listening */}
-                {listenCount > 0 && (
-                  <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm overflow-hidden">
-                    <div className="flex items-center justify-between px-5 py-3.5 bg-emerald-50/50 border-b border-emerald-100">
-                      <div className="flex items-center gap-2 font-bold text-emerald-800 text-sm">
-                        <Headphones size={15} /> Listening
-                      </div>
-                      <span className="text-xs font-semibold text-emerald-400">{listenCount}문제</span>
-                    </div>
-                    <ListeningModSection mod={cfg.listening_m1} label="Module 1" />
-                    <ListeningModSection mod={cfg.listening_m2up} label="Module 2 — 향상반" />
-                    <ListeningModSection mod={cfg.listening_m2down} label="Module 2 — 보완반" />
-                  </div>
-                )}
-
-                {/* Writing */}
-                {writeCount > 0 && (
-                  <div className="bg-white rounded-2xl border border-purple-100 shadow-sm overflow-hidden">
-                    <div className="flex items-center justify-between px-5 py-3.5 bg-purple-50/50 border-b border-purple-100">
-                      <div className="flex items-center gap-2 font-bold text-purple-800 text-sm">
-                        <PenLine size={15} /> Writing
-                      </div>
-                      <span className="text-xs font-semibold text-purple-400">{writeCount}문제</span>
-                    </div>
-                    <SubGroup title="Build a Sentence" ids={cfg.writing?.reorderingIds ?? []} qById={qById} />
-                    <SubGroup title="Write an Email" ids={cfg.writing?.emailIds ?? []} qById={qById} />
-                  </div>
-                )}
-
-                {/* Speaking */}
-                {speakCount > 0 && (
-                  <div className="bg-white rounded-2xl border border-orange-100 shadow-sm overflow-hidden">
-                    <div className="flex items-center justify-between px-5 py-3.5 bg-orange-50/50 border-b border-orange-100">
-                      <div className="flex items-center gap-2 font-bold text-orange-800 text-sm">
-                        <Mic size={15} /> Speaking
-                      </div>
-                      <span className="text-xs font-semibold text-orange-400">{speakCount}문제</span>
-                    </div>
-                    <SubGroup title="Listen & Repeat" ids={cfg.speaking?.listenRepeatIds ?? []} qById={qById} />
-                    <SubGroup title="Interview" ids={cfg.speaking?.interviewIds ?? []} qById={qById} />
-                  </div>
-                )}
-              </>
+              <AdaptiveExamEditor examId={examId} initialCfg={cfg} initialQById={qById} />
             ) : (
               /* 일반 시험 */
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
