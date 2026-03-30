@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ArrowLeft, Users, BookOpen, Headphones, PenLine, Mic, TrendingUp, Award } from 'lucide-react'
 import ExamActions from './ExamActions'
 import { getDiffInfo } from '@/lib/utils'
+import { ClickableQRow, type PreviewQuestion } from './QuestionPreview'
 
 const SUBTYPE_LABEL: Record<string, string> = {
   complete_the_words:  'Complete the Words',
@@ -21,35 +22,36 @@ const SUBTYPE_LABEL: Record<string, string> = {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function QRow({ idx, q }: { idx: number; q: any }) {
-  const label = SUBTYPE_LABEL[q.question_subtype] ?? q.question_subtype ?? q.category
-  const display = q.summary ?? q.content
+function toPreview(q: any): PreviewQuestion {
   const diffInfo = q.difficulty != null ? getDiffInfo(q.difficulty) : null
-  return (
-    <div className="flex items-start gap-3 px-4 py-2.5 border-b border-gray-50 last:border-0">
-      <span className="text-[11px] font-bold text-gray-300 flex-shrink-0 w-5 text-right mt-0.5">{idx}</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm text-gray-700 line-clamp-1">{display}</p>
-        <span className="text-[11px] text-indigo-400 mt-0.5 block">{label}</span>
-      </div>
-      {diffInfo && (
-        <span className={`text-[10px] font-bold flex-shrink-0 px-1.5 py-0.5 rounded-full ${diffInfo.color}`}>
-          {diffInfo.label}
-        </span>
-      )}
-    </div>
-  )
+  return {
+    id: q.id ?? '',
+    content: q.content ?? '',
+    summary: q.summary,
+    passage: q.passage,
+    options: q.options,
+    answer: q.answer,
+    category: q.category ?? '',
+    question_subtype: q.question_subtype,
+    difficulty: q.difficulty,
+    diffLabel: diffInfo?.label,
+    diffColor: diffInfo?.color,
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function SubGroup({ title, ids, qById }: { title: string; ids: string[]; qById: Record<string, any>; offset?: number }) {
+function SubGroup({ title, ids, qById }: { title: string; ids: string[]; qById: Record<string, any> }) {
   if (ids.length === 0) return null
   return (
     <div>
-      <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide px-4 py-1.5 bg-gray-50/80 border-y border-gray-100">
-        {title} <span className="text-gray-300 font-normal">({ids.length})</span>
-      </p>
-      {ids.map((id, i) => <QRow key={id} idx={i + 1} q={qById[id] ?? { content: id, question_subtype: '' }} />)}
+      {title && (
+        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide px-4 py-1.5 bg-gray-50/80 border-y border-gray-100">
+          {title} <span className="text-gray-300 font-normal">({ids.length})</span>
+        </p>
+      )}
+      {ids.map((id, i) => (
+        <ClickableQRow key={id} idx={i + 1} q={toPreview(qById[id] ?? { id, content: id, question_subtype: '' })} />
+      ))}
     </div>
   )
 }
@@ -110,7 +112,7 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
         if (allIds.size > 0) {
           const { data: qs } = await supabase
             .from('questions')
-            .select('id, content, summary, category, question_subtype, difficulty')
+            .select('id, content, summary, passage, options, answer, category, question_subtype, difficulty')
             .in('id', [...allIds])
           for (const q of qs ?? []) qById[q.id] = q
         }
@@ -123,7 +125,7 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
   if (!cfg) {
     const { data: eq } = await supabase
       .from('exam_questions')
-      .select('*, questions(content, summary, category, question_subtype, difficulty)')
+      .select('*, questions(content, summary, passage, options, answer, category, question_subtype, difficulty)')
       .eq('exam_id', examId)
       .order('order_num')
     examQuestions = eq
@@ -302,10 +304,10 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
         )}
 
         {/* ── 메인 콘텐츠 ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
 
           {/* 왼쪽: 문제 구성 상세 */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="lg:col-span-3 space-y-4">
 
             {cfg ? (
               <>
@@ -397,19 +399,11 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
                 <div className="px-5 py-4 border-b border-gray-50">
                   <h2 className="font-bold text-gray-900">문제 목록</h2>
                 </div>
-                <div className="divide-y divide-gray-50 max-h-[60vh] overflow-y-auto">
+                <div className="max-h-[60vh] overflow-y-auto">
                   {(examQuestions ?? []).map((eq, i) => {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const q = eq.questions as any
-                    return (
-                      <div key={eq.id} className="flex items-start gap-3 px-5 py-3">
-                        <span className="text-xs font-bold text-gray-300 flex-shrink-0 w-5 text-right">{i + 1}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-gray-700 line-clamp-2">{q?.summary ?? q?.content}</p>
-                          <span className="text-xs text-purple-500 mt-0.5 block">{SUBTYPE_LABEL[q?.question_subtype] ?? q?.category}</span>
-                        </div>
-                      </div>
-                    )
+                    return <ClickableQRow key={eq.id} idx={i + 1} q={toPreview(q ?? {})} />
                   })}
                 </div>
               </div>
