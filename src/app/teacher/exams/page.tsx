@@ -15,7 +15,7 @@ export default async function ExamsPage() {
 
   const { data: exams } = await supabase
     .from('exams')
-    .select('id, title, status, time_limit, created_at, class_id, classes(name)')
+    .select('id, title, status, time_limit, created_at, class_id, description, classes(name)')
     .eq('teacher_id', user.id)
     .order('created_at', { ascending: false })
 
@@ -34,6 +34,36 @@ export default async function ExamsPage() {
   const qMap: Record<string, number> = {}
   for (const q of qCounts ?? []) {
     qMap[q.exam_id] = (qMap[q.exam_id] ?? 0) + 1
+  }
+
+  // 스마트 빌더(adaptive) 시험은 description JSON 에서 전체 문제 수 계산
+  for (const exam of exams ?? []) {
+    if (!exam.description) continue
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cfg: any = JSON.parse(exam.description)
+      if (!cfg.adaptive) continue
+
+      let total = 0
+      total += (cfg.m1Ids ?? []).length
+      total += (cfg.m2upIds ?? []).length
+      total += (cfg.m2downIds ?? []).length
+
+      for (const mod of [cfg.listening_m1, cfg.listening_m2up, cfg.listening_m2down]) {
+        if (!mod) continue
+        total += (mod.response ?? []).length
+        for (const s of [...(mod.conversation ?? []), ...(mod.academicTalk ?? [])]) {
+          total += (s.questionIds ?? []).length
+        }
+      }
+
+      total += (cfg.writing?.reorderingIds ?? []).length
+      total += (cfg.writing?.emailIds ?? []).length
+      total += (cfg.speaking?.listenRepeatIds ?? []).length
+      total += (cfg.speaking?.interviewIds ?? []).length
+
+      qMap[exam.id] = total
+    } catch { /* ignore parse errors */ }
   }
 
   const subMap: Record<string, { count: number; avgPct: number }> = {}
