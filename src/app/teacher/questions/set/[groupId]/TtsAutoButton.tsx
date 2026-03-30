@@ -8,9 +8,10 @@ interface Props {
   questionId: string
   audioScript: string
   initialAudioUrl: string | null
+  subtype?: string
 }
 
-export default function TtsAutoButton({ questionId, audioScript, initialAudioUrl }: Props) {
+export default function TtsAutoButton({ questionId, audioScript, initialAudioUrl, subtype }: Props) {
   const supabase = createClient()
   const [audioUrl, setAudioUrl] = useState(initialAudioUrl)
   const [loading, setLoading] = useState(false)
@@ -24,7 +25,7 @@ export default function TtsAutoButton({ questionId, audioScript, initialAudioUrl
       const res = await fetch('/api/ai/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ script: audioScript, questionId, gender: 'yw' }),
+        body: JSON.stringify({ script: audioScript, questionId, gender: 'yw', subtype }),
       })
       if (res.ok) {
         const data = await res.json()

@@ -115,15 +115,17 @@ export default async function SetPreviewPage({
               <Volume2 size={16} className="text-emerald-600" />
               <p className="text-sm font-bold text-emerald-700">음성 스크립트 (공유)</p>
             </div>
-            {!rep.audio_url && (
-              <Link href={`/teacher/questions/${rep.id}/edit`}
-                className="text-xs text-emerald-700 bg-emerald-100 px-3 py-1 rounded-lg font-semibold hover:bg-emerald-200 transition">
-                + AI 음성 생성
-              </Link>
-            )}
           </div>
           {rep.audio_url && (
             <audio controls src={rep.audio_url} className="w-full rounded-xl" />
+          )}
+          {!rep.audio_url && rep.audio_script && (
+            <TtsAutoButton
+              questionId={rep.id}
+              audioScript={rep.audio_script}
+              initialAudioUrl={null}
+              subtype={rep.question_subtype ?? undefined}
+            />
           )}
           {rep.audio_script && (
             <p className="text-sm text-emerald-900 whitespace-pre-wrap leading-7">{rep.audio_script}</p>

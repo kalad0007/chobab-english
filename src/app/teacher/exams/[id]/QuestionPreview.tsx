@@ -128,10 +128,18 @@ export function ClickableQRow({ idx, q }: Props) {
                 </div>
               )}
 
-              {/* 문제 본문 — email_writing은 "문제 번역"/"모범답안" 이후 숨김 */}
+              {/* 문제 본문 — email_writing은 한국어/번역 단락 제거 */}
               <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap font-medium">
                 {q.question_subtype === 'email_writing'
-                  ? (q.content ?? '').split(/문제 번역|모범답안/)[0].trim()
+                  ? (q.content ?? '')
+                      .split(/\n{2,}/)
+                      .filter(para => {
+                        const first = para.trim()[0] ?? ''
+                        // 【 (전각 괄호) 또는 한글 시작 단락 제거
+                        return !/^[\uAC00-\uD7A3\u3131-\uD79D【]/.test(first)
+                      })
+                      .join('\n\n')
+                      .trim()
                   : q.content}
               </div>
 
@@ -185,6 +193,23 @@ export function ClickableQRow({ idx, q }: Props) {
                 <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm">
                   <span className="text-xs font-bold text-emerald-600 block mb-1">정답</span>
                   <span className="text-emerald-800 font-medium">{q.answer}</span>
+                </div>
+              )}
+
+              {/* 모범 답안 (email_writing) */}
+              {q.question_subtype === 'email_writing' && q.answer && (
+                <div className="bg-purple-50 border border-purple-200 rounded-xl px-4 py-3 text-sm">
+                  <span className="text-xs font-bold text-purple-600 block mb-2">모범 답안</span>
+                  <p className="text-purple-900 leading-relaxed whitespace-pre-wrap">
+                    {(q.answer)
+                      .split(/\n{2,}/)
+                      .filter(para => {
+                        const first = para.trim()[0] ?? ''
+                        return !/^[\uAC00-\uD7A3\u3131-\uD79D【]/.test(first)
+                      })
+                      .join('\n\n')
+                      .trim()}
+                  </p>
                 </div>
               )}
             </div>
