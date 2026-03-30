@@ -39,6 +39,8 @@ export interface PreviewQuestion {
   passage?: string | null
   options?: string[] | null
   answer?: string | null
+  audio_script?: string | null
+  audio_url?: string | null
   category: string
   question_subtype?: string | null
   difficulty?: number | null
@@ -111,6 +113,13 @@ export function ClickableQRow({ idx, q }: Props) {
               </button>
             </div>
 
+            {/* 음성 플레이어 (리스닝/스피킹) */}
+            {q.audio_url && (q.category === 'listening' || q.category === 'speaking') && (
+              <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
+                <audio controls src={q.audio_url} className="w-full h-9" />
+              </div>
+            )}
+
             <div className="px-5 py-4 space-y-4">
               {/* 지문 */}
               {q.passage && (
@@ -123,6 +132,22 @@ export function ClickableQRow({ idx, q }: Props) {
               <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap font-medium">
                 {q.content}
               </div>
+
+              {/* 음성 스크립트 (스피킹 / 리스닝) */}
+              {q.audio_script && (
+                <div className={`rounded-xl px-4 py-3 border ${
+                  q.category === 'speaking'
+                    ? 'bg-orange-50 border-orange-200'
+                    : 'bg-sky-50 border-sky-200'
+                }`}>
+                  <span className={`text-xs font-bold block mb-1.5 ${
+                    q.category === 'speaking' ? 'text-orange-600' : 'text-sky-600'
+                  }`}>음성 스크립트</span>
+                  <p className={`text-sm leading-relaxed whitespace-pre-wrap ${
+                    q.category === 'speaking' ? 'text-orange-900' : 'text-sky-900'
+                  }`}>{q.audio_script}</p>
+                </div>
+              )}
 
               {/* 보기 */}
               {q.options && q.options.length > 0 && (

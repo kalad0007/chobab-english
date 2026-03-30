@@ -41,6 +41,8 @@ function toPreview(q: any): PreviewQuestion {
     passage: q?.passage,
     options: q?.options,
     answer: q?.answer,
+    audio_script: q?.audio_script,
+    audio_url: q?.audio_url,
     category: q?.category ?? '',
     question_subtype: q?.question_subtype,
     difficulty: q?.difficulty,
@@ -147,7 +149,7 @@ function AddQuestionPanel({ target, existingIds, onAdd, onClose }: {
     async function load() {
       let q = supabase
         .from('questions')
-        .select('id, content, summary, passage, options, answer, category, question_subtype, difficulty')
+        .select('id, content, summary, passage, options, answer, audio_script, audio_url, category, question_subtype, difficulty')
         .eq('category', target.category)
         .eq('is_active', true)
         .order('created_at', { ascending: false })

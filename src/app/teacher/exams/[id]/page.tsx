@@ -32,6 +32,8 @@ function toPreview(q: any): PreviewQuestion {
     passage: q.passage,
     options: q.options,
     answer: q.answer,
+    audio_script: q.audio_script,
+    audio_url: q.audio_url,
     category: q.category ?? '',
     question_subtype: q.question_subtype,
     difficulty: q.difficulty,
@@ -98,7 +100,7 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
         if (allIds.size > 0) {
           const { data: qs } = await supabase
             .from('questions')
-            .select('id, content, summary, passage, options, answer, category, question_subtype, difficulty')
+            .select('id, content, summary, passage, options, answer, audio_script, audio_url, category, question_subtype, difficulty')
             .in('id', [...allIds])
           for (const q of qs ?? []) qById[q.id] = q
         }
@@ -111,7 +113,7 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
   if (!cfg) {
     const { data: eq } = await supabase
       .from('exam_questions')
-      .select('*, questions(content, summary, passage, options, answer, category, question_subtype, difficulty)')
+      .select('*, questions(content, summary, passage, options, answer, audio_script, audio_url, category, question_subtype, difficulty)')
       .eq('exam_id', examId)
       .order('order_num')
     examQuestions = eq
