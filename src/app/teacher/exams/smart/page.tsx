@@ -445,78 +445,80 @@ export default function SmartBuilderPage() {
     if (!examTitle.trim()) { setError('시험 제목을 입력하세요.'); return }
     setSaving(true); setError('')
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) { setError('로그인이 필요합니다.'); return }
+      const user = session.user
 
-    // M1 questions → exam_questions
-    const m1Questions = [
-      ...m1.fillBlank, ...(m1.dailyLife ?? []), ...m1.deep
-    ].filter(Boolean) as SlotQ[]
+      // M1 questions → exam_questions
+      const m1Questions = [
+        ...m1.fillBlank, ...(m1.dailyLife ?? []), ...m1.deep
+      ].filter(Boolean) as SlotQ[]
 
-    const serializeListening = (mod: ListeningModSlots) => ({
-      response: mod.response.filter(Boolean).map(q => q!.id),
-      conversation: mod.conversation.filter(Boolean).map(s => ({
-        audioId: s!.audioId, audioUrl: s!.audioUrl, questionIds: s!.questions.map(q => q.id),
-      })),
-      academicTalk: mod.academicTalk.filter(Boolean).map(s => ({
-        audioId: s!.audioId, audioUrl: s!.audioUrl, questionIds: s!.questions.map(q => q.id),
-      })),
-    })
-
-    const adaptiveConfig = {
-      adaptive: true, targetBand, maxBand, testType,
-      // Reading
-      m1Ids: m1Questions.map(q => q.id),
-      m2upIds:   [...m2up.fillBlank, ...m2up.deep].filter(Boolean).map(q => q!.id),
-      m2downIds: [...m2down.fillBlank, ...m2down.deep].filter(Boolean).map(q => q!.id),
-      // Listening
-      listening_m1:    serializeListening(lm1),
-      listening_m2up:  serializeListening(lm2up),
-      listening_m2down: serializeListening(lm2down),
-      // Writing (단일 경로)
-      writing: {
-        reorderingIds: writingSlots.reordering.filter(Boolean).map(q => q!.id),
-        emailIds:      writingSlots.email.filter(Boolean).map(q => q!.id),
-      },
-      // Speaking (단일 경로)
-      speaking: {
-        listenRepeatIds: speakingSlots.listenRepeat.filter(Boolean).map(q => q!.id),
-        interviewIds:    speakingSlots.interview.filter(Boolean).map(q => q!.id),
-      },
-    }
-
-    const { data: exam, error: examErr } = await supabase
-      .from('exams')
-      .insert({
-        teacher_id: user.id,
-        class_id: classId || null,
-        title: examTitle,
-        description: JSON.stringify(adaptiveConfig),
-        max_band_ceiling: maxBand,
-        time_limit: null,
-        start_at: null, end_at: null,
-        status: 'draft',
-        show_result_immediately: true,
-        total_points: m1Questions.length,
-        exam_type: 'full_test',
-        sections: ['reading', 'listening', 'writing', 'speaking'],
+      const serializeListening = (mod: ListeningModSlots) => ({
+        response: mod.response.filter(Boolean).map(q => q!.id),
+        conversation: mod.conversation.filter(Boolean).map(s => ({
+          audioId: s!.audioId, audioUrl: s!.audioUrl, questionIds: s!.questions.map(q => q.id),
+        })),
+        academicTalk: mod.academicTalk.filter(Boolean).map(s => ({
+          audioId: s!.audioId, audioUrl: s!.audioUrl, questionIds: s!.questions.map(q => q.id),
+        })),
       })
-      .select()
-      .single()
 
-    if (examErr || !exam) { setError(examErr?.message ?? '저장 실패'); setSaving(false); return }
+      const adaptiveConfig = {
+        adaptive: true, targetBand, maxBand, testType,
+        m1Ids: m1Questions.map(q => q.id),
+        m2upIds:   [...m2up.fillBlank, ...m2up.deep].filter(Boolean).map(q => q!.id),
+        m2downIds: [...m2down.fillBlank, ...m2down.deep].filter(Boolean).map(q => q!.id),
+        listening_m1:    serializeListening(lm1),
+        listening_m2up:  serializeListening(lm2up),
+        listening_m2down: serializeListening(lm2down),
+        writing: {
+          reorderingIds: writingSlots.reordering.filter(Boolean).map(q => q!.id),
+          emailIds:      writingSlots.email.filter(Boolean).map(q => q!.id),
+        },
+        speaking: {
+          listenRepeatIds: speakingSlots.listenRepeat.filter(Boolean).map(q => q!.id),
+          interviewIds:    speakingSlots.interview.filter(Boolean).map(q => q!.id),
+        },
+      }
 
-    // exam_questions 삽입 (M1만 — M2는 adaptive config에 저장)
-    const eqRows = m1Questions.map((q, i) => ({
-      exam_id: exam.id, question_id: q.id, order_num: i + 1, points: 1,
-    }))
-    if (eqRows.length > 0) {
-      const { error: eqErr } = await supabase.from('exam_questions').insert(eqRows)
-      if (eqErr) { setError(eqErr.message); setSaving(false); return }
+      const { data: exam, error: examErr } = await supabase
+        .from('exams')
+        .insert({
+          teacher_id: user.id,
+          class_id: classId || null,
+          title: examTitle,
+          description: JSON.stringify(adaptiveConfig),
+          max_band_ceiling: maxBand,
+          time_limit: null,
+          start_at: null, end_at: null,
+          status: 'draft',
+          show_result_immediately: true,
+          total_points: m1Questions.length,
+          exam_type: 'full_test',
+          sections: ['reading', 'listening', 'writing', 'speaking'],
+        })
+        .select()
+        .single()
+
+      if (examErr || !exam) { setError(examErr?.message ?? '저장 실패'); return }
+
+      const eqRows = m1Questions.map((q, i) => ({
+        exam_id: exam.id, question_id: q.id, order_num: i + 1, points: 1,
+      }))
+      if (eqRows.length > 0) {
+        const { error: eqErr } = await supabase.from('exam_questions').insert(eqRows)
+        if (eqErr) { setError(eqErr.message); return }
+      }
+
+      router.push('/teacher/exams')
+      router.refresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '저장 중 오류가 발생했습니다.')
+    } finally {
+      setSaving(false)
     }
-
-    router.push('/teacher/exams')
-    router.refresh()
   }
 
   // ── 분석 사이드바 계산 ──────────────────────────────

@@ -94,7 +94,7 @@ function ResponseCard({ idx, q, onRemove, onPickOpen }: { idx: number; q: SlotQ 
 // ─── 오디오 세트 카드 ───────────────────────────────
 function AudioSetCard({
   idx, set, label, accent,
-  onSwap, onRemove,
+  onSwap, onRemove, onPickOpen,
 }: {
   idx: number
   set: AudioSet | null
@@ -102,11 +102,14 @@ function AudioSetCard({
   accent: string
   onSwap: () => void
   onRemove: () => void
+  onPickOpen: () => void
 }) {
   if (!set) return (
-    <div className={`rounded-xl border-2 border-dashed ${accent === 'emerald' ? 'border-emerald-100' : 'border-blue-100'} px-3 py-2 text-xs text-gray-300 flex items-center justify-center h-10`}>
-      {label} 세트 {idx + 1} (빈 슬롯)
-    </div>
+    <button
+      onClick={onPickOpen}
+      className={`w-full rounded-xl border-2 border-dashed ${accent === 'emerald' ? 'border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-500' : 'border-blue-200 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-500'} px-3 py-2 text-xs text-gray-300 flex items-center justify-center h-10 transition`}>
+      {label} 세트 {idx + 1} — 클릭하여 선택
+    </button>
   )
 
   const avgDiff = Math.round(set.questions.reduce((s, q) => s + q.difficulty, 0) / set.questions.length)
@@ -210,7 +213,7 @@ function ResponseGroup({
 
 // ─── SetGroup (Conv/Talk용) ──────────────────────────
 function SetGroup({
-  sets, label, accent, filling, onFill, onSwap, onRemove, onResize, minCount, maxCount,
+  sets, label, accent, filling, onFill, onSwap, onRemove, onResize, minCount, maxCount, onPickOpen,
 }: {
   sets: (AudioSet | null)[]
   label: string
@@ -222,6 +225,7 @@ function SetGroup({
   onResize: (delta: 1 | -1) => void
   minCount: number
   maxCount: number
+  onPickOpen: (idx: number) => void
 }) {
   const filled = sets.filter(Boolean).length
   const totalQ = sets.filter(Boolean).reduce((s, set) => s + set!.questions.length, 0)
@@ -254,6 +258,7 @@ function SetGroup({
           <AudioSetCard key={i} idx={i} set={set} label={label} accent={accent}
             onSwap={() => set && onSwap(i, set)}
             onRemove={() => onRemove(i)}
+            onPickOpen={() => onPickOpen(i)}
           />
         ))}
       </div>
@@ -265,7 +270,7 @@ function SetGroup({
 function ModuleColumn({
   title, subtitle, headerColor, borderColor,
   mod, moduleName, filling, totalFilled, totalSlots,
-  onMagicFillAll, onFill, onSwapSet, onRemoveResponse, onRemoveSet, onResize, onPickResponseOpen,
+  onMagicFillAll, onFill, onSwapSet, onRemoveResponse, onRemoveSet, onResize, onPickResponseOpen, onPickSetOpen,
 }: {
   title: string
   subtitle: string
@@ -283,6 +288,7 @@ function ModuleColumn({
   onRemoveSet: (slotType: 'conversation' | 'academicTalk', idx: number) => void
   onResize: (slotType: 'response' | 'conversation' | 'academicTalk', delta: 1 | -1) => void
   onPickResponseOpen: (idx: number) => void
+  onPickSetOpen: (slotType: 'conversation' | 'academicTalk', idx: number) => void
 }) {
   const accent = moduleName === 'LM1' ? 'gray' : moduleName === 'LM2up' ? 'emerald' : 'amber'
   const range = LISTEN_RANGE[moduleName]
@@ -330,6 +336,7 @@ function ModuleColumn({
           onRemove={i => onRemoveSet('conversation', i)}
           onResize={d => onResize('conversation', d)}
           minCount={range.conversation.min} maxCount={range.conversation.max}
+          onPickOpen={i => onPickSetOpen('conversation', i)}
         />
         <SetGroup
           sets={mod.academicTalk} label="🎓 Academic Talk" accent="blue"
@@ -339,6 +346,7 @@ function ModuleColumn({
           onRemove={i => onRemoveSet('academicTalk', i)}
           onResize={d => onResize('academicTalk', d)}
           minCount={range.academicTalk.min} maxCount={range.academicTalk.max}
+          onPickOpen={i => onPickSetOpen('academicTalk', i)}
         />
       </div>
     </div>
@@ -363,14 +371,22 @@ export default function ListeningCanvas({
   classId, targetBand, maxBand, filling, setFilling, allIds,
 }: ListeningCanvasProps) {
 
-  const [pickerState, setPickerState] = useState<{
+  // Response 직접 선택 상태
+  const [respPicker, setRespPicker] = useState<{
     mod: 'LM1' | 'LM2up' | 'LM2down'
     idx: number
   } | null>(null)
 
+  // Set(Conversation/Academic Talk) 직접 선택 상태
+  const [slotPicker, setSlotPicker] = useState<{
+    mod: 'LM1' | 'LM2up' | 'LM2down'
+    slotType: 'conversation' | 'academicTalk'
+    idx: number
+  } | null>(null)
+
   function handlePickSelect(picked: PickedQuestion) {
-    if (!pickerState) return
-    const { mod, idx } = pickerState
+    if (!respPicker) return
+    const { mod, idx } = respPicker
     const q: SlotQ = {
       id: picked.id,
       content: picked.content,
@@ -386,7 +402,28 @@ export default function ListeningCanvas({
       arr[idx] = q
       return { ...prev, response: arr }
     })
-    setPickerState(null)
+    setRespPicker(null)
+  }
+
+  function handleSetPickSelect(qs: PickedQuestion[]) {
+    if (!slotPicker || qs.length === 0) return
+    const { mod, slotType, idx } = slotPicker
+    const newSet: AudioSet = {
+      audioId: qs[0].id,
+      audioUrl: qs[0].audio_url ?? null,
+      questions: qs.map(q => ({
+        id: q.id, content: q.content, difficulty: q.difficulty,
+        question_subtype: q.question_subtype, audio_url: q.audio_url,
+        audio_id: null, type: q.type ?? 'listening',
+      })),
+    }
+    const setter = mod === 'LM1' ? setLM1 : mod === 'LM2up' ? setLM2Up : setLM2Down
+    setter(prev => {
+      const arr = [...prev[slotType]] as (AudioSet | null)[]
+      arr[idx] = newSet
+      return { ...prev, [slotType]: arr }
+    })
+    setSlotPicker(null)
   }
 
   // ── 슬롯 수 조절 (Elastic) ──
@@ -513,13 +550,14 @@ export default function ListeningCanvas({
       await magicFill(modName, 'academicTalk')
     },
     onFill: (st: 'response'|'conversation'|'academicTalk') => magicFill(modName, st),
-    onSwapSet: (_st: 'conversation'|'academicTalk', _i: number, _s: AudioSet) => {
-      // TODO: Swap popup for listening sets
+    onSwapSet: (st: 'conversation'|'academicTalk', i: number, _s: AudioSet) => {
+      setSlotPicker({ mod: modName, slotType: st, idx: i })
     },
     onRemoveResponse: (i: number) => removeResponse(modName, i),
     onRemoveSet: (st: 'conversation'|'academicTalk', i: number) => removeSet(modName, st, i),
     onResize: (st: 'response'|'conversation'|'academicTalk', d: 1|-1) => resizeListen(modName, st, d),
-    onPickResponseOpen: (i: number) => setPickerState({ mod: modName, idx: i }),
+    onPickResponseOpen: (i: number) => setRespPicker({ mod: modName, idx: i }),
+    onPickSetOpen: (st: 'conversation'|'academicTalk', i: number) => setSlotPicker({ mod: modName, slotType: st, idx: i }),
   })
 
   const lm1Filled = countFilled(lm1)
@@ -594,13 +632,23 @@ export default function ListeningCanvas({
       />
 
       <QuestionPickerModal
-        open={!!pickerState}
-        onClose={() => setPickerState(null)}
+        open={!!respPicker}
+        onClose={() => setRespPicker(null)}
         onSelect={handlePickSelect}
         category="listening"
         allowedSubtypes={['choose_response', 'announcement']}
         excludeIds={allIds}
         title="Listening Response 문제 직접 선택"
+      />
+      <QuestionPickerModal
+        open={!!slotPicker}
+        onClose={() => setSlotPicker(null)}
+        onSelect={() => {}}
+        onSelectSet={handleSetPickSelect}
+        category="listening"
+        allowedSubtypes={slotPicker?.slotType === 'conversation' ? ['conversation'] : ['academic_talk', 'campus_announcement']}
+        excludeIds={allIds}
+        title={slotPicker?.slotType === 'conversation' ? 'Conversation 세트 선택' : 'Academic Talk 세트 선택'}
       />
       </div>
     </div>
