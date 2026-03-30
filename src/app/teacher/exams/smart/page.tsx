@@ -490,14 +490,9 @@ export default function SmartBuilderPage() {
           class_id: classId || null,
           title: examTitle,
           description: JSON.stringify(adaptiveConfig),
-          max_band_ceiling: maxBand,
           time_limit: null,
-          start_at: null, end_at: null,
           status: 'draft',
           show_result_immediately: true,
-          total_points: m1Questions.length,
-          exam_type: 'full_test',
-          sections: ['reading', 'listening', 'writing', 'speaking'],
         })
         .select()
         .single()
