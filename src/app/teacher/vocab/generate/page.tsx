@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Wand2, Loader2, Check, X, ChevronRight, ChevronLeft,
-  RefreshCw, BookA, Sparkles, Send
+  RefreshCw, BookA, Sparkles, Send, ChevronDown
 } from 'lucide-react'
 import { createVocabSet } from '../set-actions'
 import { TOEFL_TOPICS } from '../constants'
@@ -496,26 +496,11 @@ export default function VocabGeneratePage() {
           {classes.length === 0 ? (
             <p className="text-sm text-gray-400">등록된 반이 없어요. 반을 먼저 만들어주세요.</p>
           ) : (
-            <div className="space-y-2">
-              {classes.map(cls => {
-                const on = selectedClasses.has(cls.id)
-                return (
-                  <button key={cls.id} onClick={() => setSelectedClasses(prev => {
-                    const next = new Set(prev)
-                    on ? next.delete(cls.id) : next.add(cls.id)
-                    return next
-                  })}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-sm font-semibold transition ${
-                      on ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                    }`}>
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${on ? 'border-blue-500 bg-blue-500' : 'border-gray-300'}`}>
-                      {on && <Check size={11} className="text-white" />}
-                    </div>
-                    {cls.name}
-                  </button>
-                )
-              })}
-            </div>
+            <ClassDropdown
+              classes={classes}
+              selected={selectedClasses}
+              onChange={setSelectedClasses}
+            />
           )}
           {selectedClasses.size === 0 && (
             <p className="text-xs text-gray-400 mt-2">반을 선택하지 않으면 임시저장 상태로 저장됩니다</p>
@@ -532,6 +517,73 @@ export default function VocabGeneratePage() {
           }
         </button>
       </div>
+    </div>
+  )
+}
+
+function ClassDropdown({
+  classes,
+  selected,
+  onChange,
+}: {
+  classes: { id: string; name: string }[]
+  selected: Set<string>
+  onChange: (s: Set<string>) => void
+}) {
+  const [open, setOpen] = useState(false)
+
+  function toggle(id: string) {
+    const next = new Set(selected)
+    next.has(id) ? next.delete(id) : next.add(id)
+    onChange(next)
+  }
+
+  const selectedList = classes.filter(c => selected.has(c.id))
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-500 hover:border-blue-300 transition bg-white"
+      >
+        <span>{selected.size > 0 ? `${selected.size}개 반 선택됨` : '배포할 반을 선택하세요'}</span>
+        <ChevronDown size={15} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+          {classes.map(cls => {
+            const on = selected.has(cls.id)
+            return (
+              <button
+                key={cls.id}
+                type="button"
+                onClick={() => toggle(cls.id)}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition hover:bg-gray-50 ${on ? 'text-blue-700' : 'text-gray-700'}`}
+              >
+                <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition ${on ? 'border-blue-500 bg-blue-500' : 'border-gray-300'}`}>
+                  {on && <Check size={10} className="text-white" />}
+                </div>
+                {cls.name}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {selectedList.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {selectedList.map(cls => (
+            <span key={cls.id} className="flex items-center gap-1 bg-blue-50 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full">
+              {cls.name}
+              <button type="button" onClick={() => toggle(cls.id)} className="hover:text-blue-900">
+                <X size={11} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

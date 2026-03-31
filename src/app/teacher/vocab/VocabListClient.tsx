@@ -47,6 +47,7 @@ export default function VocabListClient({
   const [words, setWords] = useState(initialWords)
   const [search, setSearch] = useState('')
   const [filterTopic, setFilterTopic] = useState('all')
+  const [filterPos, setFilterPos] = useState('all')
   const [isPending, startTransition] = useTransition()
   const [playingId, setPlayingId] = useState<string | null>(null)
 
@@ -175,6 +176,7 @@ export default function VocabListClient({
 
   const filtered = words.filter(w => {
     if (filterTopic !== 'all' && w.topic_category !== filterTopic) return false
+    if (filterPos !== 'all' && w.part_of_speech !== filterPos) return false
     if (search.trim()) {
       const q = search.toLowerCase()
       return w.word.toLowerCase().includes(q) || w.definition_ko.includes(q) ||
@@ -189,58 +191,75 @@ export default function VocabListClient({
   return (
     <div>
       {/* Filter bar */}
-      <div className="flex flex-wrap items-center gap-2 mb-3">
-        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2 flex-1 max-w-64">
-          <Search size={13} className="text-gray-400 flex-shrink-0" />
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="단어, 뜻, 동의어..."
-            className="text-sm text-gray-900 flex-1 focus:outline-none" />
-        </div>
-        <select value={filterTopic} onChange={e => setFilterTopic(e.target.value)}
-          className="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-700 focus:outline-none">
-          <option value="all">전체 주제</option>
-          {allTopics.filter(t => topicCounts[t.value]).map(t => (
-            <option key={t.value} value={t.value}>{t.emoji} {t.label} ({topicCounts[t.value]})</option>
-          ))}
-        </select>
-        <button onClick={() => setShowTopicManager(v => !v)}
-          className="flex items-center gap-1 text-xs font-bold px-2.5 py-2 bg-white border border-gray-200 hover:border-blue-300 text-gray-500 hover:text-blue-600 rounded-xl transition">
-          주제 <ChevronDown size={12} className={`transition-transform ${showTopicManager ? 'rotate-180' : ''}`} />
-        </button>
-
-        {/* Set creation button */}
-        {!selectMode ? (
-          <button onClick={enterSelectMode}
-            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition ml-auto">
-            <Layers size={13} /> 선택
-          </button>
-        ) : (
-          <div className="flex items-center gap-2 ml-auto">
-            <span className="text-xs text-blue-600 font-bold">{selected.size}개 선택</span>
-            <button onClick={() => setSelected(new Set(filtered.map(w => w.id)))}
-              className="text-xs text-gray-500 hover:text-gray-700 underline">전체</button>
-            <button onClick={() => setSelected(new Set())}
-              className="text-xs text-gray-400 hover:text-gray-600 underline">해제</button>
-            <button onClick={exitSelectMode}
-              className="text-xs font-bold px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition">
-              취소
-            </button>
-            {selected.size > 0 && (
-              <>
-                <button onClick={handleBulkDelete}
-                  className="text-xs font-bold px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition">
-                  선택 삭제
-                </button>
-                <button onClick={() => setShowSetPanel(true)}
-                  className="text-xs font-bold px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition">
-                  세트로 묶기 →
-                </button>
-              </>
-            )}
+      <div className="flex flex-col gap-2 mb-3">
+        {/* Row 1: search + topic */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2 flex-[2]">
+            <Search size={13} className="text-gray-400 flex-shrink-0" />
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="단어, 뜻, 동의어..."
+              className="text-sm text-gray-900 flex-1 focus:outline-none min-w-0" />
+            {search && <button onClick={() => setSearch('')} className="text-gray-300 hover:text-gray-500"><X size={12} /></button>}
           </div>
-        )}
+          <select value={filterTopic} onChange={e => setFilterTopic(e.target.value)}
+            className="bg-white border border-gray-200 rounded-xl px-2 py-2 text-xs text-gray-700 focus:outline-none flex-[1]">
+            <option value="all">전체 주제</option>
+            {allTopics.filter(t => topicCounts[t.value]).map(t => (
+              <option key={t.value} value={t.value}>{t.emoji} {t.label} ({topicCounts[t.value]})</option>
+            ))}
+          </select>
+        </div>
 
-        {!selectMode && <span className="text-xs text-gray-400">{filtered.length}개</span>}
+        {/* Row 2: topic manage + pos filter + select mode + count */}
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowTopicManager(v => !v)}
+            className="flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 bg-white border border-gray-200 hover:border-blue-300 text-gray-500 hover:text-blue-600 rounded-xl transition">
+            주제 <ChevronDown size={12} className={`transition-transform ${showTopicManager ? 'rotate-180' : ''}`} />
+          </button>
+          <select value={filterPos} onChange={e => setFilterPos(e.target.value)}
+            className={`text-xs font-bold px-2 py-1.5 rounded-xl border transition focus:outline-none ${
+              filterPos !== 'all' ? 'bg-violet-50 border-violet-300 text-violet-700' : 'bg-white border-gray-200 text-gray-500'
+            }`}>
+            <option value="all">품사 전체</option>
+            {Object.keys(POS_COLOR).map(pos => (
+              <option key={pos} value={pos}>{pos}</option>
+            ))}
+          </select>
+
+          {!selectMode ? (
+            <>
+              <button onClick={enterSelectMode}
+                className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition">
+                <Layers size={12} /> 선택
+              </button>
+              <span className="text-xs text-gray-400 ml-auto">{filtered.length}개</span>
+            </>
+          ) : (
+            <div className="flex items-center gap-1.5 flex-1">
+              <span className="text-xs text-blue-600 font-bold">{selected.size}개</span>
+              <button onClick={() => setSelected(new Set(filtered.map(w => w.id)))}
+                className="text-xs text-gray-500 hover:text-gray-700 underline">전체</button>
+              <button onClick={() => setSelected(new Set())}
+                className="text-xs text-gray-400 hover:text-gray-600 underline">해제</button>
+              <button onClick={exitSelectMode}
+                className="text-xs font-bold px-2 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition ml-auto">
+                취소
+              </button>
+              {selected.size > 0 && (
+                <>
+                  <button onClick={handleBulkDelete}
+                    className="text-xs font-bold px-2.5 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition whitespace-nowrap">
+                    삭제
+                  </button>
+                  <button onClick={() => setShowSetPanel(true)}
+                    className="text-xs font-bold px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition whitespace-nowrap">
+                    세트
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Topic manager panel */}
@@ -328,7 +347,7 @@ export default function VocabListClient({
           const isSelected = selected.has(word.id)
           return (
             <div key={word.id}
-              className={`flex items-center gap-3 px-4 py-2.5 border-b border-gray-50 last:border-0 group transition
+              className={`flex items-center gap-3 px-4 py-1.5 border-b border-gray-50 last:border-0 group transition
                 ${selectMode ? 'cursor-pointer hover:bg-blue-50' : 'hover:bg-gray-50'}
                 ${isSelected ? 'bg-blue-50' : ''}
               `}

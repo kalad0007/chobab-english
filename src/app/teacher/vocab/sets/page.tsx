@@ -56,15 +56,15 @@ export default async function VocabSetsPage() {
   }))
 
   return (
-    <div className="p-4 md:p-7">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
+    <div className="p-3 md:p-7">
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-gray-900">📦 단어 세트 관리</h1>
-          <p className="text-gray-500 text-sm mt-1">AI로 생성한 단어 묶음을 반별로 배포합니다</p>
+          <h1 className="text-lg md:text-2xl font-extrabold text-gray-900 flex items-center gap-2">📦 단어 세트 관리</h1>
+          <p className="text-gray-500 text-xs mt-0.5 hidden sm:block">AI로 생성한 단어 묶음을 반별로 배포합니다</p>
         </div>
         <Link href="/teacher/vocab/generate"
-          className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold rounded-xl transition">
-          <Sparkles size={15} /> 새 세트 생성
+          className="flex items-center gap-1.5 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs md:text-sm font-bold rounded-xl transition">
+          <Sparkles size={13} /> 새 세트 생성
         </Link>
       </div>
 

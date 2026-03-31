@@ -66,33 +66,28 @@ function StudentRow({ m, color, stats, classColorMap }: {
 
   return (
     <div
-      className={`grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto] items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition ${isPending ? 'opacity-50' : ''}`}
+      className={`grid grid-cols-[1fr_68px_68px_44px_44px_34px] items-center gap-2 px-3 md:px-5 py-2.5 md:py-3.5 hover:bg-gray-50 transition ${isPending ? 'opacity-50' : ''}`}
     >
-      {/* Avatar */}
-      <div className={`w-9 h-9 rounded-full ${color.bg} flex items-center justify-center text-white text-sm font-bold flex-shrink-0`}>
-        {name.charAt(0)}
-      </div>
-
       {/* Name + email */}
       <div className="min-w-0">
         <p className="text-sm font-semibold text-gray-900 truncate">{name}</p>
-        {email && <p className="text-xs text-gray-400 truncate mt-0.5">{email}</p>}
+        {email && <p className="text-xs text-gray-400 truncate mt-0.5 hidden sm:block">{email}</p>}
       </div>
 
       {/* Class badge */}
-      <div className="w-24 flex justify-center">
-        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${color.badge}`}>
+      <div className="flex justify-center">
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${color.badge}`}>
           {className}
         </span>
       </div>
 
       {/* Feature level select */}
-      <div className="w-24 flex justify-center">
+      <div className="flex justify-center">
         <select
           value={featureLevel}
           onChange={handleLevelChange}
           disabled={isPending}
-          className={`text-xs font-semibold border rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-400 transition ${LEVEL_STYLES[featureLevel] ?? LEVEL_STYLES[1]}`}
+          className={`text-xs font-semibold border rounded-lg px-1.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-blue-400 transition ${LEVEL_STYLES[featureLevel] ?? LEVEL_STYLES[1]}`}
         >
           {LEVEL_OPTIONS.map(l => (
             <option key={l.value} value={l.value}>{l.label}</option>
@@ -101,15 +96,15 @@ function StudentRow({ m, color, stats, classColorMap }: {
       </div>
 
       {/* Attempt count */}
-      <div className="w-16 text-center">
+      <div className="flex justify-center">
         <span className="text-sm font-bold text-gray-800">{stats?.count ?? 0}</span>
-        <span className="text-xs text-gray-400 ml-1">회</span>
+        <span className="text-xs text-gray-400 ml-0.5">회</span>
       </div>
 
       {/* Average score */}
-      <div className="w-16 flex justify-center">
+      <div className="flex justify-center">
         {stats && stats.count > 0 && stats.avgScore !== null ? (
-          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${scoreColor(stats.avgScore)}`}>
+          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${scoreColor(stats.avgScore)}`}>
             {stats.avgScore}%
           </span>
         ) : (
@@ -118,7 +113,7 @@ function StudentRow({ m, color, stats, classColorMap }: {
       </div>
 
       {/* Remove button */}
-      <div className="w-8 flex justify-center">
+      <div className="flex justify-center">
         <button
           type="button"
           onClick={handleRemove}
@@ -126,7 +121,7 @@ function StudentRow({ m, color, stats, classColorMap }: {
           title="반에서 제외"
           className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition disabled:opacity-50"
         >
-          <UserMinus size={15} />
+          <UserMinus size={14} />
         </button>
       </div>
     </div>
@@ -189,14 +184,13 @@ export default function StudentsClient({ members, classes, submissionMap }: Prop
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           {/* Table header */}
-          <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto] items-center gap-3 px-5 py-3 bg-gray-50 border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wide">
-            <span className="w-9" />
+          <div className="grid grid-cols-[1fr_68px_68px_44px_44px_34px] items-center gap-2 px-3 md:px-5 py-3 bg-gray-50 border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wide">
             <span>학생 정보</span>
-            <span className="w-24 text-center">반</span>
-            <span className="w-24 text-center">등급</span>
-            <span className="w-16 text-center">응시</span>
-            <span className="w-16 text-center">평균</span>
-            <span className="w-8" />
+            <span className="flex justify-center">반</span>
+            <span className="flex justify-center">등급</span>
+            <span className="flex justify-center">응시</span>
+            <span className="flex justify-center">평균</span>
+            <span />
           </div>
 
           <div className="divide-y divide-gray-50">

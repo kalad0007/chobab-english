@@ -179,91 +179,93 @@ export default function NewVocabPage() {
   }
 
   return (
-    <div className="p-4 md:p-7 max-w-3xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => router.back()} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition">
-          <ChevronLeft size={20} />
+    <div className="p-3 md:p-7 max-w-3xl mx-auto">
+      <div className="flex items-center gap-2 mb-4">
+        <button onClick={() => router.back()} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition">
+          <ChevronLeft size={18} />
         </button>
         <div>
-          <h1 className="text-xl font-extrabold text-gray-900">새 단어 추가</h1>
-          <p className="text-sm text-gray-400">단어를 입력하고 AI로 자동 완성하세요</p>
+          <h1 className="text-lg md:text-xl font-extrabold text-gray-900">새 단어 추가</h1>
+          <p className="text-xs text-gray-400 hidden sm:block">단어를 입력하고 AI로 자동 완성하세요</p>
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl mb-4">
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2.5 rounded-xl mb-3">
           {error}
         </div>
       )}
 
-      <div className="space-y-5">
+      <div className="space-y-3">
         {/* Word + AI fill */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 md:p-5">
           <label className="text-xs font-bold text-gray-500 mb-1.5 block">표제어 *</label>
           <div className="flex gap-2">
             <input value={word} onChange={e => setWord(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleAiFill()}
               placeholder="예: indispensable"
-              className="flex-1 min-w-0 border border-gray-200 rounded-xl px-3 py-2.5 text-base font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              className="flex-1 min-w-0 border border-gray-200 rounded-xl px-3 py-2 text-base font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400" />
             <button onClick={handleAiFill} disabled={filling}
-              className="flex items-center gap-1.5 px-3 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold rounded-xl transition disabled:opacity-50 flex-shrink-0 whitespace-nowrap">
+              className="flex items-center gap-1.5 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold rounded-xl transition disabled:opacity-50 flex-shrink-0 whitespace-nowrap">
               {filling ? <Loader2 size={15} className="animate-spin" /> : <Wand2 size={15} />}
-              <span className="hidden xs:inline sm:inline">{filling ? '분석 중...' : 'AI 자동완성'}</span>
+              <span className="hidden sm:inline">{filling ? '분석 중...' : 'AI 자동완성'}</span>
             </button>
           </div>
         </div>
 
         {/* Core fields */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 md:p-5 divide-y divide-gray-50">
+          <div className="grid grid-cols-2 gap-3 pb-3">
             <div>
-              <label className="text-xs font-bold text-gray-500 mb-1.5 block">품사</label>
+              <label className="text-xs font-bold text-gray-500 mb-1 block">품사</label>
               <select value={pos} onChange={e => setPos(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                className="w-full border border-gray-200 rounded-xl px-2 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400">
                 {PARTS_OF_SPEECH.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs font-bold text-gray-500 mb-1.5 block">난이도</label>
+              <label className="text-xs font-bold text-gray-500 mb-1 block">난이도</label>
               <select value={difficulty} onChange={e => setDifficulty(Number(e.target.value))}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                className="w-full border border-gray-200 rounded-xl px-2 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400">
                 {DIFFICULTY_OPTIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
               </select>
             </div>
           </div>
 
-          <div>
-            <label className="text-xs font-bold text-gray-500 mb-1.5 block">한국어 뜻 *</label>
+          <div className="flex items-center gap-2 py-1.5">
+            <label className="text-xs font-bold text-gray-500 w-20 flex-shrink-0">한국어 뜻 *</label>
             <input value={defKo} onChange={e => setDefKo(e.target.value)}
-              placeholder="예: 없어서는 안 될, 필수적인"
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              placeholder="없어서는 안 될, 필수적인"
+              className="flex-1 min-w-0 border border-gray-200 rounded-xl px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400" />
           </div>
-          <div>
-            <label className="text-xs font-bold text-gray-500 mb-1.5 block">영어 정의</label>
+          <div className="flex items-center gap-2 py-1.5">
+            <label className="text-xs font-bold text-gray-500 w-20 flex-shrink-0">영어 정의</label>
             <input value={defEn} onChange={e => setDefEn(e.target.value)}
-              placeholder="예: absolutely necessary; impossible to be without"
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              placeholder="absolutely necessary..."
+              className="flex-1 min-w-0 border border-gray-200 rounded-xl px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400" />
           </div>
 
-          <div>
-            <label className="text-xs font-bold text-gray-500 mb-1.5 block">
-              동의어 <span className="font-normal text-gray-400">(Enter로 추가, TOEFL 패러프레이징에 활용)</span>
-            </label>
-            <ChipInput chips={synonyms} onAdd={v => setSynonyms(p => [...p, v])}
-              onRemove={v => setSynonyms(p => p.filter(s => s !== v))}
-              placeholder="essential, crucial, vital... 입력 후 Enter" color="purple" />
+          <div className="flex items-start gap-2 py-1.5">
+            <label className="text-xs font-bold text-gray-500 w-20 flex-shrink-0 pt-1.5">동의어</label>
+            <div className="flex-1 min-w-0">
+              <ChipInput chips={synonyms} onAdd={v => setSynonyms(p => [...p, v])}
+                onRemove={v => setSynonyms(p => p.filter(s => s !== v))}
+                placeholder="essential, crucial..." color="purple" />
+            </div>
           </div>
-          <div>
-            <label className="text-xs font-bold text-gray-500 mb-1.5 block">반의어 <span className="font-normal text-gray-400">(Enter로 추가)</span></label>
-            <ChipInput chips={antonyms} onAdd={v => setAntonyms(p => [...p, v])}
-              onRemove={v => setAntonyms(p => p.filter(s => s !== v))}
-              placeholder="dispensable, optional... 입력 후 Enter" color="rose" />
+          <div className="flex items-start gap-2 py-1.5">
+            <label className="text-xs font-bold text-gray-500 w-20 flex-shrink-0 pt-1.5">반의어</label>
+            <div className="flex-1 min-w-0">
+              <ChipInput chips={antonyms} onAdd={v => setAntonyms(p => [...p, v])}
+                onRemove={v => setAntonyms(p => p.filter(s => s !== v))}
+                placeholder="dispensable, optional..." color="rose" />
+            </div>
           </div>
 
-          <div>
-            <label className="text-xs font-bold text-gray-500 mb-1.5 block">주제 카테고리</label>
+          <div className="flex items-center gap-2 pt-1.5">
+            <label className="text-xs font-bold text-gray-500 w-20 flex-shrink-0">주제</label>
             <select value={topic} onChange={e => setTopic(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400">
+              className="flex-1 min-w-0 border border-gray-200 rounded-xl px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400">
               {allTopics.map(t => (
                 <option key={t.value} value={t.value}>{t.emoji} {t.label}</option>
               ))}
@@ -272,7 +274,7 @@ export default function NewVocabPage() {
         </div>
 
         {/* Example sentence + chunking */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 md:p-5 space-y-3">
           <div>
             <label className="text-xs font-bold text-gray-500 mb-0.5 block">실전 예문 (청킹 마크업)</label>
             <p className="text-[11px] text-gray-400 mb-1.5">
@@ -282,7 +284,7 @@ export default function NewVocabPage() {
             <textarea value={example} onChange={e => setExample(e.target.value)}
               rows={3}
               placeholder="Water is *indispensable* / for the survival / of all living organisms."
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 font-mono resize-none focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 font-mono resize-none focus:outline-none focus:ring-2 focus:ring-blue-400" />
           </div>
           {example && (
             <div>
@@ -292,38 +294,38 @@ export default function NewVocabPage() {
           )}
           <div>
             <label className="text-xs font-bold text-gray-500 mb-0.5 block">한글 직독직해</label>
-            <p className="text-[11px] text-gray-400 mb-1.5">영어 예문과 동일한 위치에 <code className="bg-gray-100 px-1 rounded"> / </code> 넣어 청크 일치</p>
+            <p className="text-[11px] text-gray-400 mb-1.5 hidden sm:block">영어 예문과 동일한 위치에 <code className="bg-gray-100 px-1 rounded"> / </code> 넣어 청크 일치</p>
             <textarea value={exampleKo} onChange={e => setExampleKo(e.target.value)}
               rows={2}
               placeholder="깨끗한 물은 *없어서는 안 된다* / 생존을 위해 / 모든 생명체에게."
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 resize-none focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 resize-none focus:outline-none focus:ring-2 focus:ring-blue-400" />
           </div>
         </div>
 
         {/* TTS */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center justify-between mb-3">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 md:p-5">
+          <div className="flex items-center justify-between mb-2">
             <div>
               <p className="text-sm font-bold text-gray-700">원어민 발음 (TTS)</p>
-              <p className="text-xs text-gray-400">Google Neural2 음성으로 자동 생성</p>
+              <p className="text-xs text-gray-400 hidden sm:block">Google Neural2 음성으로 자동 생성</p>
             </div>
             <button onClick={handleTts} disabled={generating || !word.trim()}
-              className="flex items-center gap-2 px-3 py-2 bg-amber-100 hover:bg-amber-200 text-amber-700 text-xs font-bold rounded-xl transition disabled:opacity-50">
+              className="flex items-center gap-1.5 px-3 py-2 bg-amber-100 hover:bg-amber-200 text-amber-700 text-xs font-bold rounded-xl transition disabled:opacity-50 whitespace-nowrap">
               {generating ? <Loader2 size={13} className="animate-spin" /> : <Volume2 size={13} />}
-              {generating ? '생성 중...' : audioUrl ? 'TTS 재생성' : 'TTS 생성'}
+              {generating ? '생성 중...' : audioUrl ? '재생성' : 'TTS 생성'}
             </button>
           </div>
           {audioUrl && (
             <audio src={audioUrl} controls className="w-full h-8" />
           )}
           {!audioUrl && (
-            <p className="text-xs text-gray-300 text-center py-2">TTS 생성 버튼을 누르면 발음이 자동으로 만들어져요</p>
+            <p className="text-xs text-gray-300 text-center py-1">TTS 생성 버튼을 누르면 발음이 자동으로 만들어져요</p>
           )}
         </div>
 
         {/* Save */}
         <button onClick={handleSave} disabled={saving || saved}
-          className={`w-full flex items-center justify-center gap-2 py-3.5 text-base font-bold rounded-2xl transition ${
+          className={`w-full flex items-center justify-center gap-2 py-3 text-base font-bold rounded-2xl transition ${
             saved ? 'bg-emerald-500 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'
           } disabled:opacity-50`}>
           {saved ? <><Check size={18} /> 저장 완료!</> :

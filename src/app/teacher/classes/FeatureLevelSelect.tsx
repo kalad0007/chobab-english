@@ -35,9 +35,7 @@ export default function FeatureLevelSelect({ classId, studentId, current }: Prop
       } ${isPending ? 'opacity-50' : ''}`}
     >
       {LEVELS.map(l => (
-        <option key={l.value} value={l.value}>
-          {l.label} ({l.desc})
-        </option>
+        <option key={l.value} value={l.value}>{l.label}</option>
       ))}
     </select>
   )

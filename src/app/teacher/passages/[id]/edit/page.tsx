@@ -407,17 +407,7 @@ export default function EditPassagePage() {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
         <div>
           <p className="text-xs font-bold text-gray-500 mb-2">배포할 반 선택</p>
-          <div className="flex flex-wrap gap-2">
-            {classes.map(cls => {
-              const on = selectedClasses.has(cls.id)
-              return (
-                <button key={cls.id} onClick={() => setSelectedClasses(prev => { const next = new Set(prev); on ? next.delete(cls.id) : next.add(cls.id); return next })}
-                  className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border-2 transition ${on ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>
-                  {on && <Check size={11} />} {cls.name}
-                </button>
-              )
-            })}
-          </div>
+          <ClassDropdown classes={classes} selected={selectedClasses} onChange={setSelectedClasses} />
         </div>
         <button onClick={handleSave} disabled={saving}
           className="w-full flex items-center justify-center gap-2 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl transition disabled:opacity-50">
@@ -463,6 +453,75 @@ export default function EditPassagePage() {
             </div>
           )}
           <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900" />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ClassDropdown({
+  classes,
+  selected,
+  onChange,
+}: {
+  classes: { id: string; name: string }[]
+  selected: Set<string>
+  onChange: (s: Set<string>) => void
+}) {
+  const [open, setOpen] = useState(false)
+
+  function toggle(id: string) {
+    const next = new Set(selected)
+    next.has(id) ? next.delete(id) : next.add(id)
+    onChange(next)
+  }
+
+  const selectedList = classes.filter(c => selected.has(c.id))
+
+  if (classes.length === 0) return <p className="text-xs text-gray-400">등록된 반이 없어요</p>
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-500 hover:border-blue-300 transition bg-white"
+      >
+        <span>{selected.size > 0 ? `${selected.size}개 반 선택됨` : '배포할 반을 선택하세요'}</span>
+        <ChevronDown size={15} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+          {classes.map(cls => {
+            const on = selected.has(cls.id)
+            return (
+              <button
+                key={cls.id}
+                type="button"
+                onClick={() => toggle(cls.id)}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition hover:bg-gray-50 ${on ? 'text-blue-700' : 'text-gray-700'}`}
+              >
+                <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition ${on ? 'border-blue-500 bg-blue-500' : 'border-gray-300'}`}>
+                  {on && <Check size={10} className="text-white" />}
+                </div>
+                {cls.name}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {selectedList.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {selectedList.map(cls => (
+            <span key={cls.id} className="flex items-center gap-1 bg-blue-50 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full">
+              {cls.name}
+              <button type="button" onClick={() => toggle(cls.id)} className="hover:text-blue-900">
+                <X size={11} />
+              </button>
+            </span>
+          ))}
         </div>
       )}
     </div>

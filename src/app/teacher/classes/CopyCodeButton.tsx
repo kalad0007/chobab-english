@@ -25,7 +25,7 @@ export default function CopyCodeButton({ code }: { code: string }) {
 
   return (
     <button
-      onClick={copy}
+      onClick={e => { e.preventDefault(); e.stopPropagation(); copy() }}
       className="p-2 rounded-xl text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition"
       title="초대코드 복사"
     >
