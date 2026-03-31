@@ -138,14 +138,14 @@ export default function NewExamPage() {
   }, 0)
 
   return (
-    <div className="p-7 max-w-5xl">
+    <div className="p-4 md:p-7 max-w-5xl">
       <div className="mb-6">
         <h1 className="text-2xl font-extrabold text-gray-900">📝 새 시험 만들기</h1>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* 왼쪽: 기본 설정 */}
-        <div className="col-span-1 space-y-4">
+        <div className="md:col-span-1 space-y-4">
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
             <h2 className="font-bold text-gray-900 text-sm">기본 설정</h2>
 
@@ -273,7 +273,7 @@ export default function NewExamPage() {
         </div>
 
         {/* 오른쪽: 문제 선택 */}
-        <div className="col-span-2">
+        <div className="md:col-span-2">
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
             <div
               className="px-5 py-4 border-b border-gray-100 flex items-center justify-between cursor-pointer"
