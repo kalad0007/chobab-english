@@ -480,26 +480,30 @@ export default function SmartBuilderPage() {
       }
 
       // 학생이 실제 받는 문제 (M1 + LM1 + Writing + Speaking)의 시간 합산
-      const calcTimeSecs = (qs: (SlotQ | null)[]) =>
-        qs.filter(Boolean).reduce((s, q) => {
-          const sub = q!.question_subtype ?? ''
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const calcTimeSecs = (qs: any[]) =>
+        qs.filter(Boolean).reduce((s: number, q: any) => {
+          const sub = q?.question_subtype ?? ''
           return s + (DEFAULT_TIME_LIMITS[sub] ?? 0) + (AUDIO_BUFFER[sub] ?? 0)
         }, 0)
 
-      const lm1Questions: (SlotQ | null)[] = [
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const lm1Questions: any[] = [
         ...lm1.response,
-        ...lm1.conversation.flatMap(a => a?.questions ?? []),
-        ...lm1.academicTalk.flatMap(a => a?.questions ?? []),
+        ...lm1.conversation.flatMap((a: any) => a?.questions ?? []),
+        ...lm1.academicTalk.flatMap((a: any) => a?.questions ?? []),
       ]
-      const lm2upQuestions: (SlotQ | null)[] = [
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const lm2upQuestions: any[] = [
         ...lm2up.response,
-        ...lm2up.conversation.flatMap(a => a?.questions ?? []),
-        ...lm2up.academicTalk.flatMap(a => a?.questions ?? []),
+        ...lm2up.conversation.flatMap((a: any) => a?.questions ?? []),
+        ...lm2up.academicTalk.flatMap((a: any) => a?.questions ?? []),
       ]
-      const lm2downQuestions: (SlotQ | null)[] = [
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const lm2downQuestions: any[] = [
         ...lm2down.response,
-        ...lm2down.conversation.flatMap(a => a?.questions ?? []),
-        ...lm2down.academicTalk.flatMap(a => a?.questions ?? []),
+        ...lm2down.conversation.flatMap((a: any) => a?.questions ?? []),
+        ...lm2down.academicTalk.flatMap((a: any) => a?.questions ?? []),
       ]
       // 학생은 M2up/M2down 중 하나, LM2up/LM2down 중 하나만 풀므로 더 긴 쪽 사용
       const m2Secs = Math.max(
