@@ -621,7 +621,7 @@ export default function NewQuestionPage() {
             source: 'teacher',
             audio_url: audioUrl || null,
             audio_script: isListening ? (audioScript || null) : null,
-            audio_play_limit: (isListening || category === 'speaking') ? audioPlayLimit : null,
+            audio_play_limit: (isListening || (category as string) === 'speaking') ? audioPlayLimit : null,
             speaking_prompt: null,
             preparation_time: null,
             response_time: null,
