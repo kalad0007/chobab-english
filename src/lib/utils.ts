@@ -398,7 +398,7 @@ export function xpToLevel(xp: number) {
 // <u>텍스트</u> 를 실제 밑줄로, \n을 <br />로 렌더링
 export function renderWithUnderlines(text: string): React.ReactNode {
   const parts = text.split(/(<u>[\s\S]*?<\/u>)/g)
-  return parts.flatMap((part, i) => {
+  return (parts as string[]).flatMap((part, i): React.ReactNode[] => {
     if (part.startsWith('<u>') && part.endsWith('</u>')) {
       return [React.createElement('u', { key: `u${i}`, className: 'underline decoration-2' }, part.slice(3, -4))]
     }
