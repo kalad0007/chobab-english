@@ -160,8 +160,49 @@ export function ClickableQRow({ idx, q }: Props) {
                 </div>
               )}
 
-              {/* 보기 */}
-              {q.options && q.options.length > 0 && (
+              {/* 보기 — sentence_reordering: 단어 칩 */}
+              {q.question_subtype === 'sentence_reordering' && q.options && q.options.length > 0 && (() => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const words = q.options.map((opt: any) => typeof opt === 'string' ? opt : opt?.text ?? String(opt))
+                // answer는 "B,D,A,..." 같은 순서 또는 완성 문장
+                const answerWords: string[] = (() => {
+                  if (!q.answer) return []
+                  // 콤마로 구분된 알파벳 순서인 경우
+                  if (/^[A-Z](,[A-Z])*$/.test(q.answer.trim())) {
+                    return q.answer.split(',').map(l => words[l.charCodeAt(0) - 65]).filter(Boolean)
+                  }
+                  return []
+                })()
+                return (
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">단어 목록</p>
+                      <div className="flex flex-wrap gap-2">
+                        {words.map((w, i) => (
+                          <span key={i} className="px-3 py-1.5 bg-purple-50 border border-purple-200 text-purple-800 text-sm font-semibold rounded-lg">
+                            {w}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    {answerWords.length > 0 && (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+                        <p className="text-xs font-bold text-emerald-600 mb-2">정답 문장</p>
+                        <div className="flex flex-wrap gap-2">
+                          {answerWords.map((w, i) => (
+                            <span key={i} className="px-3 py-1.5 bg-emerald-100 border border-emerald-300 text-emerald-800 text-sm font-semibold rounded-lg">
+                              {w}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+
+              {/* 보기 — 일반 객관식 */}
+              {q.question_subtype !== 'sentence_reordering' && q.options && q.options.length > 0 && (
                 <div className="space-y-2">
                   {q.options.map((opt, i) => {
                     // options may be stored as {num, text} objects or plain strings

@@ -1,10 +1,22 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2, Sparkles, CheckCircle } from 'lucide-react'
 import { getMaxScore, calculateSectionBand, calculateOverallBand, mapToOldToeflScore } from '@/lib/utils'
+
+// Speaking 루브릭 항목 (각 1~4점) — 공식 TOEFL 채점 기준
+const SPEAKING_RUBRIC = [
+  { key: 'delivery',           label: '전달력',       desc: '발음·유창성·자신감' },
+  { key: 'language_use',       label: '언어 사용',    desc: '어휘·문법의 다양성과 정확도' },
+  { key: 'topic_development',  label: '주제 전개',    desc: '내용의 관련성과 논리적 구성' },
+] as const
+
+type SpeakingRubricKey = typeof SPEAKING_RUBRIC[number]['key']
+type RubricScores = Record<SpeakingRubricKey, number>
+
+const RUBRIC_LABELS = ['', '미흡 (1)', '보통 (2)', '양호 (3)', '우수 (4)']
 
 interface EvalResult {
   totalScore: number
@@ -17,11 +29,19 @@ interface EvalResult {
   improvements: string
 }
 
+// AI 0~25 점수 → 루브릭 1~4 변환
+function toRubricScale(value: number, outOf: number): number {
+  const ratio = value / outOf
+  if (ratio >= 0.75) return 4
+  if (ratio >= 0.50) return 3
+  if (ratio >= 0.25) return 2
+  return 1
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function GradeSpeakingPanel({ answer }: { answer: any }) {
   const router = useRouter()
   const supabase = createClient()
-  const [score, setScore] = useState<string>('')
   const [saving, setSaving] = useState(false)
   const [evaluating, setEvaluating] = useState(false)
   const [evalResult, setEvalResult] = useState<EvalResult | null>(null)
@@ -34,9 +54,23 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
   const sub = answer.submissions as any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const profile = sub?.profiles as any
+  const audioUrl = answer.student_answer
 
-  const audioUrl = answer.student_answer // URL stored as student_answer
+  // 저장된 루브릭 복원 (재채점 시)
+  const savedRubric = answer.rubric_scores as RubricScores | null
+  const [rubric, setRubric] = useState<RubricScores>(savedRubric ?? {
+    delivery: 0,
+    language_use: 0,
+    topic_development: 0,
+  })
 
+  // 루브릭 합산 → 최종 점수 환산 (3개 × 4점 = 12점 → maxPoints 비례)
+  const rubricTotal = rubric.delivery + rubric.language_use + rubric.topic_development
+  const rubricMax = SPEAKING_RUBRIC.length * 4  // 12
+  const computedScore = rubricTotal > 0
+    ? Math.round((rubricTotal / rubricMax) * maxPoints * 10) / 10
+    : 0
+  const allFilled = SPEAKING_RUBRIC.every(r => rubric[r.key] > 0)
 
   async function aiEvaluate() {
     if (!audioUrl?.startsWith('http')) return
@@ -51,14 +85,16 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
       })
 
       const data = await res.json()
+      if (!res.ok) { setEvalError(data?.detail ?? data?.error ?? `HTTP ${res.status}`); return }
 
-      if (!res.ok) {
-        const msg = data?.detail ?? data?.error ?? `HTTP ${res.status}`
-        setEvalError(msg)
-        return
-      }
       setEvalResult(data)
-      // AI 점수는 참고용(0-100)이므로 자동 입력 안 함 - 교사가 실제 배점 기준으로 직접 입력
+
+      // AI 결과를 루브릭 1~4 점수로 자동 변환
+      setRubric({
+        delivery:          toRubricScale(data.pronunciation + data.confidence, 50),
+        language_use:      toRubricScale(data.grammar, 25),
+        topic_development: toRubricScale(data.content, 25),
+      })
     } catch (e) {
       setEvalError(String(e))
     } finally {
@@ -67,8 +103,7 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
   }
 
   async function saveGrade() {
-    const numScore = parseFloat(score)
-    if (isNaN(numScore) || numScore < 0 || numScore > maxPoints) return
+    if (!allFilled || saving) return
     setSaving(true)
 
     const feedback = evalResult
@@ -76,8 +111,9 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
       : ''
 
     await supabase.from('submission_answers').update({
-      is_correct: numScore > 0,
-      score: numScore,
+      is_correct: computedScore > 0,
+      score: computedScore,
+      rubric_scores: rubric,
       teacher_feedback: feedback || null,
     }).eq('id', answer.id)
 
@@ -120,14 +156,12 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
       }).eq('id', sub?.id ?? '')
     }
 
-    // 학생 speaking 영역 실력 통계 업데이트
     const studentId = sub?.student_id
     if (studentId) {
-      const percentage = Math.round((numScore / maxPoints) * 100)
       fetch('/api/stats/update-speaking', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentId, percentage }),
+        body: JSON.stringify({ studentId, percentage: Math.round(computedScore / maxPoints * 100) }),
       }).catch(() => {})
     }
 
@@ -143,6 +177,7 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
         <span className="text-xs text-gray-400">{sub?.exams?.title}</span>
         <span className="text-xs text-gray-300">•</span>
         <span className="text-xs font-semibold text-blue-600">{profile?.name}</span>
+        <span className="ml-auto text-xs text-gray-400">배점 {maxPoints}점</span>
       </div>
 
       {/* 문제 */}
@@ -151,44 +186,42 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
         <p className="text-sm text-gray-800 bg-gray-50 rounded-xl px-4 py-3">{q?.content}</p>
       </div>
 
-      {/* 오디오 플레이어 */}
+      {/* 오디오 + AI 평가 버튼 */}
       {audioUrl?.startsWith('http') ? (
         <div className="mb-4">
-          <p className="text-xs font-bold text-gray-500 mb-1.5">학생 녹음</p>
+          <div className="flex items-center justify-between mb-1.5">
+            <p className="text-xs font-bold text-gray-500">학생 녹음</p>
+            <button onClick={aiEvaluate} disabled={evaluating}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg text-xs font-bold disabled:opacity-60 transition">
+              {evaluating
+                ? <><Loader2 size={12} className="animate-spin" /> 평가 중...</>
+                : <><Sparkles size={12} /> AI 평가 후 자동 입력</>
+              }
+            </button>
+          </div>
           <audio controls src={audioUrl} className="w-full rounded-xl" />
         </div>
       ) : (
         <div className="mb-4 bg-amber-50 border border-amber-100 rounded-xl p-3 text-sm text-amber-700 text-center">
-          녹음이 제출되지 않았습니다 — 점수를 직접 입력하여 채점할 수 있습니다
+          녹음이 제출되지 않았습니다 — 루브릭을 직접 선택하여 채점할 수 있습니다
         </div>
       )}
 
-      {/* AI 평가 결과 */}
+      {/* AI 평가 결과 요약 */}
       {evalResult && (
-        <div className="mb-4 bg-purple-50 border border-purple-100 rounded-xl p-4 space-y-2">
+        <div className="mb-4 bg-purple-50 border border-purple-100 rounded-xl p-3 space-y-1.5">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-bold text-purple-700">🤖 AI 평가 결과 (100점 기준 참고용)</p>
-            <span className="text-lg font-black text-purple-700">{evalResult.totalScore}/100</span>
+            <p className="text-xs font-bold text-purple-700">🤖 AI 평가 (참고용)</p>
+            <span className="text-sm font-black text-purple-700">{evalResult.totalScore}/100</span>
           </div>
-          <p className="text-xs text-purple-500">※ 실제 배점에 맞게 아래 점수를 직접 입력하세요</p>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            {[
-              { label: '발음/유창성', v: evalResult.pronunciation, max: 25 },
-              { label: '문법/어휘', v: evalResult.grammar, max: 25 },
-              { label: '내용/관련성', v: evalResult.content, max: 25 },
-              { label: '자신감/표현', v: evalResult.confidence, max: 25 },
-            ].map(({ label, v, max }) => (
-              <div key={label} className="bg-white rounded-lg px-3 py-2">
-                <span className="text-gray-500">{label}</span>
-                <span className="font-bold text-purple-700 ml-1">{v}/{max}</span>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-gray-600 bg-white rounded-lg px-3 py-2">{evalResult.feedback}</p>
+          <p className="text-xs text-gray-600">{evalResult.feedback}</p>
+          {evalResult.improvements && (
+            <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-2 py-1">📈 {evalResult.improvements}</p>
+          )}
+          <p className="text-xs text-purple-500">루브릭 점수가 자동 입력되었습니다 — 수정 후 저장하세요</p>
         </div>
       )}
 
-      {/* 에러 메시지 */}
       {evalError && (
         <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700 break-all">
           <p className="font-bold mb-1">⚠️ AI 평가 오류</p>
@@ -196,39 +229,73 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
         </div>
       )}
 
-      {/* 채점 */}
-      <div className="flex gap-2">
-        {audioUrl?.startsWith('http') && (
-          <button onClick={aiEvaluate} disabled={evaluating}
-            className="flex items-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-60 transition">
-            {evaluating
-              ? <><Loader2 size={14} className="animate-spin" /> 평가 중...</>
-              : <><Sparkles size={14} /> AI 평가</>
-            }
-          </button>
-        )}
-        <div className="flex items-center gap-1">
-          <input
-            type="number"
-            value={score}
-            onChange={e => setScore(e.target.value)}
-            placeholder="점수"
-            min={0} max={maxPoints} step={0.5}
-            className="w-20 px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-center font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <span className="text-sm font-bold text-gray-400">/ {maxPoints}점</span>
+      {/* 루브릭 채점 */}
+      <div className="border border-gray-100 rounded-xl overflow-hidden mb-4">
+        <div className="bg-gray-50 px-4 py-2 flex items-center justify-between">
+          <span className="text-xs font-bold text-gray-600">루브릭 채점</span>
+          <span className="text-xs text-gray-400">각 항목 1~4점 선택</span>
         </div>
-        {score !== '' && !isNaN(parseFloat(score)) && (
-          <span className="text-xs text-gray-400">
-            구 TOEFL: {mapToOldToeflScore(parseFloat(score) / maxPoints * 6.0)}
+        <div className="divide-y divide-gray-50">
+          {SPEAKING_RUBRIC.map(({ key, label, desc }) => (
+            <div key={key} className="px-4 py-3">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div>
+                  <span className="text-sm font-bold text-gray-800">{label}</span>
+                  <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
+                </div>
+                <span className={`text-sm font-black px-2 py-0.5 rounded-lg ${
+                  rubric[key] === 0 ? 'text-gray-300' :
+                  rubric[key] <= 2 ? 'text-amber-600 bg-amber-50' :
+                  'text-emerald-600 bg-emerald-50'
+                }`}>
+                  {rubric[key] > 0 ? `${rubric[key]}점` : '—'}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4].map(v => (
+                  <button
+                    key={v}
+                    onClick={() => setRubric(prev => ({ ...prev, [key]: v }))}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition ${
+                      rubric[key] === v
+                        ? v <= 2 ? 'bg-amber-500 text-white' : 'bg-emerald-500 text-white'
+                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    }`}
+                  >
+                    {RUBRIC_LABELS[v]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 환산 점수 + 저장 */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 bg-gray-50 rounded-xl px-4 py-2.5">
+          <span className="text-xs text-gray-400">환산 점수: </span>
+          <span className={`text-sm font-black ${allFilled ? 'text-blue-600' : 'text-gray-300'}`}>
+            {allFilled ? `${computedScore} / ${maxPoints}점` : '항목을 모두 선택하세요'}
           </span>
-        )}
-        <button onClick={saveGrade} disabled={saving || !score}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white rounded-xl text-sm font-bold transition">
+          {allFilled && (
+            <span className="text-xs text-gray-400 ml-2">
+              ({rubricTotal}/{rubricMax} → {Math.round(computedScore / maxPoints * 100)}%)
+            </span>
+          )}
+        </div>
+        <button onClick={saveGrade} disabled={!allFilled || saving}
+          className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 text-white rounded-xl text-sm font-bold transition">
           {saving ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={16} />}
           채점 완료
         </button>
       </div>
+
+      {allFilled && (
+        <p className="mt-2 text-xs text-gray-400 text-right">
+          구 TOEFL 참고: {mapToOldToeflScore(computedScore / maxPoints * 6.0)}
+        </p>
+      )}
     </div>
   )
 }

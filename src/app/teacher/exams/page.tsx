@@ -1,11 +1,28 @@
 import { createClient, getUserFromCookie } from '@/lib/supabase/server'
-import Link from 'next/link'
-import { Plus, Clock, Users, FileText, CheckCircle, BookOpen } from 'lucide-react'
+import ExamsPageClient from './ExamsPageClient'
+import { DEFAULT_TIME_LIMITS, AUDIO_BUFFER } from '@/lib/utils'
 
-const STATUS_CONFIG = {
-  draft: { label: '초안', color: 'bg-gray-100 text-gray-600', dot: 'bg-gray-400' },
-  published: { label: '진행중', color: 'bg-blue-100 text-blue-700', dot: 'bg-blue-500' },
-  closed: { label: '종료', color: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500' },
+// adaptive 시험의 총 문제 수 계산
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function calcAdaptiveCount(description: string | null): number | null {
+  if (!description) return null
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cfg: any = JSON.parse(description)
+    if (!cfg.adaptive) return null
+    let total = 0
+    total += (cfg.m1Ids ?? []).length + (cfg.m2upIds ?? []).length + (cfg.m2downIds ?? []).length
+    for (const mod of [cfg.listening_m1, cfg.listening_m2up, cfg.listening_m2down]) {
+      if (!mod) continue
+      total += (mod.response ?? []).length
+      for (const s of [...(mod.conversation ?? []), ...(mod.academicTalk ?? [])]) {
+        total += (s.questionIds ?? []).length
+      }
+    }
+    total += (cfg.writing?.reorderingIds ?? []).length + (cfg.writing?.emailIds ?? []).length
+    total += (cfg.speaking?.listenRepeatIds ?? []).length + (cfg.speaking?.interviewIds ?? []).length
+    return total
+  } catch { return null }
 }
 
 export default async function ExamsPage() {
@@ -13,186 +30,134 @@ export default async function ExamsPage() {
   const user = await getUserFromCookie()
   if (!user) return null
 
+  // 1. 초안 시험 목록
   const { data: exams } = await supabase
     .from('exams')
-    .select('id, title, status, time_limit, created_at, class_id, description, classes(name)')
+    .select('id, title, description, time_limit, created_at, status')
     .eq('teacher_id', user.id)
+    .in('status', ['draft', 'published'])
     .order('created_at', { ascending: false })
 
-  // 시험별 문제 수 & 제출 수
+  // 문제 수 + 시간 집계
   const examIds = (exams ?? []).map(e => e.id)
-
-  const { data: qCounts } = examIds.length > 0
-    ? await supabase.from('exam_questions').select('exam_id').in('exam_id', examIds)
+  const { data: examQs } = examIds.length > 0
+    ? await supabase
+        .from('exam_questions')
+        .select('exam_id, questions(question_subtype, time_limit)')
+        .in('exam_id', examIds)
     : { data: [] }
 
-  const { data: submissions } = examIds.length > 0
-    ? await supabase.from('submissions').select('exam_id, percentage').in('exam_id', examIds)
-    : { data: [] }
-
-  // 집계
   const qMap: Record<string, number> = {}
-  for (const q of qCounts ?? []) {
-    qMap[q.exam_id] = (qMap[q.exam_id] ?? 0) + 1
-  }
-
-  // 스마트 빌더(adaptive) 시험은 description JSON 에서 전체 문제 수 계산
-  for (const exam of exams ?? []) {
-    if (!exam.description) continue
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const cfg: any = JSON.parse(exam.description)
-      if (!cfg.adaptive) continue
-
-      let total = 0
-      total += (cfg.m1Ids ?? []).length
-      total += (cfg.m2upIds ?? []).length
-      total += (cfg.m2downIds ?? []).length
-
-      for (const mod of [cfg.listening_m1, cfg.listening_m2up, cfg.listening_m2down]) {
-        if (!mod) continue
-        total += (mod.response ?? []).length
-        for (const s of [...(mod.conversation ?? []), ...(mod.academicTalk ?? [])]) {
-          total += (s.questionIds ?? []).length
-        }
-      }
-
-      total += (cfg.writing?.reorderingIds ?? []).length
-      total += (cfg.writing?.emailIds ?? []).length
-      total += (cfg.speaking?.listenRepeatIds ?? []).length
-      total += (cfg.speaking?.interviewIds ?? []).length
-
-      qMap[exam.id] = total
-    } catch { /* ignore parse errors */ }
-  }
-
-  const subMap: Record<string, { count: number; avgPct: number }> = {}
-  for (const s of submissions ?? []) {
-    if (!subMap[s.exam_id]) subMap[s.exam_id] = { count: 0, avgPct: 0 }
-    subMap[s.exam_id].count++
-    subMap[s.exam_id].avgPct += s.percentage ?? 0
-  }
-  for (const id of Object.keys(subMap)) {
-    subMap[id].avgPct = Math.round(subMap[id].avgPct / subMap[id].count)
-  }
-
-  const grouped = {
-    published: (exams ?? []).filter(e => e.status === 'published'),
-    draft: (exams ?? []).filter(e => e.status === 'draft'),
-    closed: (exams ?? []).filter(e => e.status === 'closed'),
-  }
-
+  const timeMap: Record<string, number> = {}  // 초 단위
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function ExamCard({ exam }: { exam: any }) {
-    const cfg = STATUS_CONFIG[exam.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.draft
-    const qCount = qMap[exam.id] ?? 0
-    const sub = subMap[exam.id]
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const cls = exam.classes as any
-
-    return (
-      <Link href={`/teacher/exams/${exam.id}`}
-        className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition p-5 block group">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1 pr-3">
-            <h3 className="font-bold text-gray-900 group-hover:text-blue-600 transition">{exam.title}</h3>
-            {cls && <p className="text-xs text-gray-400 mt-0.5">{cls.name}</p>}
-          </div>
-          <span className={`text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 flex-shrink-0 ${cfg.color}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-            {cfg.label}
-          </span>
-        </div>
-        <div className="flex items-center gap-4 text-xs text-gray-500">
-          <span className="flex items-center gap-1">
-            <FileText size={13} />
-            {qCount}문제
-          </span>
-          {exam.time_limit && (
-            <span className="flex items-center gap-1">
-              <Clock size={13} />
-              {exam.time_limit}분
-            </span>
-          )}
-          {sub && (
-            <span className="flex items-center gap-1">
-              <Users size={13} />
-              {sub.count}명 제출
-            </span>
-          )}
-          {sub && (
-            <span className={`font-bold ml-auto ${sub.avgPct >= 80 ? 'text-emerald-600' : sub.avgPct >= 60 ? 'text-blue-600' : 'text-amber-600'}`}>
-              평균 {sub.avgPct}%
-            </span>
-          )}
-        </div>
-      </Link>
-    )
+  for (const eq of (examQs ?? []) as any[]) {
+    qMap[eq.exam_id] = (qMap[eq.exam_id] ?? 0) + 1
+    const q = eq.questions
+    if (q) {
+      const base = q.time_limit ?? DEFAULT_TIME_LIMITS[q.question_subtype ?? ''] ?? 0
+      const buffer = AUDIO_BUFFER[q.question_subtype ?? ''] ?? 0
+      timeMap[eq.exam_id] = (timeMap[eq.exam_id] ?? 0) + base + buffer
+    }
   }
+  for (const exam of exams ?? []) {
+    const adaptive = calcAdaptiveCount(exam.description)
+    if (adaptive !== null) qMap[exam.id] = adaptive
+  }
+
+  const drafts = (exams ?? [])
+    .filter(e => e.status === 'draft' || e.status === 'published')
+    .map(e => ({
+      id: e.id,
+      title: e.title,
+      description: e.description,
+      time_limit: e.time_limit,
+      created_at: e.created_at,
+      qCount: qMap[e.id] ?? 0,
+      calculated_time_mins: timeMap[e.id] ? Math.ceil(timeMap[e.id] / 60) : null,
+    }))
+
+  // 2. 배포 목록 (active / grading / completed)
+  const { data: rawDeployments } = await supabase
+    .from('exam_deployments')
+    .select(`
+      id, exam_id, class_id, start_at, end_at, time_limit_mins, status,
+      exams!inner(title, teacher_id),
+      classes!inner(name)
+    `)
+    .eq('exams.teacher_id', user.id)
+    .order('created_at', { ascending: false })
+
+  // 각 배포별 총 학생 수 + 제출 수 집계
+  const deploymentIds = (rawDeployments ?? []).map(d => d.id)
+  const classIds = [...new Set((rawDeployments ?? []).map(d => d.class_id))]
+
+  const { data: classMembers } = classIds.length > 0
+    ? await supabase.from('class_members').select('class_id, student_id').in('class_id', classIds)
+    : { data: [] }
+
+  const { data: submissions } = deploymentIds.length > 0
+    ? await supabase
+        .from('submissions')
+        .select('deployment_id, status')
+        .in('deployment_id', deploymentIds)
+        .in('status', ['submitted', 'graded'])
+    : { data: [] }
+
+  const classMemberMap: Record<string, number> = {}
+  for (const m of classMembers ?? []) {
+    classMemberMap[m.class_id] = (classMemberMap[m.class_id] ?? 0) + 1
+  }
+
+  const submissionCountMap: Record<string, number> = {}
+  for (const s of submissions ?? []) {
+    if (s.deployment_id) {
+      submissionCountMap[s.deployment_id] = (submissionCountMap[s.deployment_id] ?? 0) + 1
+    }
+  }
+
+  // 배포 상태 자동 업데이트 (시간 기준)
+  const now = new Date()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const deployments = (rawDeployments ?? []).map((d: any) => {
+    let status = d.status
+    const end = new Date(d.end_at)
+    const start = new Date(d.start_at)
+    if (status === 'scheduled' && start <= now) status = 'active'
+    if (status === 'active' && end < now) status = 'grading'
+
+    return {
+      id: d.id,
+      exam_id: d.exam_id,
+      exam_title: d.exams?.title ?? '',
+      class_id: d.class_id,
+      class_name: d.classes?.name ?? '',
+      start_at: d.start_at,
+      end_at: d.end_at,
+      time_limit_mins: d.time_limit_mins,
+      status,
+      totalStudents: classMemberMap[d.class_id] ?? 0,
+      submittedCount: submissionCountMap[d.id] ?? 0,
+    }
+  })
+
+  const active    = deployments.filter(d => d.status === 'active' || d.status === 'scheduled')
+  const grading   = deployments.filter(d => d.status === 'grading')
+  const completed = deployments.filter(d => d.status === 'completed')
+
+  // 3. 반 목록 (배포 모달용)
+  const { data: classes } = await supabase
+    .from('classes')
+    .select('id, name')
+    .eq('teacher_id', user.id)
+    .order('name')
 
   return (
-    <div className="p-4 md:p-7">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-extrabold text-gray-900">📝 시험 관리</h1>
-          <p className="text-gray-500 text-sm mt-1">총 {(exams ?? []).length}개의 시험</p>
-        </div>
-        <Link href="/teacher/exams/new"
-          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold transition shadow-sm">
-          <Plus size={16} />
-          새 시험 만들기
-        </Link>
-      </div>
-
-      {(exams ?? []).length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center">
-          <BookOpen size={48} className="mx-auto text-gray-200 mb-4" />
-          <p className="font-semibold text-gray-500">아직 시험이 없어요</p>
-          <p className="text-sm text-gray-400 mt-1">문제은행에서 문제를 선택해 첫 시험을 만들어보세요</p>
-          <Link href="/teacher/exams/new"
-            className="inline-flex items-center gap-2 mt-5 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition">
-            <Plus size={15} /> 시험 만들기
-          </Link>
-        </div>
-      ) : (
-        <div className="space-y-8">
-          {grouped.published.length > 0 && (
-            <section>
-              <h2 className="text-sm font-bold text-blue-600 uppercase tracking-wide mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
-                진행중 ({grouped.published.length})
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {grouped.published.map(e => <ExamCard key={e.id} exam={e} />)}
-              </div>
-            </section>
-          )}
-
-          {grouped.draft.length > 0 && (
-            <section>
-              <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-gray-400 inline-block" />
-                초안 ({grouped.draft.length})
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {grouped.draft.map(e => <ExamCard key={e.id} exam={e} />)}
-              </div>
-            </section>
-          )}
-
-          {grouped.closed.length > 0 && (
-            <section>
-              <h2 className="text-sm font-bold text-emerald-600 uppercase tracking-wide mb-3 flex items-center gap-2">
-                <CheckCircle size={14} />
-                종료된 시험 ({grouped.closed.length})
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {grouped.closed.map(e => <ExamCard key={e.id} exam={e} />)}
-              </div>
-            </section>
-          )}
-        </div>
-      )}
-    </div>
+    <ExamsPageClient
+      drafts={drafts}
+      active={active}
+      grading={grading}
+      completed={completed}
+      classes={(classes ?? []).map(c => ({ id: c.id, name: c.name }))}
+    />
   )
 }

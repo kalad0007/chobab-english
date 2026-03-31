@@ -9,7 +9,7 @@ import {
   Loader2, CheckCircle2, AlertCircle, Headphones, FileText,
   PenLine, Mic, Plus, Minus, Clock,
 } from 'lucide-react'
-import { DIFFICULTY_LEVELS, getDiffInfo, DEFAULT_TIME_LIMITS, formatSeconds } from '@/lib/utils'
+import { DIFFICULTY_LEVELS, getDiffInfo, DEFAULT_TIME_LIMITS, AUDIO_BUFFER, formatSeconds } from '@/lib/utils'
 import ListeningCanvas, {
   type ListeningModSlots, emptyListeningMod,
 } from './ListeningCanvas'
@@ -479,6 +479,43 @@ export default function SmartBuilderPage() {
         },
       }
 
+      // 학생이 실제 받는 문제 (M1 + LM1 + Writing + Speaking)의 시간 합산
+      const calcTimeSecs = (qs: (SlotQ | null)[]) =>
+        qs.filter(Boolean).reduce((s, q) => {
+          const sub = q!.question_subtype ?? ''
+          return s + (DEFAULT_TIME_LIMITS[sub] ?? 0) + (AUDIO_BUFFER[sub] ?? 0)
+        }, 0)
+
+      const lm1Questions: (SlotQ | null)[] = [
+        ...lm1.response,
+        ...lm1.conversation.flatMap(a => a?.questions ?? []),
+        ...lm1.academicTalk.flatMap(a => a?.questions ?? []),
+      ]
+      const lm2upQuestions: (SlotQ | null)[] = [
+        ...lm2up.response,
+        ...lm2up.conversation.flatMap(a => a?.questions ?? []),
+        ...lm2up.academicTalk.flatMap(a => a?.questions ?? []),
+      ]
+      const lm2downQuestions: (SlotQ | null)[] = [
+        ...lm2down.response,
+        ...lm2down.conversation.flatMap(a => a?.questions ?? []),
+        ...lm2down.academicTalk.flatMap(a => a?.questions ?? []),
+      ]
+      // 학생은 M2up/M2down 중 하나, LM2up/LM2down 중 하나만 풀므로 더 긴 쪽 사용
+      const m2Secs = Math.max(
+        calcTimeSecs([...m2up.fillBlank, ...m2up.deep]),
+        calcTimeSecs([...m2down.fillBlank, ...m2down.deep])
+      )
+      const lm2Secs = Math.max(calcTimeSecs(lm2upQuestions), calcTimeSecs(lm2downQuestions))
+      const totalSecs =
+        calcTimeSecs(m1Questions) +
+        m2Secs +
+        calcTimeSecs(lm1Questions) +
+        lm2Secs +
+        calcTimeSecs([...writingSlots.reordering, ...writingSlots.email]) +
+        calcTimeSecs([...speakingSlots.listenRepeat, ...speakingSlots.interview])
+      const calculatedTimeLimitMins = totalSecs > 0 ? Math.ceil(totalSecs / 60) : null
+
       const { data: exam, error: examErr } = await supabase
         .from('exams')
         .insert({
@@ -486,7 +523,7 @@ export default function SmartBuilderPage() {
           class_id: classId || null,
           title: examTitle,
           description: JSON.stringify(adaptiveConfig),
-          time_limit: null,
+          time_limit: calculatedTimeLimitMins,
           status: 'draft',
           show_result_immediately: true,
         })

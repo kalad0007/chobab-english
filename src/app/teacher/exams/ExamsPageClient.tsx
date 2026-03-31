@@ -1,0 +1,460 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { Plus, Clock, Users, FileText, ChevronRight, X, Loader2, CalendarDays, Timer, BookOpen, Trash2 } from 'lucide-react'
+import { deployExam, deleteDeployment, deleteExam } from './actions'
+
+// ── 타입 ──────────────────────────────────────────────────────────
+
+interface ExamDraft {
+  id: string
+  title: string
+  description: string | null
+  time_limit: number | null
+  created_at: string
+  qCount: number
+  calculated_time_mins: number | null
+}
+
+interface Deployment {
+  id: string
+  exam_id: string
+  exam_title: string
+  class_id: string
+  class_name: string
+  start_at: string
+  end_at: string
+  time_limit_mins: number | null
+  status: string
+  totalStudents: number
+  submittedCount: number
+}
+
+interface ClassOption {
+  id: string
+  name: string
+}
+
+interface Props {
+  drafts: ExamDraft[]
+  active: Deployment[]
+  grading: Deployment[]
+  completed: Deployment[]
+  classes: ClassOption[]
+}
+
+// ── D-Day 계산 ────────────────────────────────────────────────────
+
+function getDDay(endAt: string): string {
+  const diff = Math.ceil((new Date(endAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  if (diff < 0) return '마감됨'
+  if (diff === 0) return 'D-Day'
+  return `D-${diff}`
+}
+
+// ── 배포 카드 ─────────────────────────────────────────────────────
+
+function DeploymentCard({ dep, onDelete }: { dep: Deployment; onDelete: (id: string) => void }) {
+  const pct = dep.totalStudents > 0
+    ? Math.round((dep.submittedCount / dep.totalStudents) * 100) : 0
+  const dday = getDDay(dep.end_at)
+  const isUrgent = dday === 'D-Day' || dday === 'D-1'
+  const [deleting, setDeleting] = useState(false)
+
+  const statusColors: Record<string, string> = {
+    scheduled: 'bg-amber-50 border-amber-200',
+    active:    'bg-blue-50 border-blue-200',
+    grading:   'bg-purple-50 border-purple-200',
+    completed: 'bg-emerald-50 border-emerald-200',
+  }
+
+  async function handleDelete(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!confirm(`"${dep.exam_title}" 배포를 삭제하시겠습니까?\n(학생 제출 기록은 유지됩니다)`)) return
+    setDeleting(true)
+    try {
+      await deleteDeployment(dep.id)
+      onDelete(dep.id)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  return (
+    <Link href={`/teacher/deployments/${dep.id}`}
+      className={`block rounded-2xl border shadow-sm hover:shadow-md transition p-5 group ${statusColors[dep.status] ?? 'bg-white border-gray-100'}`}>
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex-1 min-w-0 pr-3">
+          <p className="text-xs font-bold text-gray-400 mb-0.5">{dep.class_name}</p>
+          <h3 className="font-bold text-gray-900 group-hover:text-blue-600 transition truncate">{dep.exam_title}</h3>
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <span className={`text-xs font-bold px-2 py-1 rounded-lg ${
+            isUrgent ? 'bg-red-500 text-white' : 'bg-white/80 text-gray-600'
+          }`}>
+            {dday}
+          </span>
+          <button onClick={handleDelete} disabled={deleting}
+            className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/80 hover:bg-red-100 text-gray-400 hover:text-red-500 transition disabled:opacity-40">
+            {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+          </button>
+        </div>
+      </div>
+
+      {/* 응시율 프로그레스 바 */}
+      <div className="mb-3">
+        <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
+          <span className="flex items-center gap-1">
+            <Users size={11} />
+            {dep.submittedCount}/{dep.totalStudents}명 응시
+          </span>
+          <span className="font-bold text-gray-700">{pct}%</span>
+        </div>
+        <div className="h-2 bg-white/60 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all ${
+              pct >= 80 ? 'bg-emerald-500' : pct >= 50 ? 'bg-blue-500' : 'bg-amber-400'
+            }`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 text-xs text-gray-400">
+        {dep.time_limit_mins && (
+          <span className="flex items-center gap-1"><Timer size={11} />{dep.time_limit_mins}분</span>
+        )}
+        <span className="flex items-center gap-1">
+          <CalendarDays size={11} />
+          {new Date(dep.end_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })} 마감
+        </span>
+        <ChevronRight size={13} className="ml-auto text-gray-300 group-hover:text-blue-400 transition" />
+      </div>
+    </Link>
+  )
+}
+
+// ── 초안 카드 ─────────────────────────────────────────────────────
+
+function DraftCard({ exam, onDeploy, onDeleted }: {
+  exam: ExamDraft
+  onDeploy: (exam: ExamDraft) => void
+  onDeleted: (id: string) => void
+}) {
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleDelete(e: React.MouseEvent) {
+    e.preventDefault()
+    if (!confirm(`"${exam.title}" 초안을 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.`)) return
+    setDeleting(true)
+    try {
+      await deleteExam(exam.id)
+      onDeleted(exam.id)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex-1 pr-3">
+          <h3 className="font-bold text-gray-900">{exam.title}</h3>
+          <div className="flex items-center gap-3 text-xs text-gray-400 mt-1.5">
+            <span className="flex items-center gap-1"><FileText size={11} />{exam.qCount}문제</span>
+            {exam.time_limit && <span className="flex items-center gap-1"><Clock size={11} />{exam.time_limit}분</span>}
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />초안
+          </span>
+          <button onClick={handleDelete} disabled={deleting}
+            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-100 text-gray-300 hover:text-red-500 transition disabled:opacity-40">
+            {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+          </button>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 mt-3">
+        <Link href={`/teacher/exams/${exam.id}`}
+          className="flex-1 text-center text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition">
+          문제 보기
+        </Link>
+        <button onClick={() => onDeploy(exam)}
+          className="flex-1 text-center text-xs font-bold px-3 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition flex items-center justify-center gap-1">
+          <Plus size={12} /> 출제하기
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── 배포 모달 ─────────────────────────────────────────────────────
+
+function DeployModal({ exam, classes, onClose }: {
+  exam: ExamDraft
+  classes: ClassOption[]
+  onClose: () => void
+}) {
+  const [classId, setClassId] = useState(classes[0]?.id ?? '')
+  const [startAt, setStartAt] = useState(() => {
+    const d = new Date(); d.setMinutes(0, 0, 0)
+    return d.toISOString().slice(0, 16)
+  })
+  const [endAt, setEndAt] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() + 7); d.setHours(23, 59, 0, 0)
+    return d.toISOString().slice(0, 16)
+  })
+  const [timeLimitMins, setTimeLimitMins] = useState<string>(
+    exam.time_limit ? String(exam.time_limit)
+    : exam.calculated_time_mins ? String(exam.calculated_time_mins)
+    : ''
+  )
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!classId) { setError('반을 선택해주세요'); return }
+    if (!startAt || !endAt) { setError('기간을 설정해주세요'); return }
+    if (new Date(endAt) <= new Date(startAt)) { setError('종료일은 시작일보다 이후여야 해요'); return }
+
+    setLoading(true)
+    setError('')
+    try {
+      await deployExam({
+        examId: exam.id,
+        classId,
+        startAt: new Date(startAt).toISOString(),
+        endAt: new Date(endAt).toISOString(),
+        timeLimitMins: timeLimitMins ? parseInt(timeLimitMins) : null,
+      })
+      onClose()
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div>
+            <h3 className="font-bold text-gray-900">시험 출제하기</h3>
+            <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{exam.title}</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition">
+            <X size={14} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+          {/* 반 선택 */}
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">대상 반</label>
+            {classes.length === 0 ? (
+              <p className="text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
+                반이 없어요. 먼저 반을 만들어주세요.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {classes.map(cls => (
+                  <button key={cls.id} type="button"
+                    onClick={() => setClassId(cls.id)}
+                    className={`text-sm font-semibold px-3 py-2.5 rounded-xl border transition ${
+                      classId === cls.id
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300'
+                    }`}>
+                    {cls.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 기간 */}
+          <div className="space-y-2">
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">시작일시</label>
+              <input type="datetime-local" value={startAt} onChange={e => setStartAt(e.target.value)}
+                step="60"
+                className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-blue-400 transition" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">종료일시</label>
+              <input type="datetime-local" value={endAt} onChange={e => setEndAt(e.target.value)}
+                step="60"
+                className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-blue-400 transition" />
+            </div>
+          </div>
+
+          {/* 제한시간 */}
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">
+              응시 제한시간 (분)
+            </label>
+            <input type="number" min="1" max="300" value={timeLimitMins}
+              onChange={e => setTimeLimitMins(e.target.value)}
+              placeholder="예: 120"
+              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-blue-400 transition" />
+          </div>
+
+          {error && <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+
+          <button type="submit" disabled={loading || classes.length === 0}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-bold transition">
+            {loading ? <><Loader2 size={14} className="animate-spin" />배포 중...</> : '📢 출제하기'}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ── 메인 클라이언트 컴포넌트 ──────────────────────────────────────
+
+type TabKey = 'draft' | 'active' | 'grading' | 'completed'
+
+export default function ExamsPageClient({ drafts, active, grading, completed, classes }: Props) {
+  const [tab, setTab] = useState<TabKey>(active.length > 0 ? 'active' : 'draft')
+  const [filterClass, setFilterClass] = useState<string>('all')
+  const [deployTarget, setDeployTarget] = useState<ExamDraft | null>(null)
+  const [localDrafts, setLocalDrafts] = useState(drafts)
+  const [localActive, setLocalActive] = useState(active)
+  const [localGrading, setLocalGrading] = useState(grading)
+  const [localCompleted, setLocalCompleted] = useState(completed)
+
+  // 서버 재렌더링 후 새 props 반영
+  useEffect(() => { setLocalActive(active) }, [active])
+  useEffect(() => { setLocalGrading(grading) }, [grading])
+  useEffect(() => { setLocalCompleted(completed) }, [completed])
+
+  function handleDelete(id: string) {
+    setLocalActive(prev => prev.filter(d => d.id !== id))
+    setLocalGrading(prev => prev.filter(d => d.id !== id))
+    setLocalCompleted(prev => prev.filter(d => d.id !== id))
+  }
+
+  const tabs: { key: TabKey; label: string; count: number; color: string }[] = [
+    { key: 'draft',     label: '초안',      count: localDrafts.length,   color: 'text-gray-600' },
+    { key: 'active',    label: '진행 중',   count: localActive.length,   color: 'text-blue-600' },
+    { key: 'grading',   label: '채점 대기', count: localGrading.length,  color: 'text-purple-600' },
+    { key: 'completed', label: '완료',      count: localCompleted.length, color: 'text-emerald-600' },
+  ]
+
+  const deploymentsByTab: Record<TabKey, Deployment[]> = {
+    draft: [], active: localActive, grading: localGrading, completed: localCompleted
+  }
+
+  const filteredDeployments = (deploymentsByTab[tab] ?? []).filter(d =>
+    filterClass === 'all' || d.class_id === filterClass
+  )
+
+  return (
+    <div className="p-4 md:p-7">
+      {/* 헤더 */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-extrabold text-gray-900">📝 시험 관리</h1>
+          <p className="text-gray-500 text-sm mt-1">
+            초안 {localDrafts.length} · 진행 중 {active.length} · 채점 대기 {grading.length}
+          </p>
+        </div>
+        <Link href="/teacher/exams/smart"
+          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold transition shadow-sm">
+          <Plus size={16} /> 새 시험 만들기
+        </Link>
+      </div>
+
+      {/* 탭 + 필터 */}
+      <div className="flex items-center justify-between mb-5 gap-4">
+        <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+          {tabs.map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition ${
+                tab === t.key
+                  ? 'bg-white shadow-sm text-gray-900'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}>
+              {t.label}
+              <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
+                tab === t.key ? `bg-gray-100 ${t.color}` : 'bg-gray-200 text-gray-500'
+              }`}>
+                {t.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* 반별 필터 (초안 탭 제외) */}
+        {tab !== 'draft' && classes.length > 0 && (
+          <select value={filterClass} onChange={e => setFilterClass(e.target.value)}
+            className="text-sm border border-gray-200 rounded-xl px-3 py-2 outline-none focus:border-blue-400 bg-white">
+            <option value="all">전체 반</option>
+            {classes.map(cls => (
+              <option key={cls.id} value={cls.id}>{cls.name}</option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {/* 콘텐츠 */}
+      {tab === 'draft' ? (
+        localDrafts.length === 0 ? (
+          <Empty />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {localDrafts.map(exam => (
+              <DraftCard key={exam.id} exam={exam} onDeploy={setDeployTarget}
+                onDeleted={id => setLocalDrafts(prev => prev.filter(d => d.id !== id))} />
+            ))}
+          </div>
+        )
+      ) : (
+        filteredDeployments.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+            <p className="text-gray-400 font-medium">
+              {tab === 'active' ? '진행 중인 시험이 없어요' :
+               tab === 'grading' ? '채점 대기 중인 시험이 없어요' : '완료된 시험이 없어요'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {filteredDeployments.map(dep => (
+              <DeploymentCard key={dep.id} dep={dep} onDelete={handleDelete} />
+            ))}
+          </div>
+        )
+      )}
+
+      {/* 배포 모달 */}
+      {deployTarget && (
+        <DeployModal
+          exam={deployTarget}
+          classes={classes}
+          onClose={() => setDeployTarget(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+function Empty() {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center">
+      <BookOpen size={48} className="mx-auto text-gray-200 mb-4" />
+      <p className="font-semibold text-gray-500">초안 시험이 없어요</p>
+      <p className="text-sm text-gray-400 mt-1">스마트 빌더에서 새 시험을 만들어보세요</p>
+      <Link href="/teacher/exams/smart"
+        className="inline-flex items-center gap-2 mt-5 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition">
+        <Plus size={15} /> 시험 만들기
+      </Link>
+    </div>
+  )
+}

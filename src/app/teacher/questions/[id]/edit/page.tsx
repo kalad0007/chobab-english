@@ -38,6 +38,8 @@ export default function EditQuestionPage() {
   ])
   const [answer, setAnswer] = useState('')
   const [explanation, setExplanation] = useState('')
+  const [emailTo, setEmailTo] = useState('')
+  const [emailSubject, setEmailSubject] = useState('')
 
   // fill-blank specific fields (parsed from explanation JSON)
   const [fbTitle, setFbTitle] = useState('')
@@ -107,6 +109,8 @@ export default function EditQuestionPage() {
       setAudioScript(d.audio_script ?? '')
       setAudioUrl(d.audio_url ?? '')
       setSpeakingPrompt(d.speaking_prompt ?? '')
+      setEmailTo(d.email_to ?? '')
+      setEmailSubject(d.email_subject ?? '')
       // 핵심단어 로드
       if (Array.isArray(d.vocab_words)) {
         setVocabWords(d.vocab_words.map((v: { word: string; pos?: string; def: string; example?: string }) => ({
@@ -275,6 +279,8 @@ export default function EditQuestionPage() {
         ...(isSpeaking ? { speaking_prompt: speakingPrompt || null } : {}),
         vocab_words: finalVocabWords.length > 0 ? finalVocabWords : null,
         time_limit: timeLimit,
+        email_to: questionSubtype === 'email_writing' ? (emailTo || null) : undefined,
+        email_subject: questionSubtype === 'email_writing' ? (emailSubject || null) : undefined,
       } as Record<string, unknown>)
       .eq('id', id)
 
@@ -606,6 +612,27 @@ export default function EditQuestionPage() {
             placeholder="지문 및 모범 답안의 한글 번역을 입력하세요..."
             minRows={3}
             className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+        </div>
+        )}
+
+        {/* email_writing 수신인/제목 */}
+        {questionSubtype === 'email_writing' && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+          <h2 className="font-bold text-gray-900">이메일 정보 (선택)</h2>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">수신인 (To)</label>
+              <input value={emailTo} onChange={e => setEmailTo(e.target.value)}
+                placeholder="예: Carl, your neighbor"
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">제목 (Subject)</label>
+              <input value={emailSubject} onChange={e => setEmailSubject(e.target.value)}
+                placeholder="예: Apology for the noise"
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+          </div>
         </div>
         )}
 

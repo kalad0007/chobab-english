@@ -6,6 +6,18 @@ import { createClient } from '@/lib/supabase/client'
 import { CheckCircle, Loader2 } from 'lucide-react'
 import { getMaxScore, calculateSectionBand, calculateOverallBand, mapToOldToeflScore } from '@/lib/utils'
 
+// Writing 루브릭 항목 (각 1~4점)
+const WRITING_RUBRIC = [
+  { key: 'task_achievement', label: '과제 완수', desc: '주제에 맞게 요구 사항을 충족했는가' },
+  { key: 'coherence',        label: '논리적 흐름', desc: '문단 구성과 연결이 자연스러운가' },
+  { key: 'language_use',     label: '언어 사용',  desc: '어휘·문법의 다양성과 정확도' },
+] as const
+
+type WritingRubricKey = typeof WRITING_RUBRIC[number]['key']
+type RubricScores = Record<WritingRubricKey, number>
+
+const RUBRIC_LABELS = ['', '미흡 (1)', '보통 (2)', '양호 (3)', '우수 (4)']
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function GradeEssayPanel({ answer }: { answer: any }) {
   const router = useRouter()
@@ -20,16 +32,31 @@ export default function GradeEssayPanel({ answer }: { answer: any }) {
   const profile = sub?.profiles as any
 
   const maxScore = getMaxScore(q?.question_subtype)
-  const [score, setScore] = useState<string>(String(maxScore))
+
+  // 저장된 루브릭 복원 (재채점 시)
+  const savedRubric = answer.rubric_scores as RubricScores | null
+  const [rubric, setRubric] = useState<RubricScores>(savedRubric ?? {
+    task_achievement: 0,
+    coherence: 0,
+    language_use: 0,
+  })
+
+  // 루브릭 합산 → 최종 점수 환산 (3개 항목 × 4점 만점 = 12점 → maxScore 비례)
+  const rubricTotal = rubric.task_achievement + rubric.coherence + rubric.language_use
+  const rubricMax = WRITING_RUBRIC.length * 4  // 12
+  const computedScore = rubricTotal > 0
+    ? Math.round((rubricTotal / rubricMax) * maxScore * 10) / 10
+    : 0
+  const allFilled = WRITING_RUBRIC.every(r => rubric[r.key] > 0)
 
   async function grade() {
-    const numScore = parseFloat(score)
-    if (isNaN(numScore) || numScore < 0 || numScore > maxScore) return
+    if (!allFilled || loading) return
     setLoading(true)
 
     await supabase.from('submission_answers').update({
-      is_correct: numScore >= maxScore * 0.5,
-      score: numScore,
+      is_correct: computedScore >= maxScore * 0.5,
+      score: computedScore,
+      rubric_scores: rubric,
     }).eq('id', answer.id)
 
     // 섹션별 밴드 재계산
@@ -89,55 +116,83 @@ export default function GradeEssayPanel({ answer }: { answer: any }) {
         <p className="text-sm text-gray-800 bg-gray-50 rounded-xl px-4 py-3">{q?.content}</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mb-4">
+      <div className="grid grid-cols-2 gap-3 mb-5">
         <div>
           <p className="text-xs font-bold text-gray-500 mb-1.5">정답 예시</p>
           <p className="text-sm text-emerald-700 bg-emerald-50 rounded-xl px-4 py-3 font-medium">{q?.answer}</p>
         </div>
         <div>
           <p className="text-xs font-bold text-gray-500 mb-1.5">학생 답안</p>
-          <p className="text-sm text-gray-800 bg-blue-50 rounded-xl px-4 py-3">{answer.student_answer}</p>
+          <p className="text-sm text-gray-800 bg-blue-50 rounded-xl px-4 py-3 whitespace-pre-wrap">{answer.student_answer}</p>
         </div>
       </div>
 
-      {/* 점수 입력 + 채점 */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            value={score}
-            onChange={e => setScore(e.target.value)}
-            min={0} max={maxScore} step={0.5}
-            className="w-20 px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-center font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <span className="text-sm font-bold text-gray-400">/ {maxScore}점</span>
+      {/* 루브릭 채점 */}
+      <div className="border border-gray-100 rounded-xl overflow-hidden mb-4">
+        <div className="bg-gray-50 px-4 py-2 flex items-center justify-between">
+          <span className="text-xs font-bold text-gray-600">루브릭 채점</span>
+          <span className="text-xs text-gray-400">각 항목 1~4점 선택</span>
         </div>
-        {/* 빠른 버튼 */}
-        <button onClick={() => setScore(String(maxScore))}
-          className="px-3 py-2 text-xs font-bold bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition">
-          만점
-        </button>
-        <button onClick={() => setScore('0')}
-          className="px-3 py-2 text-xs font-bold bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition">
-          0점
-        </button>
-        <button onClick={grade} disabled={loading || score === ''}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl text-sm font-bold transition">
+        <div className="divide-y divide-gray-50">
+          {WRITING_RUBRIC.map(({ key, label, desc }) => (
+            <div key={key} className="px-4 py-3">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div>
+                  <span className="text-sm font-bold text-gray-800">{label}</span>
+                  <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
+                </div>
+                <span className={`text-sm font-black px-2 py-0.5 rounded-lg ${
+                  rubric[key] === 0 ? 'text-gray-300' :
+                  rubric[key] <= 2 ? 'text-amber-600 bg-amber-50' :
+                  'text-emerald-600 bg-emerald-50'
+                }`}>
+                  {rubric[key] > 0 ? `${rubric[key]}점` : '—'}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4].map(v => (
+                  <button
+                    key={v}
+                    onClick={() => setRubric(prev => ({ ...prev, [key]: v }))}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition ${
+                      rubric[key] === v
+                        ? v <= 2 ? 'bg-amber-500 text-white' : 'bg-emerald-500 text-white'
+                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    }`}
+                  >
+                    {RUBRIC_LABELS[v]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 환산 점수 미리보기 + 저장 */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 bg-gray-50 rounded-xl px-4 py-2.5">
+          <span className="text-xs text-gray-400">환산 점수: </span>
+          <span className={`text-sm font-black ${allFilled ? 'text-blue-600' : 'text-gray-300'}`}>
+            {allFilled ? `${computedScore} / ${maxScore}점` : '항목을 모두 선택하세요'}
+          </span>
+          {allFilled && (
+            <span className="text-xs text-gray-400 ml-2">
+              ({rubricTotal}/{rubricMax} → {Math.round(computedScore / maxScore * 100)}%)
+            </span>
+          )}
+        </div>
+        <button onClick={grade} disabled={!allFilled || loading}
+          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-xl text-sm font-bold transition">
           {loading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={16} />}
           채점 저장
         </button>
       </div>
 
-      {/* 선생님용 참고: Band 환산 미리보기 */}
-      {score !== '' && !isNaN(parseFloat(score)) && (
-        <div className="mt-3 flex items-center gap-2 text-xs text-gray-400">
-          <span>이 문제 기여도:</span>
-          <span className="font-bold text-gray-600">
-            {parseFloat(score)}/{maxScore} = {Math.round((parseFloat(score) / maxScore) * 100)}%
-          </span>
-          <span className="text-gray-300">|</span>
-          <span>구 TOEFL 참고: {mapToOldToeflScore(parseFloat(score) / maxScore * 6.0)}</span>
-        </div>
+      {allFilled && (
+        <p className="mt-2 text-xs text-gray-400 text-right">
+          구 TOEFL 참고: {mapToOldToeflScore(computedScore / maxScore * 6.0)}
+        </p>
       )}
     </div>
   )

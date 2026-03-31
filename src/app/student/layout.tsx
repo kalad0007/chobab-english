@@ -20,19 +20,23 @@ export default async function StudentLayout({ children }: { children: React.Reac
     supabase.from('wrong_answer_queue').select('*', { count: 'exact', head: true })
       .eq('student_id', user.id).eq('mastered', false).lte('next_review_at', new Date().toISOString()),
     supabase.from('class_members').select('class_id').eq('student_id', user.id),
-    supabase.from('submissions').select('exam_id').eq('student_id', user.id).in('status', ['submitted', 'graded']),
+    supabase.from('submissions').select('deployment_id').eq('student_id', user.id).in('status', ['submitted', 'graded']),
     supabase.from('class_members').select('feature_level').eq('student_id', user.id),
   ])
 
   const classIds = (classIdsResult.data ?? []).map(m => m.class_id)
-  const submittedIds = (completedResult.data ?? []).map(s => s.exam_id)
+  const submittedDeploymentIds = (completedResult.data ?? []).map(s => s.deployment_id).filter(Boolean)
 
   let pendingExamsCount = 0
   if (classIds.length > 0) {
-    let q = supabase.from('exams').select('*', { count: 'exact', head: true })
-      .in('class_id', classIds).eq('status', 'published')
-    if (submittedIds.length > 0) {
-      q = q.not('id', 'in', `(${submittedIds.join(',')})`)
+    const now = new Date().toISOString()
+    let q = supabase.from('exam_deployments').select('*', { count: 'exact', head: true })
+      .in('class_id', classIds)
+      .lte('start_at', now)
+      .neq('status', 'scheduled')
+      .neq('status', 'completed')
+    if (submittedDeploymentIds.length > 0) {
+      q = q.not('id', 'in', `(${submittedDeploymentIds.join(',')})`)
     }
     const { count } = await q
     pendingExamsCount = count ?? 0

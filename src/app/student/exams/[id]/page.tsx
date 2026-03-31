@@ -1,15 +1,23 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ChevronLeft, ChevronRight, CheckSquare, Clock } from 'lucide-react'
-import { renderWithUnderlines, usesAlphaOptions, optionLabel, DEFAULT_TIME_LIMITS, getMaxScore, calculateSectionBand, calculateOverallBand } from '@/lib/utils'
+import { renderWithUnderlines, usesAlphaOptions, optionLabel, DEFAULT_TIME_LIMITS, AUDIO_BUFFER, getMaxScore, calculateSectionBand, calculateOverallBand, CATEGORY_LABELS } from '@/lib/utils'
 import AudioPlayer from '@/components/ui/AudioPlayer'
 import SpeakingRecorder from '@/components/ui/SpeakingRecorder'
 import BuildASentencePlayer from '@/components/ui/BuildASentencePlayer'
 import FillBlankPlayer from '@/components/ui/FillBlankPlayer'
 import EmailPassageRenderer from '@/components/ui/EmailPassageRenderer'
+import SentenceCompletionPlayer from '@/components/ui/SentenceCompletionPlayer'
+
+const SECTION_BADGE: Record<string, { bg: string; text: string }> = {
+  reading:   { bg: 'bg-blue-100',    text: 'text-blue-700' },
+  listening: { bg: 'bg-indigo-100',  text: 'text-indigo-700' },
+  writing:   { bg: 'bg-emerald-100', text: 'text-emerald-700' },
+  speaking:  { bg: 'bg-amber-100',   text: 'text-amber-700' },
+}
 
 interface Question {
   id: string
@@ -30,27 +38,44 @@ interface Question {
   speaking_prompt?: string | null
   time_limit?: number | null
   explanation?: string | null
+  email_to?: string | null
+  email_subject?: string | null
 }
 
 export default function ExamTakePage() {
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
   const examId = params.id as string
   const supabase = createClient()
+  const deploymentId = searchParams.get('deployment')
 
   const [exam, setExam] = useState<{ title: string; time_limit: number | null } | null>(null)
   const [maxBandCeiling, setMaxBandCeiling] = useState<number>(6.0)
   const [questions, setQuestions] = useState<Question[]>([])
-  const [current, setCurrent] = useState(0)
+  const [current, setCurrent] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`exam_${params.id}_current`)
+      return saved !== null ? parseInt(saved) : 0
+    } catch { return 0 }
+  })
   const [timeLeft, setTimeLeft] = useState<number | null>(null)       // 시험 전체 타이머
   const [questionTimeLeft, setQuestionTimeLeft] = useState<number | null>(null) // 문제별 타이머
+  const [qTimes, setQTimes] = useState<Record<string, number>>({})   // 문제별 남은 시간 저장
+  const [audioReady, setAudioReady] = useState<Set<string>>(new Set()) // 오디오 재생 완료된 문제 ID
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [submissionId, setSubmissionId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
   // 리스닝 재생 횟수 추적
   const [playedCounts, setPlayedCounts] = useState<Record<string, number>>({})
 
+  // localStorage 헬퍼
+  const lsKey = (k: string) => `exam_${examId}_${k}`
+  const lsGet = (k: string) => { try { return localStorage.getItem(lsKey(k)) } catch { return null } }
+  const lsSet = (k: string, v: string) => { try { localStorage.setItem(lsKey(k), v) } catch {} }
+  const lsDel = (k: string) => { try { localStorage.removeItem(lsKey(k)) } catch {} }
 
   useEffect(() => {
     async function load() {
@@ -60,13 +85,10 @@ export default function ExamTakePage() {
         return
       }
 
-      const [{ data: examData }, { data: examQuestions }] = await Promise.all([
-        supabase.from('exams').select('title, time_limit, max_band_ceiling').eq('id', examId).single(),
-        supabase.from('exam_questions')
-          .select('question_id, order_num, points, questions(*)')
-          .eq('exam_id', examId)
-          .order('order_num'),
-      ])
+      // exam + questions는 adminClient API로 조회 (RLS 우회)
+      const res = await fetch(`/api/student/exam/${examId}`)
+      if (!res.ok) { setLoading(false); return }
+      const { exam: examData, examQuestions } = await res.json()
 
       setExam(examData)
       if (examData?.max_band_ceiling) setMaxBandCeiling(examData.max_band_ceiling)
@@ -88,9 +110,12 @@ export default function ExamTakePage() {
         .single()
 
       if (!sub) {
+        // 새 시험 시작 — 이전 localStorage 초기화
+        lsDel('timeLeft'); lsDel('qTimes'); lsDel('current'); lsDel('audioReady')
         const { data: newSub } = await supabase.from('submissions').insert({
           exam_id: examId,
           student_id: user.id,
+          deployment_id: deploymentId ?? null,
           status: 'in_progress',
         }).select('id').single()
         sub = newSub
@@ -110,38 +135,104 @@ export default function ExamTakePage() {
       }
       setAnswers(ansMap)
 
-      if (examData?.time_limit) setTimeLeft(examData.time_limit * 60)
+      // 전체 시간 = 각 문제 time_limit + 오디오 버퍼 합계 (localStorage 복원 우선)
+      const totalTime = qs.reduce((sum, q) => {
+        const base = q.time_limit ?? DEFAULT_TIME_LIMITS[q.question_subtype ?? ''] ?? 0
+        const buffer = AUDIO_BUFFER[q.question_subtype ?? ''] ?? 0
+        return sum + base + buffer
+      }, 0)
+      const savedTimeLeft = lsGet('timeLeft')
+      setTimeLeft(savedTimeLeft !== null ? parseInt(savedTimeLeft) : (totalTime > 0 ? totalTime : null))
+
+      // 문제별 남은 시간 복원
+      const savedQTimes = lsGet('qTimes')
+      if (savedQTimes) setQTimes(JSON.parse(savedQTimes))
+
+      // 오디오 재생 완료 문제 복원
+      const savedAudioReady = lsGet('audioReady')
+      if (savedAudioReady) setAudioReady(new Set(JSON.parse(savedAudioReady)))
+
+      // 마지막으로 보던 문제 복원
+      const savedCurrent = lsGet('current')
+      if (savedCurrent !== null) setCurrent(parseInt(savedCurrent))
+
       setLoading(false)
     }
     load().catch(() => setLoading(false))
   }, [examId])
 
-  // 시험 전체 타이머
+  // 전체 타이머 — 매초 localStorage 동기화
   useEffect(() => {
     if (timeLeft === null) return
     if (timeLeft <= 0) { handleSubmit(); return }
+    lsSet('timeLeft', String(timeLeft))
     const t = setTimeout(() => setTimeLeft(t => (t ?? 1) - 1), 1000)
     return () => clearTimeout(t)
   }, [timeLeft])
 
-  // 문제별 타이머 — 문제 변경 시 리셋
+  // 문제별 타이머 — 문제 변경 시 저장된 시간 또는 full limit으로 설정
   useEffect(() => {
     if (questions.length === 0) return
     const q = questions[current]
-    const limit = q.time_limit ?? DEFAULT_TIME_LIMITS[q.question_subtype ?? ''] ?? null
-    setQuestionTimeLeft(limit)
-  }, [current, questions])
+    lsSet('current', String(current))
 
-  useEffect(() => {
-    if (questionTimeLeft === null || questionTimeLeft <= 0) {
-      if (questionTimeLeft === 0 && current < questions.length - 1) {
-        setCurrent(c => c + 1)
+    const limit = q.time_limit ?? DEFAULT_TIME_LIMITS[q.question_subtype ?? ''] ?? null
+    const hasAudio = (q.category === 'listening' || q.category === 'speaking') && (q.audio_url || q.audio_script)
+
+    if (hasAudio && !audioReady.has(q.id)) {
+      // 오디오가 있고 아직 재생 안 됨 → 타이머 대기
+      setQuestionTimeLeft(null)
+    } else {
+      // localStorage에서 직접 읽어 stale closure 방지
+      let saved: number | undefined
+      const savedStr = lsGet('qTimes')
+      if (savedStr) {
+        try { saved = JSON.parse(savedStr)[q.id] } catch {}
       }
+      setQuestionTimeLeft(saved !== undefined ? saved : limit)
+    }
+  }, [current, questions, audioReady])
+
+  // 문제별 타이머 카운트다운 + 매초 qTimes 저장
+  useEffect(() => {
+    if (questionTimeLeft === null) return
+    if (questionTimeLeft <= 0) {
+      if (current < questions.length - 1) setCurrent(c => c + 1)
       return
+    }
+    // 현재 문제의 남은 시간을 qTimes에 저장
+    if (questions.length > 0) {
+      const qId = questions[current]?.id
+      if (qId) {
+        setQTimes(prev => {
+          const updated = { ...prev, [qId]: questionTimeLeft }
+          lsSet('qTimes', JSON.stringify(updated))
+          return updated
+        })
+      }
     }
     const t = setTimeout(() => setQuestionTimeLeft(t => (t ?? 1) - 1), 1000)
     return () => clearTimeout(t)
   }, [questionTimeLeft])
+
+  // 오디오 재생 완료 → 타이머 시작
+  function handleAudioEnded(questionId: string) {
+    setAudioReady(prev => {
+      const next = new Set(prev)
+      next.add(questionId)
+      lsSet('audioReady', JSON.stringify([...next]))
+      return next
+    })
+    // 해당 문제가 현재 문제이면 타이머 시작 (localStorage에서 직접 읽어 stale closure 방지)
+    if (questions[current]?.id === questionId) {
+      const q = questions[current]
+      const limit = q.time_limit ?? DEFAULT_TIME_LIMITS[q.question_subtype ?? ''] ?? null
+      let saved: number | undefined
+      const savedStr = lsGet('qTimes')
+      if (savedStr) { try { saved = JSON.parse(savedStr)[questionId] } catch {} }
+      setQuestionTimeLeft(saved !== undefined ? saved : limit)
+    }
+  }
 
   const saveAnswer = useCallback(async (questionId: string, answer: string) => {
     if (!submissionId) return
@@ -156,6 +247,8 @@ export default function ExamTakePage() {
   async function handleSubmit() {
     if (!submissionId || submitting) return
     setSubmitting(true)
+    // 제출 시 localStorage 정리
+    lsDel('timeLeft'); lsDel('qTimes'); lsDel('current'); lsDel('audioReady')
 
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -174,14 +267,19 @@ export default function ExamTakePage() {
       let earnedScore = 0
 
       if (isAutoGraded) {
-        isCorrect = isFillBlank
-          ? (() => {
-              const correct = (q.answer ?? '').split(',').map(a => a.trim().toLowerCase())
-              const student = studentAns.split(',').map(a => a.trim().toLowerCase())
-              return correct.length > 0 && correct.every((c, i) => c === student[i])
-            })()
-          : q.answer?.trim().toLowerCase() === studentAns.trim().toLowerCase()
-        earnedScore = isCorrect ? maxScore : 0
+        if (isFillBlank) {
+          // Partial Credit: 정답 개수 비율로 점수 계산
+          const correct = (q.answer ?? '').split(',').map(a => a.trim().toLowerCase())
+          const student = studentAns.split(',').map(a => a.trim().toLowerCase())
+          const correctCount = correct.filter((c, i) => c === student[i]).length
+          isCorrect = correctCount === correct.length
+          earnedScore = correct.length > 0
+            ? Math.round((correctCount / correct.length) * maxScore * 10) / 10
+            : 0
+        } else {
+          isCorrect = q.answer?.trim().toLowerCase() === studentAns.trim().toLowerCase()
+          earnedScore = isCorrect ? maxScore : 0
+        }
       }
 
       earnedByQuestion[q.id] = earnedScore
@@ -248,10 +346,42 @@ export default function ExamTakePage() {
       submitted_at:   new Date().toISOString(),
     }).eq('id', submissionId)
 
-    router.push(`/student/exams/${examId}/result`)
+    setSubmitting(false)
+    setSubmitted(true)
   }
 
   if (loading) return <div className="flex items-center justify-center min-h-screen text-gray-400">로딩 중...</div>
+
+  if (submitted) return (
+    <div className="fixed inset-0 bg-white flex flex-col items-center justify-center z-50 px-6">
+      <div className="text-center animate-[fadeInUp_0.6s_ease-out]">
+        <div className="text-7xl mb-6 animate-[bounceIn_0.8s_ease-out]">🎉</div>
+        <h1 className="text-3xl font-black text-gray-900 mb-3">수고하셨습니다!</h1>
+        <p className="text-gray-500 text-base mb-2">시험이 성공적으로 제출되었습니다.</p>
+        <p className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 mb-8">
+          ✍️ Writing · Speaking 문제는 선생님 채점 후 결과가 반영됩니다.
+        </p>
+        <button
+          onClick={() => router.push('/student/dashboard')}
+          className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl text-base transition shadow-lg"
+        >
+          확인
+        </button>
+      </div>
+      <style>{`
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes bounceIn {
+          0%   { transform: scale(0.3); opacity: 0; }
+          50%  { transform: scale(1.15); opacity: 1; }
+          80%  { transform: scale(0.95); }
+          100% { transform: scale(1); }
+        }
+      `}</style>
+    </div>
+  )
 
   const q = questions[current]
   const answeredCount = Object.keys(answers).filter(k => answers[k]).length
@@ -288,11 +418,22 @@ export default function ExamTakePage() {
           {/* 문제 영역 */}
           <div className="flex-1">
             {q && (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                {/* 섹션 헤더 */}
+                {q.category && (() => {
+                  const style = SECTION_BADGE[q.category]
+                  const label = CATEGORY_LABELS[q.category] ?? q.category
+                  return style ? (
+                    <div className={`px-6 py-2.5 ${style.bg}`}>
+                      <span className={`text-sm font-extrabold ${style.text} uppercase tracking-widest`}>{label}</span>
+                    </div>
+                  ) : null
+                })()}
+                <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-bold text-purple-600 uppercase tracking-widest">
-                      문제 {q.order_num} / {questions.length} · {q.points}점
+                      문제 {q.order_num} / {questions.length}
                     </span>
                     {isListening && (
                       <span className="text-xs font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">🎧 리스닝</span>
@@ -321,14 +462,17 @@ export default function ExamTakePage() {
                   )}
                 </div>
 
-                {/* 리스닝/스피킹: 오디오 플레이어 */}
-                {(isListening || isSpeaking) && q.audio_url && (
+                {/* 리스닝/스피킹: 오디오 플레이어 (audio_url 또는 audio_script 중 하나만 있어도 표시) */}
+                {(isListening || isSpeaking) && (q.audio_url || q.audio_script) && (
                   <div className="mb-5">
                     <AudioPlayer
+                      key={q.id}
                       audioUrl={q.audio_url}
-                      script={isListening ? q.audio_script : null}
-                      playLimit={isListening ? (q.audio_play_limit ?? 3) : undefined}
+                      script={q.audio_script}
+                      playLimit={q.audio_play_limit ?? 1}
+                      initialPlayCount={playedCounts[q.id] ?? 0}
                       onPlayed={(count) => setPlayedCounts(prev => ({ ...prev, [q.id]: count }))}
+                      onEnded={() => handleAudioEnded(q.id)}
                     />
                   </div>
                 )}
@@ -341,8 +485,8 @@ export default function ExamTakePage() {
                   </div>
                 )}
 
-                {/* 지문 (fill-blank JSON 타입은 별도 렌더링, take_an_interview는 위에서 처리) */}
-                {q.passage && q.question_subtype !== 'complete_the_words' && q.question_subtype !== 'sentence_completion' && !isInterview && (
+                {/* 지문 (fill-blank JSON 타입은 별도 렌더링, take_an_interview는 위에서 처리, email_writing은 passage=한글번역이라 숨김) */}
+                {q.passage && q.question_subtype !== 'complete_the_words' && q.question_subtype !== 'sentence_completion' && q.question_subtype !== 'email_writing' && !isInterview && (
                   q.question_subtype === 'daily_life_email' || q.question_subtype === 'daily_life_campus_email' ? (
                     <div className="mb-5">
                       <EmailPassageRenderer text={q.passage} />
@@ -362,8 +506,8 @@ export default function ExamTakePage() {
                   </div>
                 )}
 
-                {/* 문제 본문 (sentence_reordering / fill-blank는 별도 처리, take_an_interview는 오디오로만 전달) */}
-                {q.question_subtype !== 'sentence_reordering' && q.question_subtype !== 'complete_the_words' && q.question_subtype !== 'sentence_completion' && !isInterview && (
+                {/* 문제 본문 (sentence_reordering / fill-blank는 별도 처리, take_an_interview는 오디오로만 전달, email_writing은 아래 별도 렌더링) */}
+                {q.question_subtype !== 'sentence_reordering' && q.question_subtype !== 'complete_the_words' && q.question_subtype !== 'sentence_completion' && q.question_subtype !== 'email_writing' && !isInterview && (
                   <p className="text-base font-semibold text-gray-900 leading-7 mb-5">
                     {renderWithUnderlines(q.content)}
                   </p>
@@ -386,9 +530,6 @@ export default function ExamTakePage() {
                     wordTiles={q.options}
                     value={answers[q.id] ?? ''}
                     onChange={(answer) => saveAnswer(q.id, answer)}
-                    correctAnswer={q.answer}
-                    explanation={q.explanation ?? undefined}
-                    showCheck
                   />
                 ) : (q.question_subtype === 'complete_the_words' || q.question_subtype === 'sentence_completion') ? (
                   /* Fill-blank — 빈칸 채우기 */
@@ -407,7 +548,13 @@ export default function ExamTakePage() {
                         </div>
                       )
                     } catch {
-                      return <textarea value={answers[q.id] ?? ''} onChange={e => saveAnswer(q.id, e.target.value)} rows={4} className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                      return (
+                        <SentenceCompletionPlayer
+                          content={raw ?? ''}
+                          value={answers[q.id] ?? ''}
+                          onChange={(v) => saveAnswer(q.id, v)}
+                        />
+                      )
                     }
                   })()
                 ) : q.type === 'multiple_choice' && q.options ? (
@@ -429,6 +576,60 @@ export default function ExamTakePage() {
                         <span className="text-sm">{opt.text}</span>
                       </button>
                     ))})()}</div>
+                ) : q.question_subtype === 'email_writing' ? (
+                  /* Email Writing — 새 디자인 */
+                  (() => {
+                    const lines = q.content.split('\n')
+                    const mustIdx = lines.findIndex(l => /your email must include|in your email|do the following/i.test(l))
+                    const scenario = mustIdx > 0 ? lines.slice(0, mustIdx).join('\n').trim() : ''
+                    const remaining = mustIdx >= 0 ? lines.slice(mustIdx) : lines
+                    const bullets = remaining.filter(l => l.trim().startsWith('•') || l.trim().startsWith('-'))
+                    const mustLabel = remaining.find(l => /your email must include|in your email|do the following/i.test(l))?.trim() ?? 'In your email, you MUST:'
+                    return (
+                      <div className="space-y-4 mb-5">
+                        {/* 시나리오 — 일반 텍스트 */}
+                        {scenario && (
+                          <p className="text-base font-semibold text-gray-900 leading-7">{scenario}</p>
+                        )}
+                        {/* MUST 체크리스트 */}
+                        {bullets.length > 0 && (
+                          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+                            <p className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-1.5">
+                              <span>☑</span> {mustLabel}
+                            </p>
+                            <ul className="space-y-1">
+                              {bullets.map((b, i) => (
+                                <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
+                                  <span className="text-blue-500 mt-0.5">•</span>
+                                  <span>{b.replace(/^[•\-]\s*/, '')}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {/* 이메일 답안 영역 */}
+                        <div className="border border-gray-200 rounded-2xl overflow-hidden">
+                          {(q.email_to || q.email_subject) && (
+                            <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 space-y-1">
+                              {q.email_to && (
+                                <p className="text-sm text-gray-500">To: <span className="font-bold text-gray-900">{q.email_to}</span></p>
+                              )}
+                              {q.email_subject && (
+                                <p className="text-sm text-gray-500">Subject: <span className="font-bold text-gray-900">{q.email_subject}</span></p>
+                              )}
+                            </div>
+                          )}
+                          <textarea
+                            value={answers[q.id] ?? ''}
+                            onChange={e => saveAnswer(q.id, e.target.value)}
+                            placeholder={q.email_to ? `Dear ${q.email_to.split(',')[0].trim()},\n\n` : '여기에 이메일을 작성하세요...'}
+                            rows={8}
+                            className="w-full px-4 py-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                          />
+                        </div>
+                      </div>
+                    )
+                  })()
                 ) : (
                   /* 서술형/단답형 */
                   <textarea
@@ -458,6 +659,7 @@ export default function ExamTakePage() {
                     </button>
                   )}
                 </div>
+                </div>
               </div>
             )}
           </div>
@@ -466,19 +668,42 @@ export default function ExamTakePage() {
           <div className="w-full md:w-44 flex-shrink-0">
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
               <p className="text-xs font-bold text-gray-400 mb-3">문제 현황</p>
-              <div className="grid grid-cols-5 gap-1.5">
-                {questions.map((q2, i) => (
-                  <button key={i} onClick={() => setCurrent(i)}
-                    className={`aspect-square rounded-lg text-xs font-bold border-2 transition ${
-                      i === current ? 'bg-purple-600 border-purple-600 text-white' :
-                      answers[q2.id] ? 'bg-blue-50 border-blue-400 text-blue-700' :
-                      'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
-                    }`}>
-                    {i + 1}
-                  </button>
-                ))}
-              </div>
-              <div className="mt-3 space-y-1 text-xs text-gray-400">
+              {(() => {
+                // 섹션별로 그룹핑
+                const sectionOrder = ['reading', 'listening', 'writing', 'speaking']
+                const groups: Record<string, { q: Question; i: number }[]> = {}
+                questions.forEach((q2, i) => {
+                  const cat = q2.category ?? 'other'
+                  if (!groups[cat]) groups[cat] = []
+                  groups[cat].push({ q: q2, i })
+                })
+                const orderedKeys = [
+                  ...sectionOrder.filter(k => groups[k]),
+                  ...Object.keys(groups).filter(k => !sectionOrder.includes(k)),
+                ]
+                return orderedKeys.map(cat => {
+                  const style = SECTION_BADGE[cat]
+                  const label = CATEGORY_LABELS[cat] ?? cat
+                  return (
+                    <div key={cat} className="mb-3">
+                      <p className={`text-xs font-bold mb-1.5 ${style?.text ?? 'text-gray-500'}`}>{label}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {groups[cat].map(({ q: q2, i }) => (
+                          <button key={i} onClick={() => setCurrent(i)}
+                            className={`w-7 h-7 flex-shrink-0 rounded-md text-xs font-bold border-2 transition ${
+                              i === current ? 'bg-purple-600 border-purple-600 text-white' :
+                              answers[q2.id] ? 'bg-blue-50 border-blue-400 text-blue-700' :
+                              'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
+                            }`}>
+                            {i + 1}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })
+              })()}
+              <div className="mt-2 space-y-1 text-xs text-gray-400">
                 <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-100 border border-blue-400 inline-block" />답변 완료</div>
                 <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-purple-600 inline-block" />현재 문제</div>
               </div>

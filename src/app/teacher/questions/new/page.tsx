@@ -418,6 +418,7 @@ export default function NewQuestionPage() {
   const [audioUrl, setAudioUrl] = useState('')
   const [generatingAudio, setGeneratingAudio] = useState(false)
   const [voiceGender, setVoiceGender] = useState<'yw' | 'ym' | 'ow' | 'om'>('yw')
+  const [audioPlayLimit, setAudioPlayLimit] = useState(1)
 
   // Speaking/Writing 필드
   const [speakingPrompt, setSpeakingPrompt] = useState('')
@@ -428,6 +429,8 @@ export default function NewQuestionPage() {
   const [explanation, setExplanation] = useState('')
   const [wordLimit, setWordLimit] = useState(150)
   const [writingTaskNumber, setWritingTaskNumber] = useState(1)
+  const [emailTo, setEmailTo] = useState('')
+  const [emailSubject, setEmailSubject] = useState('')
 
   // Academic Discussion 분리 입력 필드
   const [profName, setProfName] = useState('Johnson')
@@ -618,7 +621,7 @@ export default function NewQuestionPage() {
             source: 'teacher',
             audio_url: audioUrl || null,
             audio_script: isListening ? (audioScript || null) : null,
-            audio_play_limit: isListening ? 1 : null,
+            audio_play_limit: (isListening || category === 'speaking') ? audioPlayLimit : null,
             speaking_prompt: null,
             preparation_time: null,
             response_time: null,
@@ -677,7 +680,7 @@ export default function NewQuestionPage() {
         source: 'teacher',
         audio_url: audioUrl || null,
         audio_script: audioScript || null,
-        audio_play_limit: null,
+        audio_play_limit: (isListening || isSpeaking) ? audioPlayLimit : null,
         speaking_prompt: speakingPrompt || null,
         preparation_time: speakingTimes?.prep ?? null,
         response_time: speakingTimes?.response ?? null,
@@ -685,6 +688,8 @@ export default function NewQuestionPage() {
         question_subtype: questionSubtype || null,
         task_number: isSpeaking ? taskNumber : isWriting ? writingTaskNumber : null,
         time_limit: timeLimit,
+        email_to: questionSubtype === 'email_writing' ? (emailTo || null) : null,
+        email_subject: questionSubtype === 'email_writing' ? (emailSubject || null) : null,
         vocab_words: (() => {
           const vw = essayVocabWords.filter(v => v.word.trim()).map(v => ({
             word: v.word.trim(),
@@ -1164,6 +1169,16 @@ export default function NewQuestionPage() {
                   </div>
                 )}
               </div>
+              <div className="flex items-center gap-2 mt-2">
+                <label className="text-xs font-semibold text-gray-600 whitespace-nowrap">재생 횟수 제한</label>
+                <select value={audioPlayLimit} onChange={e => setAudioPlayLimit(Number(e.target.value))}
+                  className="border border-gray-200 rounded-lg px-2 py-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                  {[1, 2, 3].map(n => (
+                    <option key={n} value={n}>{n}회</option>
+                  ))}
+                </select>
+                <span className="text-xs text-gray-400">학생이 오디오를 재생할 수 있는 최대 횟수</span>
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -1296,12 +1311,22 @@ export default function NewQuestionPage() {
                     </div>
                   </div>
                 )}
-                <div className="mt-2 flex items-center gap-3">
+                <div className="mt-2 flex items-center gap-3 flex-wrap">
                   <button type="button" onClick={generateAudio} disabled={generatingAudio || !audioScript.trim()}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-300 text-white rounded-xl text-sm font-bold transition">
                     {generatingAudio ? <><Loader2 size={15} className="animate-spin" /> 생성 중...</> : <><Volume2 size={15} /> AI 음성 생성</>}
                   </button>
                   {audioUrl && <span className="text-xs font-bold text-emerald-700">생성 완료 ✓</span>}
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <label className="text-xs font-semibold text-gray-600 whitespace-nowrap">재생 횟수 제한</label>
+                  <select value={audioPlayLimit} onChange={e => setAudioPlayLimit(Number(e.target.value))}
+                    className="border border-gray-200 rounded-lg px-2 py-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-400">
+                    {[1, 2, 3].map(n => (
+                      <option key={n} value={n}>{n}회</option>
+                    ))}
+                  </select>
+                  <span className="text-xs text-gray-400">학생이 오디오를 재생할 수 있는 최대 횟수</span>
                 </div>
               </div>
             )}
@@ -1371,13 +1396,29 @@ export default function NewQuestionPage() {
 
             {/* email_writing */}
             {questionSubtype === 'email_writing' && (
-              <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 flex items-start gap-2">
-                <Info size={14} className="text-violet-700 mt-0.5 flex-shrink-0" />
-                <p className="text-xs text-violet-800">
-                  상황 설명과 반드시 포함해야 할 조건 3가지를 아래 지시문 필드에 입력하세요.<br />
-                  형식: <code className="bg-white px-1 rounded">상황 설명\n\nYour email must include:\n• 조건1\n• 조건2\n• 조건3</code>
-                </p>
-              </div>
+              <>
+                <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 flex items-start gap-2">
+                  <Info size={14} className="text-violet-700 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-violet-800">
+                    상황 설명과 반드시 포함해야 할 조건 3가지를 아래 지시문 필드에 입력하세요.<br />
+                    형식: <code className="bg-white px-1 rounded">상황 설명\n\nYour email must include:\n• 조건1\n• 조건2\n• 조건3</code>
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">수신인 (To) <span className="font-normal text-gray-400">선택</span></label>
+                    <input value={emailTo} onChange={e => setEmailTo(e.target.value)}
+                      placeholder="예: Carl, your neighbor"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-400" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">제목 (Subject) <span className="font-normal text-gray-400">선택</span></label>
+                    <input value={emailSubject} onChange={e => setEmailSubject(e.target.value)}
+                      placeholder="예: Apology for the noise"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-400" />
+                  </div>
+                </div>
+              </>
             )}
 
             {/* Standard writing task fields (integrated / academic discussion) */}

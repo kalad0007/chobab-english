@@ -7,7 +7,9 @@ interface AudioPlayerProps {
   audioUrl?: string | null     // 실제 오디오 파일 URL (옵션)
   script?: string | null       // Web Speech API용 스크립트 (옵션)
   playLimit?: number           // 최대 재생 횟수 (기본 3회)
+  initialPlayCount?: number    // 이전에 재생한 횟수 (문제 복귀 시 복원)
   onPlayed?: (count: number) => void
+  onEnded?: () => void         // 재생 완료 시 콜백 (타이머 시작용)
 }
 
 const AUDIO_CACHE = 'chobabsaem-audio-v1'
@@ -31,12 +33,12 @@ async function resolveAudioSrc(url: string): Promise<string> {
   return url
 }
 
-export default function AudioPlayer({ audioUrl, script, playLimit = 3, onPlayed }: AudioPlayerProps) {
+export default function AudioPlayer({ audioUrl, script, playLimit = 1, initialPlayCount = 0, onPlayed, onEnded }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
   const objectUrlRef = useRef<string | null>(null)
   const [playing, setPlaying] = useState(false)
-  const [playCount, setPlayCount] = useState(0)
+  const [playCount, setPlayCount] = useState(initialPlayCount)
   const [progress, setProgress] = useState(0)
   const [supported, setSupported] = useState(true)
   const [resolvedSrc, setResolvedSrc] = useState<string | null>(null)
@@ -69,13 +71,13 @@ export default function AudioPlayer({ audioUrl, script, playLimit = 3, onPlayed 
     const onTimeUpdate = () => {
       if (audio.duration) setProgress((audio.currentTime / audio.duration) * 100)
     }
-    const onEnded = () => { setPlaying(false); setProgress(0) }
+    const onAudioEnded = () => { setPlaying(false); setProgress(0); onEnded?.() }
 
     audio.addEventListener('timeupdate', onTimeUpdate)
-    audio.addEventListener('ended', onEnded)
+    audio.addEventListener('ended', onAudioEnded)
     return () => {
       audio.removeEventListener('timeupdate', onTimeUpdate)
-      audio.removeEventListener('ended', onEnded)
+      audio.removeEventListener('ended', onAudioEnded)
     }
   }, [audioUrl])
 
@@ -87,7 +89,7 @@ export default function AudioPlayer({ audioUrl, script, playLimit = 3, onPlayed 
     const utterance = new SpeechSynthesisUtterance(script)
     utterance.lang = 'en-US'
     utterance.rate = 0.85
-    utterance.onend = () => { setPlaying(false); setProgress(0) }
+    utterance.onend = () => { setPlaying(false); setProgress(0); onEnded?.() }
     utterance.onerror = () => { setPlaying(false); setProgress(0) }
     utterance.onboundary = (e) => {
       if (utterance.text.length > 0) {

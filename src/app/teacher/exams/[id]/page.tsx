@@ -60,6 +60,12 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
 
   if (!exam) return <div className="p-7 text-gray-500">시험을 찾을 수 없어요.</div>
 
+  const { data: classes } = await supabase
+    .from('classes')
+    .select('id, name')
+    .eq('teacher_id', user.id)
+    .order('name')
+
   const { data: submissions } = await supabase
     .from('submissions')
     .select('id, score, percentage, submitted_at, profiles(name)')
@@ -174,14 +180,20 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
                 </div>
                 {cls && <p className="text-sm text-white/50">{cls.name}</p>}
               </div>
-              <ExamActions examId={examId} currentStatus={exam.status} />
+              <ExamActions
+                examId={examId}
+                examTitle={exam.title}
+                examTimeLimitMins={exam.time_limit ?? null}
+                currentStatus={exam.status}
+                classes={(classes ?? []).map(c => ({ id: c.id, name: c.name }))}
+              />
             </div>
 
             {/* 핵심 지표 4개 */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="bg-white/10 rounded-xl px-4 py-3 backdrop-blur-sm border border-white/10">
                 <div className="text-2xl font-black">120<span className="text-sm font-semibold ml-0.5">점</span></div>
-                <div className="text-xs text-white/60 mt-0.5">TOEFL 총점</div>
+                <div className="text-xs text-white/60 mt-0.5">구 TOEFL 총점</div>
               </div>
               {cfg ? (
                 <div className="bg-white/10 rounded-xl px-4 py-3 backdrop-blur-sm border border-white/10">
@@ -190,6 +202,7 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
                     <span className="text-sm font-semibold mb-0.5">Band</span>
                   </div>
                   <div className="text-xs text-white/60 mt-0.5">최고 출제 밴드</div>
+                  <div className="text-[10px] font-bold text-yellow-300 mt-1 tracking-wide">2026 New TOEFL Band</div>
                 </div>
               ) : (
                 <div className="bg-white/10 rounded-xl px-4 py-3 backdrop-blur-sm border border-white/10">

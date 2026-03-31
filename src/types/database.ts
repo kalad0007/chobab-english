@@ -7,6 +7,9 @@ export type ToeflSection = 'reading' | 'listening' | 'speaking' | 'writing'
 export type QuestionSource = 'teacher' | 'ai_generated' | 'toefl_official'
 export type ExamStatus = 'draft' | 'published' | 'closed'
 export type SubmissionStatus = 'in_progress' | 'submitted' | 'graded'
+export type DeploymentStatus = 'scheduled' | 'active' | 'grading' | 'completed'
+export type NotificationChannel = 'in_app' | 'telegram'
+export type NotificationType = 'exam_reminder' | 'result_published' | 'encouragement'
 
 export interface Profile {
   id: string
@@ -14,8 +17,34 @@ export interface Profile {
   name: string
   role: UserRole
   avatar_url: string | null
+  telegram_chat_id: string | null
+  telegram_username: string | null
   created_at: string
   updated_at: string
+}
+
+export interface ExamDeployment {
+  id: string
+  exam_id: string
+  class_id: string
+  start_at: string
+  end_at: string
+  time_limit_mins: number | null
+  status: DeploymentStatus
+  published_at: string | null
+  created_at: string
+}
+
+export interface Notification {
+  id: string
+  recipient_id: string
+  type: NotificationType
+  channel: NotificationChannel
+  message: string | null
+  exam_deployment_id: string | null
+  read_at: string | null
+  sent_at: string
+  created_at: string
 }
 
 export interface Class {
@@ -114,6 +143,7 @@ export interface Submission {
   id: string
   exam_id: string
   student_id: string
+  deployment_id: string | null
   score: number | null
   total_points: number | null
   percentage: number | null
@@ -190,7 +220,9 @@ export interface Database {
       questions: TableDef<Question>
       exams: TableDef<Exam>
       exam_questions: TableDef<ExamQuestion>
+      exam_deployments: TableDef<ExamDeployment>
       submissions: TableDef<Submission>
+      notifications: TableDef<Notification>
       submission_answers: TableDef<SubmissionAnswer>
       wrong_answer_queue: TableDef<WrongAnswerQueue>
       student_skill_stats: TableDef<StudentSkillStats>

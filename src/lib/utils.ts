@@ -13,6 +13,16 @@ export function formatDate(date: string | Date) {
   }).format(new Date(date))
 }
 
+// 문제 유형별 오디오 재생 버퍼 (초) — 총 시험 시간 계산 시 추가
+export const AUDIO_BUFFER: Record<string, number> = {
+  choose_response:      5,
+  conversation:        15,
+  campus_announcement: 25,
+  academic_talk:       30,
+  listen_and_repeat:    5,
+  take_an_interview:   10,
+}
+
 // 문제 유형별 기본 제한시간 (초)
 export const DEFAULT_TIME_LIMITS: Record<string, number> = {
   // Reading
@@ -385,14 +395,18 @@ export function xpToLevel(xp: number) {
   return Math.floor(Math.sqrt(xp / 100)) + 1
 }
 
-// <u>텍스트</u> 를 실제 밑줄로 렌더링
+// <u>텍스트</u> 를 실제 밑줄로, \n을 <br />로 렌더링
 export function renderWithUnderlines(text: string): React.ReactNode {
   const parts = text.split(/(<u>[\s\S]*?<\/u>)/g)
-  return parts.map((part, i) => {
+  return parts.flatMap((part, i) => {
     if (part.startsWith('<u>') && part.endsWith('</u>')) {
-      return React.createElement('u', { key: i, className: 'underline decoration-2' }, part.slice(3, -4))
+      return [React.createElement('u', { key: `u${i}`, className: 'underline decoration-2' }, part.slice(3, -4))]
     }
-    return part
+    return part.split('\n').flatMap((line, j, arr) =>
+      j < arr.length - 1
+        ? [line, React.createElement('br', { key: `br${i}-${j}` })]
+        : [line]
+    )
   })
 }
 

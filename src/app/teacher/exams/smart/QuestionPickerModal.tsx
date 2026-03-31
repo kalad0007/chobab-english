@@ -97,27 +97,31 @@ export default function QuestionPickerModal({
   }, [category, subtype, diffFilter, keyword, allowedSubtypes])
 
   // ── 세트 검색 ────────────────────────────────────────
-  const doFetchSets = useCallback(async () => {
+  const doFetchSets = useCallback(async (autoFallback = false) => {
     setSetsLoading(true)
     try {
       const params = new URLSearchParams({ category })
       if (subtype) {
         params.set('subtype', subtype)
       } else if (allowedSubtypes?.length) {
-        // 슬롯 타입에 맞는 subtype만 기본 필터로 적용
         params.set('subtypes', allowedSubtypes.join(','))
       }
       if (keyword) params.set('q', keyword)
       const res  = await fetch(`/api/teacher/set-search?${params}`)
       const data = await res.json()
-      setSets(data.sets ?? [])
+      const fetchedSets = data.sets ?? []
+      setSets(fetchedSets)
       setSetsTotal(data.total ?? 0)
+      // set이 없으면 개별 모드로 자동 전환
+      if (autoFallback && fetchedSets.length === 0) {
+        setMode('individual')
+      }
     } finally {
       setSetsLoading(false)
     }
   }, [category, subtype, keyword, allowedSubtypes])
 
-  // 모달 열릴 때 초기화
+  // 모달 열릴 때 초기화 — onSelectSet 지원 슬롯은 set 모드 우선
   useEffect(() => {
     if (!open) return
     setKeyword('')
@@ -126,7 +130,7 @@ export default function QuestionPickerModal({
     setPage(1)
     setSelected([])
     setSelectedSet(null)
-    setMode('individual')
+    setMode(onSelectSet ? 'set' : 'individual')
   }, [open, category])
 
   // 필터 변경 시 재조회 (개별)
@@ -141,9 +145,9 @@ export default function QuestionPickerModal({
     return () => clearTimeout(t)
   }, [keyword])
 
-  // 세트 모드 전환 or 필터 변경 시 조회
+  // 세트 모드 전환 or 필터 변경 시 조회 (최초 open 시 autoFallback 활성화)
   useEffect(() => {
-    if (open && mode === 'set') doFetchSets()
+    if (open && mode === 'set') doFetchSets(true)
   }, [open, mode, subtype])
 
   // 키워드 debounce (세트)

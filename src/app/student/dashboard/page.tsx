@@ -1,4 +1,4 @@
-import { createClient, getUserFromCookie } from '@/lib/supabase/server'
+import { createClient, createAdminClient, getUserFromCookie } from '@/lib/supabase/server'
 import Link from 'next/link'
 import {
   CATEGORY_LABELS,
@@ -41,7 +41,7 @@ export default async function StudentDashboard() {
     supabase.from('class_members')
       .select('class_id, feature_level, classes(id, name, invite_code, profiles:teacher_id(name))')
       .eq('student_id', user.id),
-    supabase.from('submissions').select('exam_id').eq('student_id', user.id).in('status', ['submitted', 'graded']),
+    supabase.from('submissions').select('exam_id, deployment_id').eq('student_id', user.id).in('status', ['submitted', 'graded']),
   ])
 
   const classIds   = (classMemberships.data ?? []).map(m => m.class_id)
@@ -54,16 +54,40 @@ export default async function StudentDashboard() {
   }))
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const featureLevel = (classMemberships.data ?? []).reduce((max: number, m: any) => Math.max(max, m.feature_level ?? 1), 1)
-  const submittedIds = (completedSubmissions.data ?? []).map(s => s.exam_id)
+  const submittedDeploymentIds = (completedSubmissions.data ?? []).map(s => s.deployment_id).filter(Boolean)
 
-  let pendingExamsQuery = classIds.length > 0
-    ? supabase.from('exams').select('id, title, end_at, time_limit')
-        .in('class_id', classIds).eq('status', 'published')
-        .order('end_at', { ascending: true }).limit(3)
+  // exam_deployments 기반 예정 시험 조회 (exam RLS 우회 위해 adminClient 사용)
+  const admin = createAdminClient()
+  const now = new Date().toISOString()
+  let depQuery = classIds.length > 0
+    ? supabase.from('exam_deployments')
+        .select('id, exam_id, end_at, time_limit_mins')
+        .in('class_id', classIds)
+        .lte('start_at', now)
+        .neq('status', 'scheduled')
+        .neq('status', 'completed')
+        .order('end_at', { ascending: true })
+        .limit(3)
     : null
-  if (pendingExamsQuery && submittedIds.length > 0)
-    pendingExamsQuery = pendingExamsQuery.not('id', 'in', `(${submittedIds.join(',')})`)
-  const { data: pendingExams } = pendingExamsQuery ? await pendingExamsQuery : { data: [] }
+  if (depQuery && submittedDeploymentIds.length > 0)
+    depQuery = depQuery.not('id', 'in', `(${submittedDeploymentIds.join(',')})`)
+  const { data: pendingDeps } = depQuery ? await depQuery : { data: [] }
+
+  // exam 제목 adminClient로 조회
+  const pendingExamIds = [...new Set((pendingDeps ?? []).map(d => d.exam_id))]
+  const { data: pendingExamRows } = pendingExamIds.length > 0
+    ? await admin.from('exams').select('id, title, time_limit').in('id', pendingExamIds)
+    : { data: [] }
+  const pendingExamMap = Object.fromEntries((pendingExamRows ?? []).map(e => [e.id, e]))
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pendingExams = (pendingDeps ?? []).map((d: any) => ({
+    id: d.exam_id,
+    deploymentId: d.id,
+    title: pendingExamMap[d.exam_id]?.title ?? '시험',
+    time_limit: d.time_limit_mins ?? pendingExamMap[d.exam_id]?.time_limit ?? null,
+    end_at: d.end_at,
+  }))
 
   const { data: recentSubmissions } = await supabase
     .from('submissions').select('id, overall_band, submitted_at, status, exams(title)')
@@ -307,7 +331,7 @@ export default async function StudentDashboard() {
                 <p className="text-sm text-gray-400 text-center py-6">예정된 모의고사가 없어요</p>
               ) : (
                 (pendingExams ?? []).map(exam => (
-                  <Link key={exam.id} href={`/student/exams/${exam.id}`}
+                  <Link key={exam.deploymentId} href={`/student/exams/${exam.id}?deployment=${exam.deploymentId}`}
                     className="flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition">
                     <div>
                       <p className="text-sm font-semibold text-gray-800">{exam.title}</p>

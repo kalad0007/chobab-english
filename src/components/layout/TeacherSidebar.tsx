@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import {
-  LayoutDashboard, BookOpen, Sparkles, FileText, ClipboardList,
+  LayoutDashboard, BookOpen, Sparkles, FileText,
   Users, School, BarChart3, BookMarked, LogOut, Menu, X, Zap, BookA, ScrollText, KeyRound
 } from 'lucide-react'
 
@@ -30,7 +30,6 @@ const navItems = [
     items: [
       { href: '/teacher/exams/smart', label: '토플 스마트 빌더', icon: Zap },
       { href: '/teacher/exams', label: '시험 관리', icon: FileText },
-      { href: '/teacher/grading', label: 'Speaking/Writing 채점', icon: ClipboardList },
     ],
   },
   {
