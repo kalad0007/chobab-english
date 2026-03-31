@@ -398,16 +398,19 @@ export function xpToLevel(xp: number) {
 // <u>텍스트</u> 를 실제 밑줄로, \n을 <br />로 렌더링
 export function renderWithUnderlines(text: string): React.ReactNode {
   const parts = text.split(/(<u>[\s\S]*?<\/u>)/g)
-  return (parts as string[]).flatMap((part, i): React.ReactNode[] => {
+  const nodes: React.ReactNode[] = []
+  parts.forEach((part, i) => {
     if (part.startsWith('<u>') && part.endsWith('</u>')) {
-      return [React.createElement('u', { key: `u${i}`, className: 'underline decoration-2' }, part.slice(3, -4))]
+      nodes.push(React.createElement('u', { key: `u${i}`, className: 'underline decoration-2' }, part.slice(3, -4)))
+    } else {
+      const lines = part.split('\n')
+      lines.forEach((line, j) => {
+        if (line) nodes.push(line)
+        if (j < lines.length - 1) nodes.push(React.createElement('br', { key: `br${i}-${j}` }))
+      })
     }
-    return part.split('\n').flatMap((line, j, arr) =>
-      j < arr.length - 1
-        ? [line, React.createElement('br', { key: `br${i}-${j}` })]
-        : [line]
-    )
   })
+  return nodes
 }
 
 // 레벨 타이틀 (TOEFL)
