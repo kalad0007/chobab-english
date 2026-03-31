@@ -39,6 +39,7 @@ export interface PreviewQuestion {
   passage?: string | null
   options?: string[] | null
   answer?: string | null
+  explanation?: string | null
   audio_script?: string | null
   audio_url?: string | null
   category: string
@@ -121,8 +122,8 @@ export function ClickableQRow({ idx, q }: Props) {
             )}
 
             <div className="px-5 py-4 space-y-4">
-              {/* 지문 */}
-              {q.passage && (
+              {/* 지문 — email_writing은 passage가 한글 번역이므로 숨김 */}
+              {q.passage && q.question_subtype !== 'email_writing' && (
                 <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
                   {q.passage}
                 </div>
@@ -196,12 +197,12 @@ export function ClickableQRow({ idx, q }: Props) {
                 </div>
               )}
 
-              {/* 모범 답안 (email_writing) */}
-              {q.question_subtype === 'email_writing' && q.answer && (
+              {/* 모범 답안 (email_writing) — explanation 우선, fallback to answer */}
+              {q.question_subtype === 'email_writing' && (q.explanation || q.answer) && (
                 <div className="bg-purple-50 border border-purple-200 rounded-xl px-4 py-3 text-sm">
                   <span className="text-xs font-bold text-purple-600 block mb-2">모범 답안</span>
                   <p className="text-purple-900 leading-relaxed whitespace-pre-wrap">
-                    {(q.answer)
+                    {((q.explanation || q.answer) ?? '')
                       .split(/\n{2,}/)
                       .filter(para => {
                         const first = para.trim()[0] ?? ''
