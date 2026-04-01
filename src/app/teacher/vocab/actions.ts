@@ -10,6 +10,7 @@ export interface VocabWordInput {
   definition_en: string
   synonyms: string[]
   antonyms: string[]
+  idioms?: string[]
   topic_category: string
   difficulty: number
   audio_url?: string | null

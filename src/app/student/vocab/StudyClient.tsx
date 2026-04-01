@@ -13,6 +13,7 @@ interface Card {
   definition_en: string
   synonyms: string[]
   antonyms: string[]
+  idioms?: string[]
   topic_category: string
   difficulty: number
   audio_url: string | null
@@ -304,6 +305,22 @@ export default function StudyClient({ cards, reviewCount, newCount, totalLearned
                 <div className="flex flex-wrap gap-1.5">
                   {current.antonyms.map(s => (
                     <span key={s} className="text-xs font-semibold bg-white border border-slate-300 text-slate-600 px-2.5 py-1 rounded-full">
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Idioms */}
+            {current.idioms && current.idioms.length > 0 && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 mb-3">
+                <p className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-widest mb-2">
+                  🔗 Idioms · 숙어
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {current.idioms.map(s => (
+                    <span key={s} className="text-xs font-bold bg-white border border-emerald-200 text-emerald-700 px-2.5 py-1 rounded-full shadow-sm">
                       {s}
                     </span>
                   ))}

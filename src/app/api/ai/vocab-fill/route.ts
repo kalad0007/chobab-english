@@ -30,6 +30,7 @@ Return ONLY valid JSON (no markdown, no code blocks):
   "definition_en": "absolutely necessary; impossible to be without",
   "synonyms": ["essential","crucial","vital","necessary","imperative"],
   "antonyms": ["dispensable","unnecessary","optional"],
+  "idioms": ["indispensable to", "prove indispensable"],
   "topic_category": "general",
   "example_sentence": "Clean water is *indispensable* / for the survival / of all living organisms.",
   "example_sentence_ko": "깨끗한 물은 *없어서는 안 된다* / 생존을 위해 / 모든 살아있는 생명체에게."
@@ -41,6 +42,7 @@ Rules:
 - definition_en: one clear English definition
 - synonyms: exactly 3-5 TOEFL-level synonyms commonly used in academic paraphrasing
 - antonyms: 1-3 antonyms (empty array [] if none natural)
+- idioms: 0-3 common idioms, phrasal verbs, or fixed expressions using this word (empty array [] if none natural). Include the word in context, e.g. "take off", "run out of time".
 - topic_category: pick ONE from: ${TOPIC_OPTIONS.join(', ')}
 - example_sentence: 15-25 word academic-register sentence. Mark the target word with *asterisks*. Add chunk breaks " / " (space-slash-space) at natural phrase boundaries (subject / predicate / modifier groups).
 - example_sentence_ko: Korean direct translation matching the EXACT same chunk breaks " / " as example_sentence. Wrap the Korean equivalent of the target word with *asterisks*.`

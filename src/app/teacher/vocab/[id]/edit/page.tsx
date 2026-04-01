@@ -83,6 +83,7 @@ export default function EditVocabPage() {
   const [defEn, setDefEn] = useState('')
   const [synonyms, setSynonyms] = useState<string[]>([])
   const [antonyms, setAntonyms] = useState<string[]>([])
+  const [idioms, setIdioms] = useState<string[]>([])
   const [topic, setTopic] = useState('general')
   const [difficulty, setDifficulty] = useState(3.0)
   const [example, setExample] = useState('')
@@ -101,7 +102,7 @@ export default function EditVocabPage() {
       const supabase = createClient()
       const { data } = await supabase
         .from('vocab_words')
-        .select('word, part_of_speech, definition_ko, definition_en, synonyms, antonyms, topic_category, difficulty, audio_url, example_sentence, example_sentence_ko')
+        .select('word, part_of_speech, definition_ko, definition_en, synonyms, antonyms, idioms, topic_category, difficulty, audio_url, example_sentence, example_sentence_ko')
         .eq('id', id)
         .single()
 
@@ -112,6 +113,7 @@ export default function EditVocabPage() {
         setDefEn(data.definition_en ?? '')
         setSynonyms(data.synonyms ?? [])
         setAntonyms(data.antonyms ?? [])
+        setIdioms(data.idioms ?? [])
         setTopic(data.topic_category)
         setDifficulty(data.difficulty)
         setExample(data.example_sentence ?? '')
@@ -142,6 +144,7 @@ export default function EditVocabPage() {
     if (data.definition_en)      setDefEn(data.definition_en)
     if (data.synonyms?.length)   setSynonyms(data.synonyms)
     if (data.antonyms?.length)   setAntonyms(data.antonyms)
+    if (data.idioms?.length)     setIdioms(data.idioms)
     if (data.topic_category)     setTopic(data.topic_category)
     if (data.example_sentence)   setExample(data.example_sentence)
     if (data.example_sentence_ko) setExampleKo(data.example_sentence_ko)
@@ -170,7 +173,7 @@ export default function EditVocabPage() {
     setSaving(true); setError('')
     const result = await updateVocabWord(id, {
       part_of_speech: pos, definition_ko: defKo.trim(), definition_en: defEn.trim(),
-      synonyms, antonyms, topic_category: topic, difficulty,
+      synonyms, antonyms, idioms, topic_category: topic, difficulty,
       audio_url: audioUrl,
       example_sentence: example.trim() || null,
       example_sentence_ko: exampleKo.trim() || null,
@@ -250,6 +253,12 @@ export default function EditVocabPage() {
             <ChipInput chips={antonyms} onAdd={v => setAntonyms(p => [...p, v])}
               onRemove={v => setAntonyms(p => p.filter(s => s !== v))}
               placeholder="dispensable, optional..." color="rose" />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-gray-500 mb-1.5 block">숙어 <span className="font-normal text-gray-400">(Enter로 추가)</span></label>
+            <ChipInput chips={idioms} onAdd={v => setIdioms(p => [...p, v])}
+              onRemove={v => setIdioms(p => p.filter(s => s !== v))}
+              placeholder="take off, run out of..." color="purple" />
           </div>
           <div>
             <label className="text-xs font-bold text-gray-500 mb-1.5 block">주제 카테고리</label>
