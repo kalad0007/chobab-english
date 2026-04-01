@@ -10,6 +10,7 @@ interface AudioPlayerProps {
   initialPlayCount?: number    // 이전에 재생한 횟수 (문제 복귀 시 복원)
   onPlayed?: (count: number) => void
   onEnded?: () => void         // 재생 완료 시 콜백 (타이머 시작용)
+  disableStop?: boolean        // 재생 중 정지 버튼 비활성화 (시험 리스닝용)
 }
 
 const AUDIO_CACHE = 'chobabsaem-audio-v1'
@@ -33,7 +34,7 @@ async function resolveAudioSrc(url: string): Promise<string> {
   return url
 }
 
-export default function AudioPlayer({ audioUrl, script, playLimit = 1, initialPlayCount = 0, onPlayed, onEnded }: AudioPlayerProps) {
+export default function AudioPlayer({ audioUrl, script, playLimit = 1, initialPlayCount = 0, onPlayed, onEnded, disableStop = false }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
   const objectUrlRef = useRef<string | null>(null)
@@ -135,6 +136,7 @@ export default function AudioPlayer({ audioUrl, script, playLimit = 1, initialPl
 
   function handlePlay() {
     if (playing) {
+      if (disableStop) return  // 시험 리스닝: 재생 중 정지 불가
       if (audioUrl) playAudioFile()
       else { window.speechSynthesis.cancel(); setPlaying(false); setProgress(0) }
       return

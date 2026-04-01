@@ -40,6 +40,7 @@ interface Question {
   explanation?: string | null
   email_to?: string | null
   email_subject?: string | null
+  passage_group_id?: string | null  // 세트 문제 그룹 ID
 }
 
 export default function ExamTakePage() {
@@ -61,7 +62,7 @@ export default function ExamTakePage() {
   })
   const [timeLeft, setTimeLeft] = useState<number | null>(null)       // 시험 전체 타이머
   const [questionTimeLeft, setQuestionTimeLeft] = useState<number | null>(null) // 문제별 타이머
-  const [qTimes, setQTimes] = useState<Record<string, number>>({})   // 문제별 남은 시간 저장
+  const [qTimes, setQTimes] = useState<Record<string, number>>({})   // 문제별/세트별 남은 시간 저장
   const [audioReady, setAudioReady] = useState<Set<string>>(new Set()) // 오디오 재생 완료된 문제 ID
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [submissionId, setSubmissionId] = useState<string | null>(null)
@@ -170,13 +171,28 @@ export default function ExamTakePage() {
     return () => clearTimeout(t)
   }, [timeLeft])
 
-  // 문제별 타이머 — 문제 변경 시 저장된 시간 또는 full limit으로 설정
+  // 문제별 타이머 — 문제 변경 시 저장된 시간 또는 full limit으로 설정 (세트 문제는 합산 타이머)
   useEffect(() => {
     if (questions.length === 0) return
     const q = questions[current]
     lsSet('current', String(current))
 
-    const limit = q.time_limit ?? DEFAULT_TIME_LIMITS[q.question_subtype ?? ''] ?? null
+    // 세트 문제 여부 확인 (passage_group_id 있는 경우)
+    const groupId = q.passage_group_id
+    const timerKey = groupId ? `set_${groupId}` : q.id
+
+    // 세트 타이머 limit: 그룹의 모든 문제 time_limit 합산
+    let limit: number | null
+    if (groupId) {
+      const groupQs = questions.filter(gq => gq.passage_group_id === groupId)
+      const total = groupQs.reduce((sum, gq) => {
+        return sum + (gq.time_limit ?? DEFAULT_TIME_LIMITS[gq.question_subtype ?? ''] ?? 0)
+      }, 0)
+      limit = total > 0 ? total : null
+    } else {
+      limit = q.time_limit ?? DEFAULT_TIME_LIMITS[q.question_subtype ?? ''] ?? null
+    }
+
     const hasAudio = (q.category === 'listening' || q.category === 'speaking') && (q.audio_url || q.audio_script)
 
     if (hasAudio && !audioReady.has(q.id)) {
@@ -187,7 +203,7 @@ export default function ExamTakePage() {
       let saved: number | undefined
       const savedStr = lsGet('qTimes')
       if (savedStr) {
-        try { saved = JSON.parse(savedStr)[q.id] } catch {}
+        try { saved = JSON.parse(savedStr)[timerKey] } catch {}
       }
       setQuestionTimeLeft(saved !== undefined ? saved : limit)
     }
@@ -200,12 +216,13 @@ export default function ExamTakePage() {
       if (current < questions.length - 1) setCurrent(c => c + 1)
       return
     }
-    // 현재 문제의 남은 시간을 qTimes에 저장
+    // 현재 문제의 남은 시간을 qTimes에 저장 (세트는 set_groupId 키 사용)
     if (questions.length > 0) {
-      const qId = questions[current]?.id
-      if (qId) {
+      const cq = questions[current]
+      if (cq) {
+        const saveKey = cq.passage_group_id ? `set_${cq.passage_group_id}` : cq.id
         setQTimes(prev => {
-          const updated = { ...prev, [qId]: questionTimeLeft }
+          const updated = { ...prev, [saveKey]: questionTimeLeft }
           lsSet('qTimes', JSON.stringify(updated))
           return updated
         })
@@ -226,10 +243,19 @@ export default function ExamTakePage() {
     // 해당 문제가 현재 문제이면 타이머 시작 (localStorage에서 직접 읽어 stale closure 방지)
     if (questions[current]?.id === questionId) {
       const q = questions[current]
-      const limit = q.time_limit ?? DEFAULT_TIME_LIMITS[q.question_subtype ?? ''] ?? null
+      const groupId = q.passage_group_id
+      const timerKey = groupId ? `set_${groupId}` : q.id
+      let limit: number | null
+      if (groupId) {
+        const groupQs = questions.filter(gq => gq.passage_group_id === groupId)
+        const total = groupQs.reduce((s, gq) => s + (gq.time_limit ?? DEFAULT_TIME_LIMITS[gq.question_subtype ?? ''] ?? 0), 0)
+        limit = total > 0 ? total : null
+      } else {
+        limit = q.time_limit ?? DEFAULT_TIME_LIMITS[q.question_subtype ?? ''] ?? null
+      }
       let saved: number | undefined
       const savedStr = lsGet('qTimes')
-      if (savedStr) { try { saved = JSON.parse(savedStr)[questionId] } catch {} }
+      if (savedStr) { try { saved = JSON.parse(savedStr)[timerKey] } catch {} }
       setQuestionTimeLeft(saved !== undefined ? saved : limit)
     }
   }
@@ -473,6 +499,7 @@ export default function ExamTakePage() {
                       initialPlayCount={playedCounts[q.id] ?? 0}
                       onPlayed={(count) => setPlayedCounts(prev => ({ ...prev, [q.id]: count }))}
                       onEnded={() => handleAudioEnded(q.id)}
+                      disableStop={isListening}
                     />
                   </div>
                 )}

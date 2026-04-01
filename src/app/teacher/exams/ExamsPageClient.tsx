@@ -139,7 +139,7 @@ function DeploymentCard({ dep, onDelete, onClick }: { dep: Deployment; onDelete:
 
 // ── 배포 상세 모달 ────────────────────────────────────────────────
 
-function DeploymentModal({ dep, onClose }: { dep: Deployment; onClose: () => void }) {
+function DeploymentModal({ dep, onClose, onCompleted }: { dep: Deployment; onClose: () => void; onCompleted?: (id: string) => void }) {
   const supabase = createClient()
   const [students, setStudents] = useState<{ id: string; name: string; email: string }[]>([])
   const [submissions, setSubmissions] = useState<{
@@ -151,6 +151,8 @@ function DeploymentModal({ dep, onClose }: { dep: Deployment; onClose: () => voi
   const [sending, setSending] = useState(false)
   const [done, setDone] = useState(false)
   const [completing, setCompleting] = useState(false)
+  const [pendingWriting, setPendingWriting] = useState(0)
+  const [pendingSpeaking, setPendingSpeaking] = useState(0)
 
   useEffect(() => {
     async function load() {
@@ -158,6 +160,28 @@ function DeploymentModal({ dep, onClose }: { dep: Deployment; onClose: () => voi
         supabase.from('class_members').select('student_id, profiles(id, name, email)').eq('class_id', dep.class_id),
         supabase.from('submissions').select('student_id, submitted_at, score, total_points, percentage, status').eq('deployment_id', dep.id),
       ])
+
+      // 채점 대기 현황 조회 (submission IDs 재사용)
+      if (subs && subs.length > 0) {
+        const submissionIds = await supabase
+          .from('submissions').select('id').eq('deployment_id', dep.id)
+        const ids = (submissionIds.data ?? []).map((s: { id: string }) => s.id)
+        if (ids.length > 0) {
+          const [{ count: wCount }, { count: sCount }] = await Promise.all([
+            supabase.from('submission_answers')
+              .select('*, questions!inner(type, category)', { count: 'exact', head: true })
+              .in('submission_id', ids).is('is_correct', null)
+              .in('questions.type', ['essay', 'short_answer'])
+              .neq('questions.category', 'speaking'),
+            supabase.from('submission_answers')
+              .select('*, questions!inner(category)', { count: 'exact', head: true })
+              .in('submission_id', ids).is('is_correct', null)
+              .eq('questions.category', 'speaking'),
+          ])
+          setPendingWriting(wCount ?? 0)
+          setPendingSpeaking(sCount ?? 0)
+        }
+      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setStudents((members ?? []).map((m: any) => ({ id: m.profiles?.id ?? m.student_id, name: m.profiles?.name ?? '알 수 없음', email: m.profiles?.email ?? '' })))
       setSubmissions(subs ?? [])
@@ -205,7 +229,13 @@ function DeploymentModal({ dep, onClose }: { dep: Deployment; onClose: () => voi
                   className="text-[11px] font-bold px-2 py-1 bg-purple-100 text-purple-700 rounded-lg">
                   채점 →
                 </Link>
-                <button onClick={async () => { setCompleting(true); await updateDeploymentStatus(dep.id, 'completed'); setCompleting(false) }}
+                <button onClick={async () => {
+                    setCompleting(true)
+                    await updateDeploymentStatus(dep.id, 'completed')
+                    setCompleting(false)
+                    onCompleted?.(dep.id)
+                    onClose()
+                  }}
                   disabled={completing}
                   className="text-[11px] font-bold px-2 py-1 bg-emerald-600 text-white rounded-lg flex items-center gap-0.5">
                   {completing ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle2 size={10} />} 확정
@@ -315,6 +345,29 @@ function DeploymentModal({ dep, onClose }: { dep: Deployment; onClose: () => voi
             )}
           </div>
         </div>
+
+        {/* 채점 대기 현황 */}
+        {!loading && (pendingWriting > 0 || pendingSpeaking > 0) && (
+          <Link href="/teacher/grading"
+            className="flex items-center gap-3 bg-purple-50 border border-purple-200 rounded-xl px-4 py-3 hover:bg-purple-100 transition">
+            <div className="flex-1">
+              <p className="text-xs font-bold text-purple-700 mb-1">✏️ 채점 대기 중</p>
+              <div className="flex gap-3 text-[11px]">
+                {pendingWriting > 0 && (
+                  <span className="bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded-full">
+                    Writing {pendingWriting}개
+                  </span>
+                )}
+                {pendingSpeaking > 0 && (
+                  <span className="bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full">
+                    Speaking {pendingSpeaking}개
+                  </span>
+                )}
+              </div>
+            </div>
+            <ArrowRight size={14} className="text-purple-400 flex-shrink-0" />
+          </Link>
+        )}
       </div>
     </div>
   )
@@ -623,7 +676,17 @@ export default function ExamsPageClient({ drafts, active, grading, completed, cl
 
       {/* 배포 상세 플로팅 모달 */}
       {selectedDep && (
-        <DeploymentModal dep={selectedDep} onClose={() => setSelectedDep(null)} />
+        <DeploymentModal
+          dep={selectedDep}
+          onClose={() => setSelectedDep(null)}
+          onCompleted={(id) => {
+            const dep = localGrading.find(d => d.id === id) ?? localActive.find(d => d.id === id)
+            if (dep) setLocalCompleted(prev => [{ ...dep, status: 'completed' }, ...prev])
+            setLocalGrading(prev => prev.filter(d => d.id !== id))
+            setLocalActive(prev => prev.filter(d => d.id !== id))
+            setTab('completed')
+          }}
+        />
       )}
 
       {/* 배포 모달 */}

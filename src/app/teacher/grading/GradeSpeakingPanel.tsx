@@ -43,6 +43,7 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
   const router = useRouter()
   const supabase = createClient()
   const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
   const [evaluating, setEvaluating] = useState(false)
   const [evalResult, setEvalResult] = useState<EvalResult | null>(null)
   const [evalError, setEvalError] = useState<string | null>(null)
@@ -165,8 +166,9 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
       }).catch(() => {})
     }
 
-    router.refresh()
     setSaving(false)
+    setSaved(true)
+    setTimeout(() => router.refresh(), 800)
   }
 
   return (
@@ -284,10 +286,12 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
             </span>
           )}
         </div>
-        <button onClick={saveGrade} disabled={!allFilled || saving}
-          className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 text-white rounded-xl text-sm font-bold transition">
+        <button onClick={saveGrade} disabled={!allFilled || saving || saved}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-60 ${
+            saved ? 'bg-emerald-500 text-white' : 'bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white'
+          }`}>
           {saving ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={16} />}
-          채점 완료
+          {saved ? '채점 완료 ✓' : '채점 저장'}
         </button>
       </div>
 

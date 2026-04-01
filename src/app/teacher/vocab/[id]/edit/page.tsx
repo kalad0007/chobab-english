@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Wand2, Loader2, Volume2, Save, X, ChevronLeft, Check } from 'lucide-react'
+import { Wand2, Loader2, Volume2, Save, X, ChevronLeft, Check, Trash2 } from 'lucide-react'
 import { updateVocabWord } from '../../actions'
 import { TOEFL_TOPICS } from '../../constants'
 import { getCustomTopics } from '../../topic-actions'
@@ -285,11 +285,19 @@ export default function EditVocabPage() {
               <p className="text-sm font-bold text-gray-700">원어민 발음 (TTS)</p>
               <p className="text-xs text-gray-400">Google Neural2 음성으로 자동 생성</p>
             </div>
-            <button onClick={handleTts} disabled={generating}
-              className="flex items-center gap-2 px-3 py-2 bg-amber-100 hover:bg-amber-200 text-amber-700 text-xs font-bold rounded-xl transition disabled:opacity-50">
-              {generating ? <Loader2 size={13} className="animate-spin" /> : <Volume2 size={13} />}
-              {generating ? '생성 중...' : audioUrl ? 'TTS 재생성' : 'TTS 생성'}
-            </button>
+            <div className="flex items-center gap-1.5">
+              {audioUrl && (
+                <button onClick={() => setAudioUrl(null)} title="음성 삭제"
+                  className="flex items-center gap-1.5 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-xl transition">
+                  <Trash2 size={13} /> 삭제
+                </button>
+              )}
+              <button onClick={handleTts} disabled={generating}
+                className="flex items-center gap-2 px-3 py-2 bg-amber-100 hover:bg-amber-200 text-amber-700 text-xs font-bold rounded-xl transition disabled:opacity-50">
+                {generating ? <Loader2 size={13} className="animate-spin" /> : <Volume2 size={13} />}
+                {generating ? '생성 중...' : audioUrl ? 'TTS 재생성' : 'TTS 생성'}
+              </button>
+            </div>
           </div>
           {audioUrl && <audio src={audioUrl} controls className="w-full h-8" />}
           {!audioUrl && <p className="text-xs text-gray-300 text-center py-2">TTS가 없어요. 위 버튼으로 생성하세요</p>}

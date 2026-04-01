@@ -5,7 +5,7 @@ import {
   accuracyToBand, bandToLevel, mapToOldToeflScore,
   xpToLevel, levelTitle,
 } from '@/lib/utils'
-import { FileText, RefreshCw, BookOpen, Flame, Star, Headphones, Mic, PenTool } from 'lucide-react'
+import { FileText, RefreshCw, BookOpen, Flame, Star, Headphones, Mic, PenTool, BookA } from 'lucide-react'
 import ClassesWidget from './ClassesWidget'
 
 const SECTION_ICONS: Record<string, typeof BookOpen> = {
@@ -55,6 +55,24 @@ export default async function StudentDashboard() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const featureLevel = (classMemberships.data ?? []).reduce((max: number, m: any) => Math.max(max, m.feature_level ?? 1), 1)
   const submittedDeploymentIds = (completedSubmissions.data ?? []).map(s => s.deployment_id).filter(Boolean)
+
+  // 배포된 어휘 세트 수 (미시작 포함)
+  let newVocabCount = 0
+  if (classIds.length > 0) {
+    const { data: setClassRows } = await supabase
+      .from('vocab_set_classes')
+      .select('set_id')
+      .in('class_id', classIds)
+    const setIds = [...new Set((setClassRows ?? []).map((r: { set_id: string }) => r.set_id))]
+    if (setIds.length > 0) {
+      const { count } = await supabase
+        .from('vocab_sets')
+        .select('id', { count: 'exact', head: true })
+        .in('id', setIds)
+        .eq('is_published', true)
+      newVocabCount = count ?? 0
+    }
+  }
 
   // exam_deployments 기반 예정 시험 조회 (exam RLS 우회 위해 adminClient 사용)
   const admin = createAdminClient()
@@ -227,19 +245,33 @@ export default async function StudentDashboard() {
       ) : null}
 
       {/* ── 퀵 액션 ── */}
-      <div className={`grid gap-3 mb-6 ${featureLevel >= 2 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+      <div className={`grid gap-3 mb-6 ${featureLevel >= 2 ? 'grid-cols-4' : 'grid-cols-3'}`}>
         <Link href="/student/exams"
           className="bg-white border border-gray-200 hover:border-blue-300 hover:bg-blue-50 rounded-xl p-3 flex items-center gap-2 transition">
-          <FileText size={18} className="text-blue-600" />
+          <FileText size={18} className="text-blue-600 flex-shrink-0" />
           <div>
             <p className="font-bold text-xs text-gray-800">모의고사</p>
             <p className="text-[10px] text-gray-500">{(pendingExams ?? []).length}개 대기</p>
           </div>
         </Link>
+        {/* 어휘 학습 (배포된 세트 수 배지) */}
+        <Link href="/student/vocab"
+          className="relative bg-white border border-gray-200 hover:border-amber-300 hover:bg-amber-50 rounded-xl p-3 flex items-center gap-2 transition">
+          <BookA size={18} className="text-amber-500 flex-shrink-0" />
+          <div>
+            <p className="font-bold text-xs text-gray-800">어휘 학습</p>
+            <p className="text-[10px] text-gray-500">{newVocabCount}개 세트</p>
+          </div>
+          {newVocabCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
+              {newVocabCount > 9 ? '9+' : newVocabCount}
+            </span>
+          )}
+        </Link>
         {featureLevel >= 2 && (
         <Link href="/student/review"
           className="bg-white border border-gray-200 hover:border-purple-300 hover:bg-purple-50 rounded-xl p-3 flex items-center gap-2 transition">
-          <RefreshCw size={18} className="text-purple-600" />
+          <RefreshCw size={18} className="text-purple-600 flex-shrink-0" />
           <div>
             <p className="font-bold text-xs text-gray-800">오답 복습</p>
             <p className="text-[10px] text-gray-500">{reviewCount ?? 0}개 필요</p>
@@ -248,7 +280,7 @@ export default async function StudentDashboard() {
         )}
         <Link href="/student/learn"
           className="bg-white border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 rounded-xl p-3 flex items-center gap-2 transition">
-          <BookOpen size={18} className="text-emerald-600" />
+          <BookOpen size={18} className="text-emerald-600 flex-shrink-0" />
           <div>
             <p className="font-bold text-xs text-gray-800">학습 자료</p>
             <p className="text-[10px] text-gray-500">TOEFL 팁</p>

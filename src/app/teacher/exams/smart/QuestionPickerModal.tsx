@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Search, X, ChevronLeft, ChevronRight, Check, Layers, Clock } from 'lucide-react'
 import { DIFFICULTY_LEVELS, QUESTION_SUBTYPE_LABELS, ACTIVE_SUBTYPES, getDiffInfo, DEFAULT_TIME_LIMITS, formatSeconds } from '@/lib/utils'
+import { QuestionModal, type PreviewQuestion } from '@/app/teacher/exams/[id]/QuestionPreview'
 
 export interface PickedQuestion {
   id: string
@@ -52,6 +53,7 @@ export default function QuestionPickerModal({
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading]     = useState(false)
   const [selected, setSelected]   = useState<PickedQuestion[]>([])
+  const [previewQ, setPreviewQ]   = useState<PreviewQuestion | null>(null)
 
   // set 모드용
   const [sets, setSets]           = useState<PassageSet[]>([])
@@ -163,6 +165,7 @@ export default function QuestionPickerModal({
   const displaySets = sets.filter(s => !s.questions.every(q => excludeIds.includes(q.id)))
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[85vh]">
 
@@ -268,18 +271,22 @@ export default function QuestionPickerModal({
               const isSel = selected.some(s => s.id === q.id)
               const qTimeSec = q.time_limit ?? DEFAULT_TIME_LIMITS[q.question_subtype ?? ''] ?? 30
               return (
-                <button key={q.id}
-                  onClick={() => {
-                    if (multiSelect) {
-                      setSelected(prev => isSel ? prev.filter(s => s.id !== q.id) : [...prev, q])
-                    } else {
-                      setSelected(isSel ? [] : [q])
-                    }
-                  }}
-                  className={`w-full text-left flex items-start gap-3 px-3 py-2.5 rounded-xl border-2 transition ${
+                <div key={q.id}
+                  onClick={() => setPreviewQ({ id: q.id, content: q.content, summary: q.summary, category: q.category, question_subtype: q.question_subtype, difficulty: q.difficulty, audio_url: q.audio_url })}
+                  className={`w-full text-left flex items-start gap-3 px-3 py-2.5 rounded-xl border-2 transition cursor-pointer ${
                     isSel ? 'border-blue-500 bg-blue-50' : 'border-gray-100 bg-white hover:border-blue-200'
                   }`}>
-                  <div className={`w-5 h-5 rounded-${multiSelect ? 'md' : 'full'} flex-shrink-0 flex items-center justify-center mt-0.5 ${isSel ? 'bg-blue-600' : 'bg-gray-200'}`}>
+                  {/* 체크박스 — 클릭 시 선택만 (미리보기 X) */}
+                  <div
+                    onClick={e => {
+                      e.stopPropagation()
+                      if (multiSelect) {
+                        setSelected(prev => isSel ? prev.filter(s => s.id !== q.id) : [...prev, q])
+                      } else {
+                        setSelected(isSel ? [] : [q])
+                      }
+                    }}
+                    className={`w-5 h-5 rounded-${multiSelect ? 'md' : 'full'} flex-shrink-0 flex items-center justify-center mt-0.5 cursor-pointer ${isSel ? 'bg-blue-600' : 'bg-gray-200 hover:bg-gray-300'}`}>
                     {isSel && <Check size={10} className="text-white" />}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -308,7 +315,7 @@ export default function QuestionPickerModal({
                       <p className="text-xs text-gray-700 line-clamp-2 leading-snug">{q.content}</p>
                     )}
                   </div>
-                </button>
+                </div>
               )
             })}
           </div>
@@ -438,5 +445,9 @@ export default function QuestionPickerModal({
         </div>
       </div>
     </div>
+
+    {/* 미리보기 모달 */}
+    {previewQ && <QuestionModal q={previewQ} onClose={() => setPreviewQ(null)} />}
+    </>
   )
 }
