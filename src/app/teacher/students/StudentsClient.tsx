@@ -71,7 +71,7 @@ function StudentRow({ m, color, stats, classColorMap }: {
       {/* Name + email */}
       <div className="min-w-0">
         <p className="text-sm font-semibold text-gray-900 truncate">{name}</p>
-        {email && <p className="text-xs text-gray-400 truncate mt-0.5 hidden sm:block">{email}</p>}
+        {email && <p className="text-xs text-gray-400 truncate mt-0.5 hidden md:block">{email}</p>}
       </div>
 
       {/* Class badge */}

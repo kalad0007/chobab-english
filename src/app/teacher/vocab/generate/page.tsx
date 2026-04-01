@@ -400,7 +400,7 @@ export default function VocabGeneratePage() {
             <div className="bg-blue-500 h-2 rounded-full transition-all"
               style={{ width: `${(genProgress / selected.size) * 100}%` }} />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {generatedWords.map(w => (
               <div key={w.word} className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm ${
                 w.status === 'done'    ? 'bg-emerald-50 border-emerald-200 text-emerald-700' :

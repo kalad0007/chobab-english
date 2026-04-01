@@ -554,8 +554,8 @@ export default function ExamsPageClient({ drafts, active, grading, completed, cl
         <Link href="/teacher/exams/smart"
           className="flex items-center gap-1.5 px-3 py-2 md:px-4 md:py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs md:text-sm font-bold transition shadow-sm">
           <Plus size={14} />
-          <span className="hidden sm:inline">새 시험 만들기</span>
-          <span className="sm:hidden">새 시험</span>
+          <span className="hidden md:inline">새 시험 만들기</span>
+          <span className="md:hidden">새 시험</span>
         </Link>
       </div>
 
@@ -569,8 +569,8 @@ export default function ExamsPageClient({ drafts, active, grading, completed, cl
                   ? 'bg-white shadow-sm text-gray-900'
                   : 'text-gray-500 hover:text-gray-700'
               }`}>
-              <span className="sm:hidden">{t.short}</span>
-              <span className="hidden sm:inline">{t.label}</span>
+              <span className="md:hidden">{t.short}</span>
+              <span className="hidden md:inline">{t.label}</span>
               <span className={`text-[10px] md:text-xs font-bold px-1 md:px-1.5 py-0.5 rounded-full ${
                 tab === t.key ? `bg-gray-100 ${t.color}` : 'bg-gray-200 text-gray-500'
               }`}>

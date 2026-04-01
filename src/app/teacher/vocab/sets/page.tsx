@@ -60,7 +60,7 @@ export default async function VocabSetsPage() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-lg md:text-2xl font-extrabold text-gray-900 flex items-center gap-2">📦 단어 세트 관리</h1>
-          <p className="text-gray-500 text-xs mt-0.5 hidden sm:block">AI로 생성한 단어 묶음을 반별로 배포합니다</p>
+          <p className="text-gray-500 text-xs mt-0.5 hidden md:block">AI로 생성한 단어 묶음을 반별로 배포합니다</p>
         </div>
         <Link href="/teacher/vocab/generate"
           className="flex items-center gap-1.5 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs md:text-sm font-bold rounded-xl transition">

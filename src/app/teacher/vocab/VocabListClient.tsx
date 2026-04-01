@@ -365,7 +365,7 @@ export default function VocabListClient({
               <p className="font-extrabold text-gray-900 text-sm w-28 truncate flex-shrink-0">{word.word}</p>
 
               {/* POS badge */}
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 hidden sm:inline ${POS_COLOR[word.part_of_speech] ?? 'bg-gray-100 text-gray-600'}`}>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 hidden md:inline ${POS_COLOR[word.part_of_speech] ?? 'bg-gray-100 text-gray-600'}`}>
                 {word.part_of_speech}
               </span>
 

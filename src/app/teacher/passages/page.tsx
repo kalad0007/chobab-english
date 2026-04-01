@@ -54,7 +54,7 @@ export default async function PassagesPage() {
           <h1 className="text-lg md:text-2xl font-extrabold text-gray-900 flex items-center gap-2">
             <FileText size={20} className="text-blue-600" /> 지문 라이브러리
           </h1>
-          <p className="text-xs text-gray-400 mt-0.5 hidden sm:block">TOEFL 독해 지문을 만들고 반에 배포하세요</p>
+          <p className="text-xs text-gray-400 mt-0.5 hidden md:block">TOEFL 독해 지문을 만들고 반에 배포하세요</p>
         </div>
         <Link href="/teacher/passages/new"
           className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs md:text-sm font-bold rounded-xl transition">

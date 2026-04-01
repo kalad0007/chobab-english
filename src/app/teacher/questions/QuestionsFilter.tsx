@@ -57,8 +57,8 @@ export default function QuestionsFilter({ currentCategory, currentSubtype, curre
             onClick={() => setOpenCategory(prev => prev === cat.value ? null : cat.value)}
             className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border-2 transition ${openCategory === cat.value ? cat.active : cat.inactive}`}
           >
-            <span className="sm:hidden">{cat.short}</span>
-            <span className="hidden sm:inline">{cat.icon} {cat.label}</span>
+            <span className="md:hidden">{cat.short}</span>
+            <span className="hidden md:inline">{cat.icon} {cat.label}</span>
           </button>
         ))}
       </div>

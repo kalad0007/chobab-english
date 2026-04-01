@@ -83,19 +83,19 @@ export default async function QuestionsPage({
             href="/teacher/questions/import"
             className="inline-flex items-center gap-1 bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-2.5 py-2 md:px-4 md:py-2.5 rounded-xl text-xs md:text-sm font-bold shadow-md hover:shadow-lg transition"
           >
-            <BookOpen size={13} /> <span className="hidden sm:inline">AI 스캔/PDF</span><span className="sm:hidden">스캔</span>
+            <BookOpen size={13} /> <span className="hidden md:inline">AI 스캔/PDF</span><span className="md:hidden">스캔</span>
           </Link>
           <Link
             href="/teacher/questions/generate"
             className="inline-flex items-center gap-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-2.5 py-2 md:px-4 md:py-2.5 rounded-xl text-xs md:text-sm font-bold shadow-md hover:shadow-lg transition"
           >
-            <Sparkles size={13} /> <span className="hidden sm:inline">AI 생성</span><span className="sm:hidden">AI</span>
+            <Sparkles size={13} /> <span className="hidden md:inline">AI 생성</span><span className="md:hidden">AI</span>
           </Link>
           <Link
             href="/teacher/questions/new"
             className="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-2 md:px-4 md:py-2.5 rounded-xl text-xs md:text-sm font-bold transition"
           >
-            <Plus size={13} /> <span className="hidden sm:inline">직접 출제</span><span className="sm:hidden">출제</span>
+            <Plus size={13} /> <span className="hidden md:inline">직접 출제</span><span className="md:hidden">출제</span>
           </Link>
         </div>
       </div>

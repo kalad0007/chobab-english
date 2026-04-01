@@ -44,7 +44,7 @@ export default function ExamActions({ examId, examTitle, examTimeLimitMins, curr
           className="flex items-center gap-1 px-2.5 py-1.5 md:px-3 md:py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs md:text-sm font-semibold transition"
         >
           <Trash2 size={13} />
-          <span className="hidden sm:inline">삭제</span>
+          <span className="hidden md:inline">삭제</span>
         </button>
       </div>
 

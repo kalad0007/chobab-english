@@ -186,7 +186,7 @@ export default function NewVocabPage() {
         </button>
         <div>
           <h1 className="text-lg md:text-xl font-extrabold text-gray-900">새 단어 추가</h1>
-          <p className="text-xs text-gray-400 hidden sm:block">단어를 입력하고 AI로 자동 완성하세요</p>
+          <p className="text-xs text-gray-400 hidden md:block">단어를 입력하고 AI로 자동 완성하세요</p>
         </div>
       </div>
 
@@ -208,7 +208,7 @@ export default function NewVocabPage() {
             <button onClick={handleAiFill} disabled={filling}
               className="flex items-center gap-1.5 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold rounded-xl transition disabled:opacity-50 flex-shrink-0 whitespace-nowrap">
               {filling ? <Loader2 size={15} className="animate-spin" /> : <Wand2 size={15} />}
-              <span className="hidden sm:inline">{filling ? '분석 중...' : 'AI 자동완성'}</span>
+              <span className="hidden md:inline">{filling ? '분석 중...' : 'AI 자동완성'}</span>
             </button>
           </div>
         </div>
@@ -294,7 +294,7 @@ export default function NewVocabPage() {
           )}
           <div>
             <label className="text-xs font-bold text-gray-500 mb-0.5 block">한글 직독직해</label>
-            <p className="text-[11px] text-gray-400 mb-1.5 hidden sm:block">영어 예문과 동일한 위치에 <code className="bg-gray-100 px-1 rounded"> / </code> 넣어 청크 일치</p>
+            <p className="text-[11px] text-gray-400 mb-1.5 hidden md:block">영어 예문과 동일한 위치에 <code className="bg-gray-100 px-1 rounded"> / </code> 넣어 청크 일치</p>
             <textarea value={exampleKo} onChange={e => setExampleKo(e.target.value)}
               rows={2}
               placeholder="깨끗한 물은 *없어서는 안 된다* / 생존을 위해 / 모든 생명체에게."
@@ -307,7 +307,7 @@ export default function NewVocabPage() {
           <div className="flex items-center justify-between mb-2">
             <div>
               <p className="text-sm font-bold text-gray-700">원어민 발음 (TTS)</p>
-              <p className="text-xs text-gray-400 hidden sm:block">Google Neural2 음성으로 자동 생성</p>
+              <p className="text-xs text-gray-400 hidden md:block">Google Neural2 음성으로 자동 생성</p>
             </div>
             <button onClick={handleTts} disabled={generating || !word.trim()}
               className="flex items-center gap-1.5 px-3 py-2 bg-amber-100 hover:bg-amber-200 text-amber-700 text-xs font-bold rounded-xl transition disabled:opacity-50 whitespace-nowrap">

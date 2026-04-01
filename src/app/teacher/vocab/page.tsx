@@ -50,7 +50,7 @@ export default async function TeacherVocabPage() {
           <h1 className="text-lg md:text-2xl font-extrabold text-gray-900 flex items-center gap-2">
             <BookA size={20} className="text-blue-600" /> 어휘 데이터베이스
           </h1>
-          <p className="text-gray-500 text-xs mt-0.5 hidden sm:block">TOEFL 어휘 카드 관리 · SRS 학습 자료</p>
+          <p className="text-gray-500 text-xs mt-0.5 hidden md:block">TOEFL 어휘 카드 관리 · SRS 학습 자료</p>
         </div>
         <Link
           href="/teacher/vocab/new"

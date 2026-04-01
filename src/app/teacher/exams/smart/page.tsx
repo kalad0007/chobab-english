@@ -610,7 +610,7 @@ export default function SmartBuilderPage() {
           />
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          {error && <span className="text-xs text-red-500 hidden sm:inline">{error}</span>}
+          {error && <span className="text-xs text-red-500 hidden md:inline">{error}</span>}
           <button onClick={() => router.back()}
             className="px-2.5 py-1.5 md:px-3 border border-gray-200 rounded-lg text-xs md:text-sm text-gray-600 hover:bg-gray-50 transition">
             취소
@@ -642,8 +642,8 @@ export default function SmartBuilderPage() {
                 className={`px-2 py-1.5 rounded-lg text-xs font-bold transition ${
                   testType === t.v ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-blue-300'
                 }`}>
-                <span className="hidden sm:inline">{t.label}</span>
-                <span className="sm:hidden">{t.v === 'weekly' ? '주간' : t.v === 'monthly' ? '월말' : '모의'}</span>
+                <span className="hidden md:inline">{t.label}</span>
+                <span className="md:hidden">{t.v === 'weekly' ? '주간' : t.v === 'monthly' ? '월말' : '모의'}</span>
               </button>
             ))}
           </div>
@@ -845,8 +845,8 @@ export default function SmartBuilderPage() {
               activeTab === tab.key ? `${tab.active} text-white` : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
             }`}>
             {tab.icon}
-            <span className="sm:hidden">{tab.short}</span>
-            <span className="hidden sm:inline">{tab.label}</span>
+            <span className="md:hidden">{tab.short}</span>
+            <span className="hidden md:inline">{tab.label}</span>
             {tab.total !== null && (
               <span className={`text-[10px] ml-0.5 ${activeTab === tab.key ? 'text-white/70' : 'text-gray-400'}`}>
                 {tab.filled}/{tab.total}

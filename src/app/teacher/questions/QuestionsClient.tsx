@@ -211,7 +211,7 @@ export default function QuestionsClient({ listItems }: Props) {
                   )}
                 </div>
                 {/* 모바일 전용 액션 버튼 — 삭제만 */}
-                <div className="flex sm:hidden flex-col gap-1 flex-shrink-0 self-center" onClick={(e) => e.stopPropagation()}>
+                <div className="flex md:hidden flex-col gap-1 flex-shrink-0 self-center" onClick={(e) => e.stopPropagation()}>
                   <button
                     onClick={() => deleteSet(groupId)}
                     disabled={deleting}
@@ -221,7 +221,7 @@ export default function QuestionsClient({ listItems }: Props) {
                   </button>
                 </div>
                 {/* 데스크톱 전용 액션 버튼 (호버시 표시) */}
-                <div className="hidden sm:flex gap-1.5 opacity-0 group-hover:opacity-100 transition flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                <div className="hidden md:flex gap-1.5 opacity-0 group-hover:opacity-100 transition flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                   <button
                     onClick={() => deleteSet(groupId)}
                     disabled={deleting}
@@ -302,7 +302,7 @@ export default function QuestionsClient({ listItems }: Props) {
                 )}
               </div>
               {/* 모바일 전용 액션 버튼 — 수정/복사/삭제 가로 */}
-              <div className="flex sm:hidden flex-row gap-1 flex-shrink-0 self-center" onClick={(e) => e.stopPropagation()}>
+              <div className="flex md:hidden flex-row gap-1 flex-shrink-0 self-center" onClick={(e) => e.stopPropagation()}>
                 <Link href={`/teacher/questions/${iq.id}/edit`}
                   className="flex items-center justify-center w-7 h-7 rounded-lg border border-gray-200 text-gray-600"
                   title="수정">
@@ -312,7 +312,7 @@ export default function QuestionsClient({ listItems }: Props) {
                 <DeleteButton id={iq.id} iconOnly />
               </div>
               {/* 데스크톱 전용 액션 버튼 (호버시 표시) */}
-              <div className="hidden sm:flex gap-1.5 opacity-0 group-hover:opacity-100 transition flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+              <div className="hidden md:flex gap-1.5 opacity-0 group-hover:opacity-100 transition flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                 <Link href={`/teacher/questions/${iq.id}/edit`}
                   className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-lg hover:bg-gray-50 transition">
                   수정

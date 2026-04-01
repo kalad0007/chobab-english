@@ -242,7 +242,7 @@ export default async function BadgesPage() {
           <h2 className="text-sm font-extrabold text-gray-700 mb-3">
             ✅ 획득한 뱃지 <span className="text-blue-600 ml-1">{earned.length}</span>
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {earned.map(b => (
               <div key={b.id} className="bg-white rounded-2xl border border-yellow-200 shadow-sm p-4 flex items-start gap-3">
                 <span className="text-3xl flex-shrink-0">{b.emoji}</span>
@@ -265,7 +265,7 @@ export default async function BadgesPage() {
           <h2 className="text-sm font-extrabold text-gray-700 mb-3">
             🔒 도전 중인 뱃지 <span className="text-gray-400 ml-1">{locked.length}</span>
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {locked.map(b => {
               const prog = b.progress?.(stats)
               const pct = prog ? Math.round((prog.current / prog.max) * 100) : 0
