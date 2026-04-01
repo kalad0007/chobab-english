@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useTransition, useMemo } from 'react'
-import { Eye, EyeOff, Trash2, Users, Check, X, Search } from 'lucide-react'
+import { Eye, EyeOff, Trash2, Users, Check, X, Search, BookOpen } from 'lucide-react'
 import { deleteVocabSet, toggleSetPublish } from '../set-actions'
+import VocabSetPreview from './VocabSetPreview'
+import type { WordLevel } from '../constants'
 
 function stripLeadingEmoji(str: string) {
   return str.replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}\s]+/u, '').trim()
@@ -15,6 +17,7 @@ interface SetRow {
   topicEmoji: string
   difficulty: number
   word_count: number
+  word_level?: WordLevel | null
   is_published: boolean
   published_at: string | null
   created_at: string
@@ -34,6 +37,7 @@ export default function SetsClient({
   const [pendingClassIds, setPendingClassIds] = useState<Record<string, Set<string>>>({})
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<'all' | 'published' | 'draft'>('all')
+  const [previewSet, setPreviewSet] = useState<SetRow | null>(null)
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -77,6 +81,9 @@ export default function SetsClient({
   }
 
   return (
+    <>
+    <VocabSetPreview set={previewSet} onClose={() => setPreviewSet(null)} />
+
     <div>
       {/* Search + filter bar */}
       <div className="flex gap-2 mb-3">
@@ -149,6 +156,12 @@ export default function SetsClient({
               {/* Right: actions */}
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 <button
+                  onClick={() => setPreviewSet(set)}
+                  className="flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg transition"
+                >
+                  <BookOpen size={12} /> 미리보기
+                </button>
+                <button
                   onClick={() => setExpandedClassPicker(isExpanded ? null : set.id)}
                   className="flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition"
                 >
@@ -199,5 +212,6 @@ export default function SetsClient({
       })}
       </div>
     </div>
+    </>
   )
 }

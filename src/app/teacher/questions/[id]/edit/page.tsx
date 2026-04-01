@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORY_LABELS, DIFFICULTY_LEVELS, QUESTION_SUBTYPE_LABELS, getDiffInfo, usesAlphaOptions, optionLabel, DEFAULT_TIME_LIMITS, formatSeconds } from '@/lib/utils'
-import { Loader2, Volume2 } from 'lucide-react'
+import { Loader2, Volume2, Trash2 } from 'lucide-react'
 import AutoResizeTextarea from '@/components/ui/AutoResizeTextarea'
 import InlineFillBlankEditor from '@/components/ui/InlineFillBlankEditor'
 
@@ -515,6 +515,14 @@ export default function EditQuestionPage() {
                 <div className="flex items-center gap-2">
                   <audio controls src={audioUrl} className="h-9 max-w-xs rounded-lg" />
                   <span className="text-xs text-emerald-700 font-bold">✓ 생성됨</span>
+                  <button
+                    type="button"
+                    onClick={() => setAudioUrl('')}
+                    title="음성 삭제"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-xl transition"
+                  >
+                    <Trash2 size={13} /> 삭제
+                  </button>
                 </div>
               )}
             </div>

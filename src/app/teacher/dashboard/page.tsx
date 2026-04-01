@@ -71,17 +71,19 @@ export default async function TeacherDashboard() {
         .from('submission_answers')
         .select(`
           id,
-          questions!inner(type, category),
+          questions!inner(type, category, question_subtype),
           submissions!inner(exam_id, exams(teacher_id))
         `)
         .is('is_correct', null)
     : { data: [] }
 
+  const AUTO_GRADED_SUBTYPES = ['sentence_reordering', 'complete_the_words', 'sentence_completion']
+
   // 내 시험 답안만 필터링
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const myPendingAnswers = (pendingAllAnswers ?? []).filter(a => (a.submissions as any)?.exams?.teacher_id === user.id)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pendingWritingCount = myPendingAnswers.filter(a => { const q = (a.questions as any); return q?.category !== 'speaking' && (q?.type === 'essay' || q?.type === 'short_answer') }).length
+  const pendingWritingCount = myPendingAnswers.filter(a => { const q = (a.questions as any); return q?.category !== 'speaking' && (q?.type === 'essay' || q?.type === 'short_answer') && !AUTO_GRADED_SUBTYPES.includes(q?.question_subtype) }).length
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pendingSpeakingCount = myPendingAnswers.filter(a => (a.questions as any)?.category === 'speaking').length
   const totalPending = pendingWritingCount + pendingSpeakingCount

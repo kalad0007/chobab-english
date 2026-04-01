@@ -75,10 +75,37 @@ CREATE TABLE questions (
   explanation TEXT,                -- 해설
 
   -- 분류
-  category TEXT NOT NULL CHECK (category IN ('grammar', 'vocabulary', 'reading', 'writing', 'cloze', 'ordering')),
+  category TEXT NOT NULL CHECK (category IN ('grammar', 'vocabulary', 'reading', 'writing', 'listening', 'speaking', 'cloze', 'ordering')),
   subcategory TEXT,                -- 세부 유형 (tense, modal, synonym 등)
   difficulty INTEGER NOT NULL CHECK (difficulty BETWEEN 1 AND 5),
   source TEXT DEFAULT 'teacher' CHECK (source IN ('teacher', 'ai_generated', 'ksat')),
+
+  -- TOEFL 세부 유형
+  question_subtype TEXT,           -- reading/listening/speaking/writing 세부 유형
+  preparation_time INTEGER,        -- Speaking 준비시간(초)
+  response_time INTEGER,           -- Speaking 응답시간(초)
+  word_limit INTEGER,              -- Writing 최소 단어수
+  task_number INTEGER,             -- Speaking Task 1-4, Writing Task 1-2
+  time_limit INTEGER,              -- 문제당 제한시간(초)
+
+  -- 리스닝/스피킹 미디어
+  audio_url TEXT,                  -- 오디오 파일 URL
+  audio_script TEXT,               -- 오디오 스크립트 (리스닝)
+  audio_play_limit INTEGER,        -- 재생 횟수 제한
+  speaking_prompt TEXT,            -- 스피킹 과제 지문
+
+  -- 세트/그룹핑
+  passage_id TEXT,                 -- 같은 지문 문제 그룹핑 (Reading)
+  audio_id TEXT,                   -- 같은 오디오 문제 그룹핑 (Listening)
+  passage_group_id UUID,           -- 지문 세트 그룹 ID
+
+  -- 이메일 문제 전용
+  email_to TEXT,
+  email_subject TEXT,
+
+  -- 검색/분류용
+  summary TEXT,                    -- 지문/음성 내용 요약
+  vocab_words JSONB,               -- 핵심단어 [{word, pos, def, example}]
 
   -- 통계 (캐시)
   attempt_count INTEGER DEFAULT 0,
@@ -105,6 +132,9 @@ CREATE TABLE exams (
   status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'closed')),
   show_result_immediately BOOLEAN DEFAULT FALSE,  -- 제출 즉시 결과 공개 여부
   total_points INTEGER DEFAULT 100,
+  exam_type TEXT DEFAULT 'practice' CHECK (exam_type IN ('full_test', 'section_test', 'practice')),
+  sections TEXT[],                 -- 포함 섹션 배열 ['reading','listening','writing','speaking']
+  max_band_ceiling NUMERIC(3,1) DEFAULT 6.0,  -- 밴드 상한선 (기본 6.0, 최대 9.0)
 
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -128,10 +158,17 @@ CREATE TABLE submissions (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   exam_id UUID REFERENCES exams(id) ON DELETE CASCADE NOT NULL,
   student_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  deployment_id UUID,              -- exam_deployments 참조 (옵션)
 
   score INTEGER,
   total_points INTEGER,
   percentage NUMERIC(5,2),
+  -- TOEFL 밴드 점수 (섹션별 + 통합)
+  overall_band NUMERIC(3,1),
+  reading_band NUMERIC(3,1),
+  listening_band NUMERIC(3,1),
+  writing_band NUMERIC(3,1),
+  speaking_band NUMERIC(3,1),
   started_at TIMESTAMPTZ DEFAULT NOW(),
   submitted_at TIMESTAMPTZ,
   status TEXT DEFAULT 'in_progress' CHECK (status IN ('in_progress', 'submitted', 'graded')),
@@ -148,6 +185,7 @@ CREATE TABLE submission_answers (
   is_correct BOOLEAN,
   score INTEGER DEFAULT 0,
   teacher_feedback TEXT,           -- 서술형 피드백
+  rubric_scores JSONB,             -- 루브릭 채점 결과 {task_achievement, coherence, ...}
   UNIQUE(submission_id, question_id)
 );
 
@@ -384,3 +422,117 @@ BEGIN
   RETURN NOW() + (days_until_review || ' days')::INTERVAL;
 END;
 $$ LANGUAGE plpgsql;
+
+-- 학생 XP 업데이트 (게임화)
+CREATE OR REPLACE FUNCTION update_student_xp(
+  p_student_id UUID,
+  p_xp INTEGER
+) RETURNS VOID AS $$
+DECLARE
+  v_new_xp INTEGER;
+  v_new_level INTEGER;
+BEGIN
+  INSERT INTO student_gamification (student_id, xp, level, total_questions_solved, updated_at)
+  VALUES (p_student_id, p_xp, 1, 1, NOW())
+  ON CONFLICT (student_id) DO UPDATE SET
+    xp = student_gamification.xp + p_xp,
+    total_questions_solved = student_gamification.total_questions_solved + 1,
+    updated_at = NOW()
+  RETURNING xp INTO v_new_xp;
+
+  -- 레벨 계산: 100xp마다 1레벨 상승
+  v_new_level := GREATEST(1, v_new_xp / 100 + 1);
+
+  UPDATE student_gamification
+  SET level = v_new_level
+  WHERE student_id = p_student_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =============================================
+-- 추가 테이블 (확장 기능)
+-- =============================================
+
+-- 시험 배포 (반별 시험 일정 관리)
+CREATE TABLE IF NOT EXISTS exam_deployments (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  exam_id UUID REFERENCES exams(id) ON DELETE CASCADE NOT NULL,
+  class_id UUID REFERENCES classes(id) ON DELETE CASCADE NOT NULL,
+  start_at TIMESTAMPTZ NOT NULL,
+  end_at TIMESTAMPTZ NOT NULL,
+  time_limit_mins INTEGER,
+  status TEXT DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'active', 'grading', 'completed')),
+  published_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 알림
+CREATE TABLE IF NOT EXISTS notifications (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  recipient_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('exam_reminder', 'result_published', 'encouragement')),
+  channel TEXT NOT NULL CHECK (channel IN ('in_app', 'telegram')),
+  message TEXT,
+  exam_deployment_id UUID REFERENCES exam_deployments(id) ON DELETE SET NULL,
+  read_at TIMESTAMPTZ,
+  sent_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 단어장 세트
+CREATE TABLE IF NOT EXISTS vocab_sets (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  teacher_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  class_id UUID REFERENCES classes(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  difficulty NUMERIC(2,1),
+  word_level TEXT DEFAULT 'toefl' CHECK (word_level IN ('elem_1_2','elem_3_4','elem_5_6','middle','toefl')),
+  is_published BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 단어
+CREATE TABLE IF NOT EXISTS vocab_words (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  set_id UUID REFERENCES vocab_sets(id) ON DELETE CASCADE,
+  teacher_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  word TEXT NOT NULL,
+  part_of_speech TEXT,              -- 품사 (noun, verb, adjective, adverb 등)
+  definition_ko TEXT,               -- 한국어 뜻
+  definition_en TEXT,               -- 영어 정의
+  synonyms TEXT[],                  -- 동의어 배열
+  antonyms TEXT[],                  -- 반의어 배열
+  idioms TEXT[] DEFAULT '{}',       -- 숙어/관용표현 배열
+  topic_category TEXT,              -- 주제 카테고리 (biology, history_us 등)
+  difficulty NUMERIC(2,1) CHECK (difficulty BETWEEN 1 AND 5),
+  word_level TEXT DEFAULT 'toefl' CHECK (word_level IN ('elem_1_2','elem_3_4','elem_5_6','middle','toefl')),
+  example_sentence TEXT,            -- 청크 분절 예문 (영어)
+  example_sentence_ko TEXT,         -- 청크 분절 예문 (한국어)
+  morphemes JSONB,                  -- 어원 분석 {prefix, prefix_meaning, root, root_meaning, suffix, suffix_meaning}
+  collocations JSONB,               -- 연어 표현 배열 ["make a prediction", "accurate prediction"]
+  audio_url TEXT,
+  order_num INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 학생 단어 학습 기록
+CREATE TABLE IF NOT EXISTS student_vocab_progress (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  student_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  word_id UUID REFERENCES vocab_words(id) ON DELETE CASCADE NOT NULL,
+  mastered BOOLEAN DEFAULT FALSE,
+  review_count INTEGER DEFAULT 0,
+  last_reviewed_at TIMESTAMPTZ,
+  UNIQUE(student_id, word_id)
+);
+
+-- classes 테이블 target_band 칼럼 (누락된 경우)
+-- ALTER TABLE classes ADD COLUMN IF NOT EXISTS target_band NUMERIC(3,1);
+
+-- profiles 테이블 Telegram 필드 (누락된 경우)
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS telegram_chat_id TEXT;
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS telegram_username TEXT;

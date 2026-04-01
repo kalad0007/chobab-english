@@ -7,7 +7,7 @@ import {
   RefreshCw, BookA, Sparkles, Send, ChevronDown
 } from 'lucide-react'
 import { createVocabSet } from '../set-actions'
-import { TOEFL_TOPICS } from '../constants'
+import { WordLevel, WORD_LEVEL_CONFIG, TOEFL_TOPICS, getTopicsForLevel } from '../constants'
 import { getCustomTopics } from '../topic-actions'
 
 const DIFFICULTY_OPTIONS = [
@@ -43,12 +43,13 @@ const createClient = () => {
 export default function VocabGeneratePage() {
   const router = useRouter()
 
-  const [allTopics, setAllTopics] = useState(TOEFL_TOPICS)
+  const [allToeflTopics, setAllToeflTopics] = useState(TOEFL_TOPICS)
 
   const [existingWords, setExistingWords] = useState<string[]>([])
 
   // Step 1 state
   const [step, setStep] = useState<1 | 2 | 3>(1)
+  const [wordLevel, setWordLevel] = useState<WordLevel>('toefl')
   const [topic, setTopic] = useState('astronomy')
   const [count, setCount] = useState(15)
   const [difficulty, setDifficulty] = useState(3.0)
@@ -68,13 +69,14 @@ export default function VocabGeneratePage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  const allTopics = wordLevel === 'toefl' ? allToeflTopics : getTopicsForLevel(wordLevel)
   const topicLabel = allTopics.find(t => t.value === topic)
 
   // Load custom topics + existing words on mount
   useEffect(() => {
     getCustomTopics().then(custom => {
       if (custom.length > 0) {
-        setAllTopics([...TOEFL_TOPICS, ...custom.map(t => ({ value: t.value, label: t.label, emoji: t.emoji }))])
+        setAllToeflTopics([...TOEFL_TOPICS, ...custom.map(t => ({ value: t.value, label: t.label, emoji: t.emoji }))])
       }
     })
     async function loadExistingWords() {
@@ -117,7 +119,7 @@ export default function VocabGeneratePage() {
     const res = await fetch('/api/ai/vocab-suggest', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topic, count, difficulty, excludeWords: existingWords }),
+      body: JSON.stringify({ topic, count, difficulty: wordLevel === 'toefl' ? difficulty : WORD_LEVEL_CONFIG[wordLevel].difficulty, word_level: wordLevel, excludeWords: existingWords }),
     })
     const data = await res.json()
     setSuggesting(false)
@@ -161,7 +163,7 @@ export default function VocabGeneratePage() {
           const res = await fetch('/api/ai/vocab-fill', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ word }),
+            body: JSON.stringify({ word, word_level: wordLevel }),
           })
           const data = await res.json()
 
@@ -215,7 +217,8 @@ export default function VocabGeneratePage() {
     const result = await createVocabSet({
       title: setTitle.trim(),
       topic_category: topic,
-      difficulty,
+      difficulty: wordLevel === 'toefl' ? difficulty : WORD_LEVEL_CONFIG[wordLevel].difficulty,
+      word_level: wordLevel,
       classIds: [...selectedClasses],
       words: readyWords,
     })
@@ -256,6 +259,16 @@ export default function VocabGeneratePage() {
       {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl mb-4">{error}</div>}
 
       <div className="space-y-4">
+        {/* Word Level Toggle */}
+        <div className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5">
+          {(Object.entries(WORD_LEVEL_CONFIG) as [WordLevel, typeof WORD_LEVEL_CONFIG[WordLevel]][]).map(([key, cfg]) => (
+            <button key={key} type="button" onClick={() => setWordLevel(key)}
+              className={`px-3 py-1.5 text-xs font-bold rounded-full transition ${wordLevel === key ? `${cfg.color} ${cfg.textColor} shadow-sm` : 'text-gray-500 hover:text-gray-700'}`}>
+              {cfg.label}
+            </button>
+          ))}
+        </div>
+
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <label className="text-xs font-bold text-gray-500 mb-1.5 block">주제 (Topic)</label>
           <select value={topic} onChange={e => setTopic(e.target.value)}
@@ -279,18 +292,32 @@ export default function VocabGeneratePage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <label className="text-xs font-bold text-gray-500 mb-1.5 block">수준 (Band)</label>
-          <select value={difficulty} onChange={e => setDifficulty(Number(e.target.value))}
-            className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400">
-            {DIFFICULTY_OPTIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-          </select>
-        </div>
+        {wordLevel === 'toefl' && (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <label className="text-xs font-bold text-gray-500 mb-1.5 block">수준 (Band)</label>
+            <select value={difficulty} onChange={e => setDifficulty(Number(e.target.value))}
+              className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400">
+              {DIFFICULTY_OPTIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+            </select>
+          </div>
+        )}
 
-        {topicLabel && (
+        {topicLabel && wordLevel === 'toefl' && (
           <div className="bg-purple-50 rounded-xl p-4 text-sm text-purple-700">
             <p className="font-bold">{topicLabel.emoji} {topicLabel.label} · Band {difficulty.toFixed(1)} · {count}단어</p>
             <p className="text-xs text-purple-500 mt-0.5">AI가 TOEFL 지문에 자주 등장하는 단어 {count}개를 추천합니다</p>
+          </div>
+        )}
+        {topicLabel && wordLevel === 'middle' && (
+          <div className="bg-amber-50 rounded-xl p-4 text-sm text-amber-700">
+            <p className="font-bold">{topicLabel.emoji} {topicLabel.label} · 중학교 · {count}단어</p>
+            <p className="text-xs text-amber-500 mt-0.5">AI가 중학교 수준의 단어 {count}개를 추천합니다</p>
+          </div>
+        )}
+        {topicLabel && (wordLevel === 'elem_1_2' || wordLevel === 'elem_3_4' || wordLevel === 'elem_5_6') && (
+          <div className="bg-emerald-50 rounded-xl p-4 text-sm text-emerald-700">
+            <p className="font-bold">{topicLabel.emoji} {topicLabel.label} · {WORD_LEVEL_CONFIG[wordLevel].label} · {count}단어</p>
+            <p className="text-xs text-emerald-500 mt-0.5">AI가 {WORD_LEVEL_CONFIG[wordLevel].label} 수준의 기초 단어 {count}개를 추천합니다</p>
           </div>
         )}
 

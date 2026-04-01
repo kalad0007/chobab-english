@@ -27,11 +27,21 @@ export async function POST(req: NextRequest) {
     updated_at: new Date().toISOString(),
   }, { onConflict: 'student_id,category' })
 
-  // XP 지급
-  await supabase.rpc('update_student_xp' as never, {
-    p_student_id: user.id,
-    p_xp: isCorrect ? 10 : 3,
-  } as never)
+  // XP 지급 (student_gamification upsert)
+  const xpGain = isCorrect ? 10 : 3
+  const { data: gamif } = await supabase
+    .from('student_gamification')
+    .select('xp')
+    .eq('student_id', user.id)
+    .single()
+  const newXp = (gamif?.xp ?? 0) + xpGain
+  await supabase.from('student_gamification').upsert({
+    student_id: user.id,
+    xp: newXp,
+    level: Math.max(1, Math.floor(newXp / 100) + 1),
+    total_questions_solved: 1,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'student_id' })
 
   return NextResponse.json({ ok: true })
 }

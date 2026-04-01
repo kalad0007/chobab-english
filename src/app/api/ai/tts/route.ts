@@ -136,7 +136,10 @@ export async function POST(req: NextRequest) {
     .from('question-audio')
     .getPublicUrl(fileName)
 
-  return NextResponse.json({ audioUrl: publicUrl })
+  // 재생성 시 브라우저 캐시 무효화를 위해 타임스탬프 쿼리 추가
+  const audioUrl = `${publicUrl}?t=${Date.now()}`
+
+  return NextResponse.json({ audioUrl })
   } catch (err) {
     console.error('TTS route error:', err)
     return NextResponse.json({ error: 'TTS 처리 중 오류가 발생했습니다.' }, { status: 500 })

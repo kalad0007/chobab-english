@@ -2,6 +2,7 @@
 
 import { createAdminClient, getUserFromCookie } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { WordLevel } from './constants'
 
 export interface VocabWordInput {
   word: string
@@ -16,6 +17,9 @@ export interface VocabWordInput {
   audio_url?: string | null
   example_sentence?: string | null
   example_sentence_ko?: string | null
+  morphemes?: object | null
+  collocations?: string[]
+  word_level?: WordLevel
 }
 
 export async function createVocabWord(

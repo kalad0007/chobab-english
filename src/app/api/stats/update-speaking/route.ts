@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient, getUserFromCookie } from '@/lib/supabase/server'
+import { getUserFromCookie } from '@/lib/supabase/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 // 선생님이 스피킹 채점 후 학생의 speaking 영역 실력 통계 업데이트
@@ -39,12 +39,21 @@ export async function POST(req: NextRequest) {
     updated_at: new Date().toISOString(),
   }, { onConflict: 'student_id,category' })
 
-  // 학생 XP 지급
-  const supabase = await createClient()
-  await supabase.rpc('update_student_xp' as never, {
-    p_student_id: studentId,
-    p_xp: percentage >= 60 ? 10 : 3,
-  } as never)
+  // 학생 XP 지급 (student_gamification upsert, adminClient로 RLS 우회)
+  const xpGain = percentage >= 60 ? 10 : 3
+  const { data: gamif } = await adminClient
+    .from('student_gamification')
+    .select('xp')
+    .eq('student_id', studentId)
+    .single()
+  const newXp = (gamif?.xp ?? 0) + xpGain
+  await adminClient.from('student_gamification').upsert({
+    student_id: studentId,
+    xp: newXp,
+    level: Math.max(1, Math.floor(newXp / 100) + 1),
+    total_questions_solved: 1,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'student_id' })
 
   return NextResponse.json({ ok: true })
 }

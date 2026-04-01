@@ -22,7 +22,7 @@ export default async function VocabSetsPage() {
   // Load sets with linked classes
   const { data: sets } = await admin
     .from('vocab_sets')
-    .select('id, title, topic_category, difficulty, word_count, is_published, published_at, created_at')
+    .select('id, title, topic_category, difficulty, word_count, word_level, is_published, published_at, created_at')
     .eq('teacher_id', user.id)
     .order('created_at', { ascending: false })
 

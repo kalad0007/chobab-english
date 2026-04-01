@@ -1,16 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2, Sparkles, CheckCircle } from 'lucide-react'
-import { getMaxScore, calculateSectionBand, calculateOverallBand, mapToOldToeflScore } from '@/lib/utils'
+import { getMaxScore, mapToOldToeflScore } from '@/lib/utils'
+import { recalcSubmissionBands } from '@/lib/grading'
 
-// Speaking 루브릭 항목 (각 1~4점) — 공식 TOEFL 채점 기준
 const SPEAKING_RUBRIC = [
-  { key: 'delivery',           label: '전달력',       desc: '발음·유창성·자신감' },
-  { key: 'language_use',       label: '언어 사용',    desc: '어휘·문법의 다양성과 정확도' },
-  { key: 'topic_development',  label: '주제 전개',    desc: '내용의 관련성과 논리적 구성' },
+  { key: 'delivery',          label: '전달력',    desc: '발음·유창성·자신감' },
+  { key: 'language_use',      label: '언어 사용', desc: '어휘·문법의 다양성과 정확도' },
+  { key: 'topic_development', label: '주제 전개', desc: '내용의 관련성과 논리적 구성' },
 ] as const
 
 type SpeakingRubricKey = typeof SPEAKING_RUBRIC[number]['key']
@@ -29,7 +28,6 @@ interface EvalResult {
   improvements: string
 }
 
-// AI 0~25 점수 → 루브릭 1~4 변환
 function toRubricScale(value: number, outOf: number): number {
   const ratio = value / outOf
   if (ratio >= 0.75) return 4
@@ -40,13 +38,12 @@ function toRubricScale(value: number, outOf: number): number {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function GradeSpeakingPanel({ answer }: { answer: any }) {
-  const router = useRouter()
   const supabase = createClient()
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
   const [evaluating, setEvaluating] = useState(false)
   const [evalResult, setEvalResult] = useState<EvalResult | null>(null)
-  const [evalError, setEvalError] = useState<string | null>(null)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const q = answer.questions as any
@@ -57,7 +54,6 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
   const profile = sub?.profiles as any
   const audioUrl = answer.student_answer
 
-  // 저장된 루브릭 복원 (재채점 시)
   const savedRubric = answer.rubric_scores as RubricScores | null
   const [rubric, setRubric] = useState<RubricScores>(savedRubric ?? {
     delivery: 0,
@@ -65,7 +61,6 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
     topic_development: 0,
   })
 
-  // 루브릭 합산 → 최종 점수 환산 (3개 × 4점 = 12점 → maxPoints 비례)
   const rubricTotal = rubric.delivery + rubric.language_use + rubric.topic_development
   const rubricMax = SPEAKING_RUBRIC.length * 4  // 12
   const computedScore = rubricTotal > 0
@@ -76,28 +71,23 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
   async function aiEvaluate() {
     if (!audioUrl?.startsWith('http')) return
     setEvaluating(true)
-    setEvalError(null)
-
+    setError('')
     try {
       const res = await fetch('/api/ai/speaking-eval', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ audioUrl, prompt: q?.content ?? '' }),
       })
-
       const data = await res.json()
-      if (!res.ok) { setEvalError(data?.detail ?? data?.error ?? `HTTP ${res.status}`); return }
-
+      if (!res.ok) { setError(data?.detail ?? data?.error ?? `HTTP ${res.status}`); return }
       setEvalResult(data)
-
-      // AI 결과를 루브릭 1~4 점수로 자동 변환
       setRubric({
         delivery:          toRubricScale(data.pronunciation + data.confidence, 50),
         language_use:      toRubricScale(data.grammar, 25),
         topic_development: toRubricScale(data.content, 25),
       })
     } catch (e) {
-      setEvalError(String(e))
+      setError(String(e))
     } finally {
       setEvaluating(false)
     }
@@ -106,56 +96,22 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
   async function saveGrade() {
     if (!allFilled || saving) return
     setSaving(true)
+    setError('')
 
-    const feedback = evalResult
-      ? `[AI 평가] ${evalResult.feedback}\n✅ ${evalResult.strengths}\n📈 ${evalResult.improvements}`
-      : ''
-
-    await supabase.from('submission_answers').update({
+    const { error: updateError } = await supabase.from('submission_answers').update({
       is_correct: computedScore > 0,
       score: computedScore,
       rubric_scores: rubric,
-      teacher_feedback: feedback || null,
     }).eq('id', answer.id)
 
-    // 섹션별 밴드 재계산
-    const { data: allAnswers } = await supabase
-      .from('submission_answers')
-      .select('score, is_correct, questions(category, question_subtype)')
-      .eq('submission_id', sub?.id ?? '')
-
-    const { data: exam } = await supabase
-      .from('exams').select('max_band_ceiling').eq('id', sub?.exam_id ?? '').single()
-    const ceiling = exam?.max_band_ceiling ?? 6.0
-
-    if (allAnswers) {
-      const cats = ['reading', 'listening', 'writing', 'speaking'] as const
-      const sectionBands: Record<string, number | null> = {}
-
-      for (const cat of cats) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const qs = allAnswers.filter(a => (a.questions as any)?.category === cat)
-        if (qs.length === 0) continue
-        const allGraded = qs.every(a => a.is_correct !== null)
-        if (!allGraded) continue
-        const earned = qs.reduce((s, a) => s + (a.score ?? 0), 0)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const max = qs.reduce((s, a) => s + getMaxScore((a.questions as any)?.question_subtype), 0)
-        sectionBands[cat] = calculateSectionBand(earned, max, ceiling)
-      }
-
-      const overallBand = calculateOverallBand(Object.values(sectionBands))
-      const gradedCount = allAnswers.filter(a => a.is_correct !== null).length
-
-      await supabase.from('submissions').update({
-        reading_band:   sectionBands.reading   ?? undefined,
-        listening_band: sectionBands.listening ?? undefined,
-        writing_band:   sectionBands.writing   ?? undefined,
-        speaking_band:  sectionBands.speaking  ?? undefined,
-        overall_band:   overallBand > 0 ? overallBand : undefined,
-        ...(gradedCount === allAnswers.length ? { status: 'graded' } : {}),
-      }).eq('id', sub?.id ?? '')
+    if (updateError) {
+      setSaving(false)
+      setError('채점 저장 실패: ' + updateError.message)
+      return
     }
+
+    // 섹션별 밴드 재계산
+    await recalcSubmissionBands(supabase, sub?.id ?? '', sub?.exam_id ?? '')
 
     const studentId = sub?.student_id
     if (studentId) {
@@ -168,12 +124,11 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
 
     setSaving(false)
     setSaved(true)
-    setTimeout(() => router.refresh(), 800)
+    setTimeout(() => window.location.reload(), 800)
   }
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-      {/* 헤더 */}
       <div className="flex items-center gap-2 mb-3">
         <span className="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">🎤 스피킹</span>
         <span className="text-xs text-gray-400">{sub?.exams?.title}</span>
@@ -182,13 +137,11 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
         <span className="ml-auto text-xs text-gray-400">배점 {maxPoints}점</span>
       </div>
 
-      {/* 문제 */}
       <div className="mb-4">
         <p className="text-xs font-bold text-gray-500 mb-1.5">과제</p>
         <p className="text-sm text-gray-800 bg-gray-50 rounded-xl px-4 py-3">{q?.content}</p>
       </div>
 
-      {/* 오디오 + AI 평가 버튼 */}
       {audioUrl?.startsWith('http') ? (
         <div className="mb-4">
           <div className="flex items-center justify-between mb-1.5">
@@ -209,7 +162,6 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
         </div>
       )}
 
-      {/* AI 평가 결과 요약 */}
       {evalResult && (
         <div className="mb-4 bg-purple-50 border border-purple-100 rounded-xl p-3 space-y-1.5">
           <div className="flex items-center justify-between">
@@ -224,14 +176,12 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
         </div>
       )}
 
-      {evalError && (
-        <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700 break-all">
-          <p className="font-bold mb-1">⚠️ AI 평가 오류</p>
-          <p>{evalError}</p>
+      {error && (
+        <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">
+          {error}
         </div>
       )}
 
-      {/* 루브릭 채점 */}
       <div className="border border-gray-100 rounded-xl overflow-hidden mb-4">
         <div className="bg-gray-50 px-4 py-2 flex items-center justify-between">
           <span className="text-xs font-bold text-gray-600">루브릭 채점</span>
@@ -255,8 +205,7 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
               </div>
               <div className="flex gap-2">
                 {[1, 2, 3, 4].map(v => (
-                  <button
-                    key={v}
+                  <button key={v}
                     onClick={() => setRubric(prev => ({ ...prev, [key]: v }))}
                     className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition ${
                       rubric[key] === v
@@ -273,7 +222,6 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
         </div>
       </div>
 
-      {/* 환산 점수 + 저장 */}
       <div className="flex items-center gap-3">
         <div className="flex-1 bg-gray-50 rounded-xl px-4 py-2.5">
           <span className="text-xs text-gray-400">환산 점수: </span>
@@ -287,8 +235,8 @@ export default function GradeSpeakingPanel({ answer }: { answer: any }) {
           )}
         </div>
         <button onClick={saveGrade} disabled={!allFilled || saving || saved}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-60 ${
-            saved ? 'bg-emerald-500 text-white' : 'bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white'
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-40 ${
+            saved ? 'bg-emerald-500 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'
           }`}>
           {saving ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={16} />}
           {saved ? '채점 완료 ✓' : '채점 저장'}

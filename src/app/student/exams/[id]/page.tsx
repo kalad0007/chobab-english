@@ -295,7 +295,18 @@ export default function ExamTakePage() {
       if (isAutoGraded) {
         if (isFillBlank) {
           // Partial Credit: 정답 개수 비율로 점수 계산
-          const correct = (q.answer ?? '').split(',').map(a => a.trim().toLowerCase())
+          // JSON 토큰 포맷이면 토큰에서 정답 추출, 아니면 answer 필드 사용
+          let correct: string[]
+          try {
+            const raw = q.passage || q.content
+            const tokens = JSON.parse(raw)
+            const blankTexts = (tokens as { isBlank?: boolean; text?: string }[])
+              .filter(t => t.isBlank)
+              .map(t => (t.text ?? '').replace(/[^a-zA-Z]/g, '').toLowerCase())
+            correct = blankTexts.length > 0 ? blankTexts : (q.answer ?? '').split(',').map((a: string) => a.trim().toLowerCase())
+          } catch {
+            correct = (q.answer ?? '').split(',').map((a: string) => a.trim().toLowerCase())
+          }
           const student = studentAns.split(',').map(a => a.trim().toLowerCase())
           const correctCount = correct.filter((c, i) => c === student[i]).length
           isCorrect = correctCount === correct.length
@@ -344,16 +355,19 @@ export default function ExamTakePage() {
     // ── Step 3: 통합 밴드 (자동채점 완료된 섹션만 포함) ───────────────────────
     const overallBand = calculateOverallBand(Object.values(sectionBands))
 
-    // 영역별 실력 통계 업데이트 (객관식 + 단답형)
-    for (const q of questions.filter(q => (q.type === 'multiple_choice' || q.type === 'short_answer') && q.category !== 'speaking')) {
-      await fetch('/api/stats/update', {
+    // 영역별 실력 통계 업데이트 (객관식 + 단답형) — 배치 처리로 N+1 방지
+    const statEntries = questions
+      .filter(q => (q.type === 'multiple_choice' || q.type === 'short_answer') && q.category !== 'speaking')
+      .map(q => ({
+        category: q.category,
+        isCorrect: q.answer?.trim().toLowerCase() === (answers[q.id] ?? '').trim().toLowerCase(),
+      }))
+    if (statEntries.length > 0) {
+      fetch('/api/stats/update-batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          category: q.category,
-          isCorrect: q.answer?.trim().toLowerCase() === (answers[q.id] ?? '').trim().toLowerCase(),
-        }),
-      })
+        body: JSON.stringify({ entries: statEntries }),
+      }).catch(() => {})
     }
 
     const hasNonAutoGraded = questions.some(q => {

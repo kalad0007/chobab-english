@@ -2,6 +2,7 @@
 
 import { createAdminClient, getUserFromCookie } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { WordLevel } from './constants'
 
 /** Save generated words to vocab_words, then create a set and link them */
 export async function createVocabSet(payload: {
@@ -9,6 +10,7 @@ export async function createVocabSet(payload: {
   topic_category: string
   difficulty: number
   classIds: string[]
+  word_level?: WordLevel
   words: {
     word: string
     part_of_speech: string
@@ -19,12 +21,16 @@ export async function createVocabSet(payload: {
     audio_url?: string | null
     example_sentence?: string | null
     example_sentence_ko?: string | null
+    word_level?: WordLevel
   }[]
 }): Promise<{ error?: string; setId?: string }> {
   const user = await getUserFromCookie()
   if (!user) return { error: '로그인이 필요합니다.' }
 
   const admin = createAdminClient()
+
+  // Determine set word_level from payload or infer from words
+  const setWordLevel: WordLevel = payload.word_level ?? payload.words[0]?.word_level ?? 'toefl'
 
   // 1. Upsert vocab words (skip if word already exists for this teacher)
   const wordIds: string[] = []
@@ -52,6 +58,7 @@ export async function createVocabSet(payload: {
           antonyms:        w.antonyms,
           topic_category:  payload.topic_category,
           difficulty:      payload.difficulty,
+          word_level:      setWordLevel,
           audio_url:          w.audio_url ?? null,
           example_sentence:   w.example_sentence ?? null,
           example_sentence_ko: w.example_sentence_ko ?? null,
@@ -71,6 +78,7 @@ export async function createVocabSet(payload: {
       title:          payload.title,
       topic_category: payload.topic_category,
       difficulty:     payload.difficulty,
+      word_level:     setWordLevel,
       word_count:     wordIds.length,
       is_published:   payload.classIds.length > 0,
       published_at:   payload.classIds.length > 0 ? new Date().toISOString() : null,
@@ -107,12 +115,28 @@ export async function createVocabSetFromWordIds(payload: {
   difficulty: number
   classIds: string[]
   wordIds: string[]
+  word_level?: WordLevel
 }): Promise<{ error?: string; setId?: string }> {
   const user = await getUserFromCookie()
   if (!user) return { error: '로그인이 필요합니다.' }
   if (payload.wordIds.length === 0) return { error: '단어를 선택하세요.' }
 
   const admin = createAdminClient()
+
+  // Validate word_level consistency: fetch word_levels of selected words
+  const { data: words } = await admin
+    .from('vocab_words')
+    .select('id, word, word_level')
+    .in('id', payload.wordIds)
+  if (words && words.length > 0) {
+    const levels = new Set(words.map(w => w.word_level ?? 'toefl'))
+    if (levels.size > 1) {
+      return { error: '선택한 단어들의 레벨이 혼합되어 있습니다. 세트 내 모든 단어는 동일한 레벨(TOEFL 또는 초등)이어야 합니다.' }
+    }
+  }
+
+  // Determine set word_level from payload or infer from words
+  const setWordLevel: WordLevel = payload.word_level ?? (words?.[0]?.word_level as WordLevel) ?? 'toefl'
 
   const { data: set, error: setError } = await admin
     .from('vocab_sets')
@@ -121,6 +145,7 @@ export async function createVocabSetFromWordIds(payload: {
       title:          payload.title,
       topic_category: payload.topic_category,
       difficulty:     payload.difficulty,
+      word_level:     setWordLevel,
       word_count:     payload.wordIds.length,
       is_published:   payload.classIds.length > 0,
       published_at:   payload.classIds.length > 0 ? new Date().toISOString() : null,

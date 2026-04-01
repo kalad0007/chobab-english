@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Wand2, Loader2, Volume2, Plus, X, ChevronLeft, Check } from 'lucide-react'
 import { createVocabWord } from '../actions'
-import { TOEFL_TOPICS } from '../constants'
+import { WordLevel, WORD_LEVEL_CONFIG, TOEFL_TOPICS } from '../constants'
 import { getCustomTopics } from '../topic-actions'
 
 const PARTS_OF_SPEECH = ['adjective','noun','verb','adverb','preposition','conjunction','phrase']
@@ -98,12 +98,15 @@ export default function NewVocabPage() {
     })
   }, [])
 
+  const [wordLevel, setWordLevel] = useState<WordLevel>('toefl')
   const [word, setWord] = useState('')
   const [pos, setPos] = useState('adjective')
   const [defKo, setDefKo] = useState('')
   const [defEn, setDefEn] = useState('')
   const [synonyms, setSynonyms] = useState<string[]>([])
   const [antonyms, setAntonyms] = useState<string[]>([])
+  const [morphemes, setMorphemes] = useState<{ prefix?: string; prefix_meaning?: string; root?: string; root_meaning?: string; suffix?: string; suffix_meaning?: string } | null>(null)
+  const [collocations, setCollocations] = useState<string[]>([])
   const [topic, setTopic] = useState('general')
   const [difficulty, setDifficulty] = useState(3.0)
   const [example, setExample] = useState('')
@@ -122,7 +125,7 @@ export default function NewVocabPage() {
     const res = await fetch('/api/ai/vocab-fill', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ word: word.trim() }),
+      body: JSON.stringify({ word: word.trim(), word_level: wordLevel }),
     })
     const data = await res.json()
     setFilling(false)
@@ -135,6 +138,8 @@ export default function NewVocabPage() {
     if (data.topic_category)     setTopic(data.topic_category)
     if (data.example_sentence)   setExample(data.example_sentence)
     if (data.example_sentence_ko) setExampleKo(data.example_sentence_ko)
+    if (data.morphemes) setMorphemes(data.morphemes)
+    if (data.collocations) setCollocations(data.collocations)
   }
 
   async function handleTts() {
@@ -167,10 +172,13 @@ export default function NewVocabPage() {
       definition_ko: defKo.trim(),
       definition_en: defEn.trim(),
       synonyms, antonyms, topic_category: topic,
-      difficulty,
+      difficulty: wordLevel === 'toefl' ? difficulty : WORD_LEVEL_CONFIG[wordLevel].difficulty,
       audio_url: audioUrl,
       example_sentence: example.trim() || null,
       example_sentence_ko: exampleKo.trim() || null,
+      morphemes: morphemes ?? undefined,
+      collocations: collocations.length > 0 ? collocations : undefined,
+      word_level: wordLevel,
     })
     setSaving(false)
     if (result.error) return setError(result.error)
@@ -197,6 +205,16 @@ export default function NewVocabPage() {
       )}
 
       <div className="space-y-3">
+        {/* Word Level Toggle */}
+        <div className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5">
+          {(Object.entries(WORD_LEVEL_CONFIG) as [WordLevel, typeof WORD_LEVEL_CONFIG[WordLevel]][]).map(([key, cfg]) => (
+            <button key={key} type="button" onClick={() => setWordLevel(key)}
+              className={`px-3 py-1.5 text-xs font-bold rounded-full transition ${wordLevel === key ? `${cfg.color} ${cfg.textColor} shadow-sm` : 'text-gray-500 hover:text-gray-700'}`}>
+              {cfg.label}
+            </button>
+          ))}
+        </div>
+
         {/* Word + AI fill */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 md:p-5">
           <label className="text-xs font-bold text-gray-500 mb-1.5 block">표제어 *</label>
@@ -215,7 +233,7 @@ export default function NewVocabPage() {
 
         {/* Core fields */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 md:p-5 divide-y divide-gray-50">
-          <div className="grid grid-cols-2 gap-3 pb-3">
+          <div className={`grid ${wordLevel !== 'toefl' ? 'grid-cols-1' : 'grid-cols-2'} gap-3 pb-3`}>
             <div>
               <label className="text-xs font-bold text-gray-500 mb-1 block">품사</label>
               <select value={pos} onChange={e => setPos(e.target.value)}
@@ -223,13 +241,15 @@ export default function NewVocabPage() {
                 {PARTS_OF_SPEECH.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
-            <div>
-              <label className="text-xs font-bold text-gray-500 mb-1 block">난이도</label>
-              <select value={difficulty} onChange={e => setDifficulty(Number(e.target.value))}
-                className="w-full border border-gray-200 rounded-xl px-2 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400">
-                {DIFFICULTY_OPTIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-              </select>
-            </div>
+            {wordLevel === 'toefl' && (
+              <div>
+                <label className="text-xs font-bold text-gray-500 mb-1 block">난이도</label>
+                <select value={difficulty} onChange={e => setDifficulty(Number(e.target.value))}
+                  className="w-full border border-gray-200 rounded-xl px-2 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                  {DIFFICULTY_OPTIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                </select>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2 py-1.5">
@@ -261,6 +281,37 @@ export default function NewVocabPage() {
                 placeholder="dispensable, optional..." color="rose" />
             </div>
           </div>
+
+          <div className="flex items-start gap-2 py-1.5">
+            <label className="text-xs font-bold text-gray-500 w-20 flex-shrink-0 pt-1.5">연결어</label>
+            <div className="flex-1 min-w-0">
+              <ChipInput chips={collocations} onAdd={v => setCollocations(p => [...p, v])}
+                onRemove={v => setCollocations(p => p.filter(c => c !== v))}
+                placeholder="make a decision, take action..." color="purple" />
+            </div>
+          </div>
+          {morphemes && (
+            <div className="flex items-start gap-2 py-1.5">
+              <label className="text-xs font-bold text-gray-500 w-20 flex-shrink-0 pt-1">어근 분석</label>
+              <div className="flex-1 min-w-0 flex flex-wrap gap-1.5 px-2 py-1.5 bg-amber-50 rounded-xl border border-amber-100">
+                {morphemes.prefix && (
+                  <span className="text-xs text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full font-semibold">
+                    {morphemes.prefix}{morphemes.prefix_meaning ? ` (${morphemes.prefix_meaning})` : ''}
+                  </span>
+                )}
+                {morphemes.root && (
+                  <span className="text-xs text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full font-semibold">
+                    {morphemes.root}{morphemes.root_meaning ? ` (${morphemes.root_meaning})` : ''}
+                  </span>
+                )}
+                {morphemes.suffix && (
+                  <span className="text-xs text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full font-semibold">
+                    {morphemes.suffix}{morphemes.suffix_meaning ? ` (${morphemes.suffix_meaning})` : ''}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center gap-2 pt-1.5">
             <label className="text-xs font-bold text-gray-500 w-20 flex-shrink-0">주제</label>

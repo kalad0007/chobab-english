@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { CheckCircle, Loader2 } from 'lucide-react'
-import { getMaxScore, calculateSectionBand, calculateOverallBand, mapToOldToeflScore } from '@/lib/utils'
+import { getMaxScore, mapToOldToeflScore } from '@/lib/utils'
+import { recalcSubmissionBands } from '@/lib/grading'
 
 // Writing 루브릭 항목 (각 1~4점)
 const WRITING_RUBRIC = [
@@ -20,9 +20,10 @@ const RUBRIC_LABELS = ['', '미흡 (1)', '보통 (2)', '양호 (3)', '우수 (4)
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function GradeEssayPanel({ answer }: { answer: any }) {
-  const router = useRouter()
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const q = answer.questions as any
@@ -53,53 +54,24 @@ export default function GradeEssayPanel({ answer }: { answer: any }) {
     if (!allFilled || loading) return
     setLoading(true)
 
-    await supabase.from('submission_answers').update({
+    const { error: updateError } = await supabase.from('submission_answers').update({
       is_correct: computedScore >= maxScore * 0.5,
       score: computedScore,
       rubric_scores: rubric,
     }).eq('id', answer.id)
 
-    // 섹션별 밴드 재계산
-    const { data: allAnswers } = await supabase
-      .from('submission_answers')
-      .select('score, is_correct, questions(category, question_subtype)')
-      .eq('submission_id', sub?.id ?? '')
-
-    const { data: exam } = await supabase
-      .from('exams').select('max_band_ceiling').eq('id', sub?.exam_id ?? '').single()
-    const ceiling = exam?.max_band_ceiling ?? 6.0
-
-    if (allAnswers) {
-      const cats = ['reading', 'listening', 'writing', 'speaking'] as const
-      const sectionBands: Record<string, number | null> = {}
-
-      for (const cat of cats) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const qs = allAnswers.filter(a => (a.questions as any)?.category === cat)
-        if (qs.length === 0) continue
-        const allGraded = qs.every(a => a.is_correct !== null)
-        if (!allGraded) continue
-        const earned = qs.reduce((s, a) => s + (a.score ?? 0), 0)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const max = qs.reduce((s, a) => s + getMaxScore((a.questions as any)?.question_subtype), 0)
-        sectionBands[cat] = calculateSectionBand(earned, max, ceiling)
-      }
-
-      const overallBand = calculateOverallBand(Object.values(sectionBands))
-      const gradedCount = allAnswers.filter(a => a.is_correct !== null).length
-
-      await supabase.from('submissions').update({
-        reading_band:   sectionBands.reading   ?? undefined,
-        listening_band: sectionBands.listening ?? undefined,
-        writing_band:   sectionBands.writing   ?? undefined,
-        speaking_band:  sectionBands.speaking  ?? undefined,
-        overall_band:   overallBand > 0 ? overallBand : undefined,
-        ...(gradedCount === allAnswers.length ? { status: 'graded' } : {}),
-      }).eq('id', sub?.id ?? '')
+    if (updateError) {
+      setLoading(false)
+      setError('채점 저장 실패: ' + updateError.message)
+      return
     }
 
-    router.refresh()
+    // 섹션별 밴드 재계산
+    await recalcSubmissionBands(supabase, sub?.id ?? '', sub?.exam_id ?? '')
+
     setLoading(false)
+    setSaved(true)
+    setTimeout(() => window.location.reload(), 800)
   }
 
   return (
@@ -123,9 +95,15 @@ export default function GradeEssayPanel({ answer }: { answer: any }) {
         </div>
         <div>
           <p className="text-xs font-bold text-gray-500 mb-1.5">학생 답안</p>
-          <p className="text-sm text-gray-800 bg-blue-50 rounded-xl px-4 py-3 whitespace-pre-wrap">{answer.student_answer}</p>
+          <p className="text-sm text-gray-800 bg-blue-50 rounded-xl px-4 py-3 whitespace-pre-wrap break-words">{answer.student_answer}</p>
         </div>
       </div>
+
+      {error && (
+        <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">
+          {error}
+        </div>
+      )}
 
       {/* 루브릭 채점 */}
       <div className="border border-gray-100 rounded-xl overflow-hidden mb-4">
@@ -182,10 +160,12 @@ export default function GradeEssayPanel({ answer }: { answer: any }) {
             </span>
           )}
         </div>
-        <button onClick={grade} disabled={!allFilled || loading}
-          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-xl text-sm font-bold transition">
+        <button onClick={grade} disabled={!allFilled || loading || saved}
+          className={`flex items-center gap-2 px-5 py-2.5 disabled:opacity-40 text-white rounded-xl text-sm font-bold transition ${
+            saved ? 'bg-emerald-500' : 'bg-blue-600 hover:bg-blue-700'
+          }`}>
           {loading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={16} />}
-          채점 저장
+          {saved ? '채점 완료 ✓' : '채점 저장'}
         </button>
       </div>
 

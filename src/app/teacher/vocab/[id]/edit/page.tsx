@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Wand2, Loader2, Volume2, Save, X, ChevronLeft, Check, Trash2 } from 'lucide-react'
 import { updateVocabWord } from '../../actions'
-import { TOEFL_TOPICS } from '../../constants'
+import { WordLevel, WORD_LEVEL_CONFIG, TOEFL_TOPICS } from '../../constants'
 import { getCustomTopics } from '../../topic-actions'
 
 const PARTS_OF_SPEECH = ['adjective','noun','verb','adverb','preposition','conjunction','phrase']
@@ -77,6 +77,7 @@ export default function EditVocabPage() {
   const router = useRouter()
 
   const [loading, setLoading] = useState(true)
+  const [wordLevel, setWordLevel] = useState<WordLevel>('toefl')
   const [wordName, setWordName] = useState('')
   const [pos, setPos] = useState('noun')
   const [defKo, setDefKo] = useState('')
@@ -84,6 +85,8 @@ export default function EditVocabPage() {
   const [synonyms, setSynonyms] = useState<string[]>([])
   const [antonyms, setAntonyms] = useState<string[]>([])
   const [idioms, setIdioms] = useState<string[]>([])
+  const [morphemes, setMorphemes] = useState<{ prefix?: string; prefix_meaning?: string; root?: string; root_meaning?: string; suffix?: string; suffix_meaning?: string } | null>(null)
+  const [collocations, setCollocations] = useState<string[]>([])
   const [topic, setTopic] = useState('general')
   const [difficulty, setDifficulty] = useState(3.0)
   const [example, setExample] = useState('')
@@ -102,11 +105,14 @@ export default function EditVocabPage() {
       const supabase = createClient()
       const { data } = await supabase
         .from('vocab_words')
-        .select('word, part_of_speech, definition_ko, definition_en, synonyms, antonyms, idioms, topic_category, difficulty, audio_url, example_sentence, example_sentence_ko')
+        .select('word, part_of_speech, definition_ko, definition_en, synonyms, antonyms, idioms, topic_category, difficulty, audio_url, example_sentence, example_sentence_ko, morphemes, collocations, word_level')
         .eq('id', id)
         .single()
 
       if (data) {
+        setWordLevel(
+          data.word_level === 'elementary' ? 'elem_3_4' : ((data.word_level as WordLevel) ?? 'toefl')
+        )
         setWordName(data.word)
         setPos(data.part_of_speech)
         setDefKo(data.definition_ko)
@@ -119,6 +125,8 @@ export default function EditVocabPage() {
         setExample(data.example_sentence ?? '')
         setExampleKo(data.example_sentence_ko ?? '')
         setAudioUrl(data.audio_url)
+        setMorphemes(data.morphemes ?? null)
+        setCollocations(data.collocations ?? [])
       }
 
       const custom = await getCustomTopics()
@@ -134,7 +142,7 @@ export default function EditVocabPage() {
     setFilling(true); setError('')
     const res = await fetch('/api/ai/vocab-fill', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ word: wordName }),
+      body: JSON.stringify({ word: wordName, word_level: wordLevel }),
     })
     const data = await res.json()
     setFilling(false)
@@ -148,6 +156,8 @@ export default function EditVocabPage() {
     if (data.topic_category)     setTopic(data.topic_category)
     if (data.example_sentence)   setExample(data.example_sentence)
     if (data.example_sentence_ko) setExampleKo(data.example_sentence_ko)
+    if (data.morphemes) setMorphemes(data.morphemes)
+    if (data.collocations) setCollocations(data.collocations)
   }
 
   async function handleTts() {
@@ -173,10 +183,14 @@ export default function EditVocabPage() {
     setSaving(true); setError('')
     const result = await updateVocabWord(id, {
       part_of_speech: pos, definition_ko: defKo.trim(), definition_en: defEn.trim(),
-      synonyms, antonyms, idioms, topic_category: topic, difficulty,
+      synonyms, antonyms, idioms, topic_category: topic,
+      difficulty: wordLevel === 'toefl' ? difficulty : WORD_LEVEL_CONFIG[wordLevel].difficulty,
       audio_url: audioUrl,
       example_sentence: example.trim() || null,
       example_sentence_ko: exampleKo.trim() || null,
+      morphemes: morphemes ?? undefined,
+      collocations: collocations.length > 0 ? collocations : undefined,
+      word_level: wordLevel,
     })
     setSaving(false)
     if (result.error) return setError(result.error)
@@ -210,13 +224,23 @@ export default function EditVocabPage() {
       {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl mb-4">{error}</div>}
 
       <div className="space-y-5">
+        {/* Word Level Toggle */}
+        <div className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5">
+          {(Object.entries(WORD_LEVEL_CONFIG) as [WordLevel, typeof WORD_LEVEL_CONFIG[WordLevel]][]).map(([key, cfg]) => (
+            <button key={key} type="button" onClick={() => setWordLevel(key)}
+              className={`px-3 py-1.5 text-xs font-bold rounded-full transition ${wordLevel === key ? `${cfg.color} ${cfg.textColor} shadow-sm` : 'text-gray-500 hover:text-gray-700'}`}>
+              {cfg.label}
+            </button>
+          ))}
+        </div>
+
         <div className="bg-gray-50 rounded-2xl border border-gray-100 px-5 py-4">
           <p className="text-xs font-bold text-gray-400 mb-1">표제어 (수정 불가)</p>
           <p className="text-2xl font-extrabold text-gray-700">{wordName}</p>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className={`grid ${wordLevel !== 'toefl' ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
             <div>
               <label className="text-xs font-bold text-gray-500 mb-1.5 block">품사</label>
               <select value={pos} onChange={e => setPos(e.target.value)}
@@ -224,13 +248,15 @@ export default function EditVocabPage() {
                 {PARTS_OF_SPEECH.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
-            <div>
-              <label className="text-xs font-bold text-gray-500 mb-1.5 block">난이도</label>
-              <select value={difficulty} onChange={e => setDifficulty(Number(e.target.value))}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400">
-                {DIFFICULTY_OPTIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-              </select>
-            </div>
+            {wordLevel === 'toefl' && (
+              <div>
+                <label className="text-xs font-bold text-gray-500 mb-1.5 block">난이도</label>
+                <select value={difficulty} onChange={e => setDifficulty(Number(e.target.value))}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                  {DIFFICULTY_OPTIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                </select>
+              </div>
+            )}
           </div>
           <div>
             <label className="text-xs font-bold text-gray-500 mb-1.5 block">한국어 뜻 *</label>
@@ -260,6 +286,34 @@ export default function EditVocabPage() {
               onRemove={v => setIdioms(p => p.filter(s => s !== v))}
               placeholder="take off, run out of..." color="purple" />
           </div>
+          <div>
+            <label className="text-xs font-bold text-gray-500 mb-1.5 block">연결어 <span className="font-normal text-gray-400">(Enter로 추가)</span></label>
+            <ChipInput chips={collocations} onAdd={v => setCollocations(p => [...p, v])}
+              onRemove={v => setCollocations(p => p.filter(c => c !== v))}
+              placeholder="make a decision, take action..." color="purple" />
+          </div>
+          {morphemes && (
+            <div>
+              <label className="text-xs font-bold text-gray-500 mb-1.5 block">어근 분석 <span className="font-normal text-gray-400">(AI 생성)</span></label>
+              <div className="flex flex-wrap gap-1.5 px-2 py-1.5 bg-amber-50 rounded-xl border border-amber-100">
+                {morphemes.prefix && (
+                  <span className="text-xs text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full font-semibold">
+                    {morphemes.prefix}{morphemes.prefix_meaning ? ` (${morphemes.prefix_meaning})` : ''}
+                  </span>
+                )}
+                {morphemes.root && (
+                  <span className="text-xs text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full font-semibold">
+                    {morphemes.root}{morphemes.root_meaning ? ` (${morphemes.root_meaning})` : ''}
+                  </span>
+                )}
+                {morphemes.suffix && (
+                  <span className="text-xs text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full font-semibold">
+                    {morphemes.suffix}{morphemes.suffix_meaning ? ` (${morphemes.suffix_meaning})` : ''}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
           <div>
             <label className="text-xs font-bold text-gray-500 mb-1.5 block">주제 카테고리</label>
             <select value={topic} onChange={e => setTopic(e.target.value)}
