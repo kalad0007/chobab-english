@@ -26,13 +26,17 @@ export default function CopyButton({ question, iconOnly }: Props) {
       teacher_id: user.id,
       type: question.type,
       category: question.category,
+      question_subtype: question.question_subtype ?? null,
       subcategory: question.subcategory ?? null,
       difficulty: question.difficulty,
       passage: question.passage ?? null,
       content: `[복사] ${question.content}`,
+      summary: question.summary ?? null,
       options: question.options ?? null,
       answer: question.answer,
       explanation: question.explanation ?? null,
+      audio_script: question.audio_script ?? null,
+      audio_url: question.audio_url ?? null,
       source: 'teacher',
     })
 

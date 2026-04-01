@@ -223,7 +223,7 @@ export function QuestionModal({ q, onClose }: { q: PreviewQuestion; onClose: () 
           {q.answer && (!q.options || q.options.length === 0) && q.question_subtype !== 'email_writing' && (
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm">
               <span className="text-xs font-bold text-emerald-600 block mb-1">정답</span>
-              <span className="text-emerald-800 font-medium">{q.answer}</span>
+              <span className="text-emerald-800 font-medium whitespace-pre-wrap">{q.answer}</span>
             </div>
           )}
 
