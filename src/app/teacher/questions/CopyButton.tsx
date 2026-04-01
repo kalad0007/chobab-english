@@ -52,7 +52,7 @@ export default function CopyButton({ question, iconOnly }: Props) {
   if (iconOnly) {
     return (
       <button onClick={handleCopy} disabled={state === 'loading'} title="복사"
-        className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 text-gray-600 disabled:opacity-50">
+        className="flex items-center justify-center w-7 h-7 rounded-lg bg-gray-100 text-gray-600 disabled:opacity-50">
         {state === 'loading' ? (
           <Loader2 size={14} className="animate-spin" />
         ) : state === 'done' ? (

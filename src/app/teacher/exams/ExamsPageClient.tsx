@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Plus, Clock, Users, FileText, ChevronRight, X, Loader2, CalendarDays, Timer, BookOpen, Trash2 } from 'lucide-react'
-import { deployExam, deleteDeployment, deleteExam } from './actions'
+import { Plus, Clock, Users, FileText, ChevronRight, X, Loader2, CalendarDays, Timer, BookOpen, Trash2, Bell, CheckCircle2, ArrowRight } from 'lucide-react'
+import { deployExam, deleteDeployment, deleteExam, sendEncouragement, updateDeploymentStatus } from './actions'
+import { createClient } from '@/lib/supabase/client'
 
 // ── 타입 ──────────────────────────────────────────────────────────
 
@@ -55,7 +56,7 @@ function getDDay(endAt: string): string {
 
 // ── 배포 카드 ─────────────────────────────────────────────────────
 
-function DeploymentCard({ dep, onDelete }: { dep: Deployment; onDelete: (id: string) => void }) {
+function DeploymentCard({ dep, onDelete, onClick }: { dep: Deployment; onDelete: (id: string) => void; onClick: () => void }) {
   const pct = dep.totalStudents > 0
     ? Math.round((dep.submittedCount / dep.totalStudents) * 100) : 0
   const dday = getDDay(dep.end_at)
@@ -83,36 +84,36 @@ function DeploymentCard({ dep, onDelete }: { dep: Deployment; onDelete: (id: str
   }
 
   return (
-    <Link href={`/teacher/deployments/${dep.id}`}
-      className={`block rounded-2xl border shadow-sm hover:shadow-md transition p-5 group ${statusColors[dep.status] ?? 'bg-white border-gray-100'}`}>
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1 min-w-0 pr-3">
-          <p className="text-xs font-bold text-gray-400 mb-0.5">{dep.class_name}</p>
-          <h3 className="font-bold text-gray-900 group-hover:text-blue-600 transition truncate">{dep.exam_title}</h3>
+    <div onClick={onClick}
+      className={`block rounded-xl border shadow-sm hover:shadow-md transition p-3 md:p-5 group cursor-pointer ${statusColors[dep.status] ?? 'bg-white border-gray-100'}`}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex-1 min-w-0 pr-2">
+          <p className="text-[10px] font-bold text-gray-400 leading-none mb-0.5">{dep.class_name}</p>
+          <h3 className="text-sm font-bold text-gray-900 group-hover:text-blue-600 transition truncate">{dep.exam_title}</h3>
         </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <span className={`text-xs font-bold px-2 py-1 rounded-lg ${
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-lg ${
             isUrgent ? 'bg-red-500 text-white' : 'bg-white/80 text-gray-600'
           }`}>
             {dday}
           </span>
           <button onClick={handleDelete} disabled={deleting}
-            className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/80 hover:bg-red-100 text-gray-400 hover:text-red-500 transition disabled:opacity-40">
-            {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+            className="w-6 h-6 flex items-center justify-center rounded-lg bg-white/80 hover:bg-red-100 text-gray-400 hover:text-red-500 transition disabled:opacity-40">
+            {deleting ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
           </button>
         </div>
       </div>
 
       {/* 응시율 프로그레스 바 */}
-      <div className="mb-3">
-        <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
-          <span className="flex items-center gap-1">
-            <Users size={11} />
+      <div className="mb-2">
+        <div className="flex items-center justify-between text-[11px] text-gray-500 mb-1">
+          <span className="flex items-center gap-0.5">
+            <Users size={10} />
             {dep.submittedCount}/{dep.totalStudents}명 응시
           </span>
           <span className="font-bold text-gray-700">{pct}%</span>
         </div>
-        <div className="h-2 bg-white/60 rounded-full overflow-hidden">
+        <div className="h-1.5 bg-white/60 rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full transition-all ${
               pct >= 80 ? 'bg-emerald-500' : pct >= 50 ? 'bg-blue-500' : 'bg-amber-400'
@@ -122,17 +123,200 @@ function DeploymentCard({ dep, onDelete }: { dep: Deployment; onDelete: (id: str
         </div>
       </div>
 
-      <div className="flex items-center gap-3 text-xs text-gray-400">
+      <div className="flex items-center gap-2 text-[11px] text-gray-400">
         {dep.time_limit_mins && (
-          <span className="flex items-center gap-1"><Timer size={11} />{dep.time_limit_mins}분</span>
+          <span className="flex items-center gap-0.5"><Timer size={10} />{dep.time_limit_mins}분</span>
         )}
-        <span className="flex items-center gap-1">
-          <CalendarDays size={11} />
+        <span className="flex items-center gap-0.5">
+          <CalendarDays size={10} />
           {new Date(dep.end_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })} 마감
         </span>
-        <ChevronRight size={13} className="ml-auto text-gray-300 group-hover:text-blue-400 transition" />
+        <ChevronRight size={12} className="ml-auto text-gray-300 group-hover:text-blue-400 transition" />
       </div>
-    </Link>
+    </div>
+  )
+}
+
+// ── 배포 상세 모달 ────────────────────────────────────────────────
+
+function DeploymentModal({ dep, onClose }: { dep: Deployment; onClose: () => void }) {
+  const supabase = createClient()
+  const [students, setStudents] = useState<{ id: string; name: string; email: string }[]>([])
+  const [submissions, setSubmissions] = useState<{
+    student_id: string; submitted_at: string | null
+    score: number | null; total_points: number | null; percentage: number | null; status: string
+  }[]>([])
+  const [loading, setLoading] = useState(true)
+  const [tab, setTab] = useState<'pending' | 'submitted'>('pending')
+  const [sending, setSending] = useState(false)
+  const [done, setDone] = useState(false)
+  const [completing, setCompleting] = useState(false)
+
+  useEffect(() => {
+    async function load() {
+      const [{ data: members }, { data: subs }] = await Promise.all([
+        supabase.from('class_members').select('student_id, profiles(id, name, email)').eq('class_id', dep.class_id),
+        supabase.from('submissions').select('student_id, submitted_at, score, total_points, percentage, status').eq('deployment_id', dep.id),
+      ])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setStudents((members ?? []).map((m: any) => ({ id: m.profiles?.id ?? m.student_id, name: m.profiles?.name ?? '알 수 없음', email: m.profiles?.email ?? '' })))
+      setSubmissions(subs ?? [])
+      setLoading(false)
+    }
+    load()
+  }, [dep.id])
+
+  const subMap = Object.fromEntries(submissions.map(s => [s.student_id, s]))
+  const submitted = students.filter(s => { const sub = subMap[s.id]; return sub && (sub.status === 'submitted' || sub.status === 'graded') })
+  const pending = students.filter(s => !subMap[s.id] || subMap[s.id].status === 'in_progress')
+  const pct = students.length > 0 ? Math.round((submitted.length / students.length) * 100) : 0
+  const avgScore = submitted.length > 0
+    ? Math.round(submitted.reduce((a, s) => a + (subMap[s.id]?.percentage ?? 0), 0) / submitted.length) : null
+  const dday = getDDay(dep.end_at)
+  const isActive = dep.status === 'active' || dep.status === 'scheduled'
+  const isGrading = dep.status === 'grading'
+
+  async function handleEncourage() {
+    setSending(true)
+    try { await sendEncouragement(dep.id, pending.map(s => s.id)) } finally { setSending(false) }
+    setDone(true); setTimeout(() => setDone(false), 3000)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div className="relative bg-white rounded-t-2xl md:rounded-2xl w-full md:max-w-lg max-h-[88vh] overflow-y-auto shadow-2xl"
+        onClick={e => e.stopPropagation()}>
+        {/* 헤더 */}
+        <div className="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between rounded-t-2xl z-10">
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-bold text-blue-600">{dep.class_name}</p>
+            <h3 className="font-extrabold text-gray-900 truncate">{dep.exam_title}</h3>
+            <div className="flex items-center gap-2 text-[11px] text-gray-400 mt-0.5 flex-wrap">
+              <span>{new Date(dep.start_at).toLocaleDateString('ko-KR')} ~ {new Date(dep.end_at).toLocaleDateString('ko-KR')}</span>
+              {dep.time_limit_mins && <span><Clock size={10} className="inline mr-0.5" />{dep.time_limit_mins}분</span>}
+              <span className={`font-bold ${dday === '마감됨' ? 'text-gray-400' : dday === 'D-Day' || dday === 'D-1' ? 'text-red-500' : 'text-blue-600'}`}>{dday}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+            {isGrading && (
+              <>
+                <Link href={`/teacher/deployments/${dep.id}/grading`}
+                  className="text-[11px] font-bold px-2 py-1 bg-purple-100 text-purple-700 rounded-lg">
+                  채점 →
+                </Link>
+                <button onClick={async () => { setCompleting(true); await updateDeploymentStatus(dep.id, 'completed'); setCompleting(false) }}
+                  disabled={completing}
+                  className="text-[11px] font-bold px-2 py-1 bg-emerald-600 text-white rounded-lg flex items-center gap-0.5">
+                  {completing ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle2 size={10} />} 확정
+                </button>
+              </>
+            )}
+            <Link href={`/teacher/exams/${dep.exam_id}`}
+              className="text-[11px] font-bold px-2 py-1 border border-gray-200 rounded-lg flex items-center gap-0.5 text-gray-600">
+              문제 <ArrowRight size={10} />
+            </Link>
+            <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition">
+              <X size={13} />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-4 space-y-3">
+          {/* 요약 카드 */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-white rounded-xl border border-gray-100 p-3 text-center">
+              <p className="text-2xl font-extrabold text-gray-900">{loading ? '—' : students.length}</p>
+              <p className="text-[11px] text-gray-400">총 학생</p>
+            </div>
+            <div className="bg-blue-50 rounded-xl border border-blue-100 p-3 text-center">
+              <p className="text-2xl font-extrabold text-blue-700">{loading ? '—' : submitted.length}</p>
+              <p className="text-[11px] text-blue-400">응시 완료</p>
+            </div>
+            <div className={`rounded-xl border p-3 text-center ${!loading && pending.length === 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100'}`}>
+              <p className={`text-2xl font-extrabold ${!loading && pending.length === 0 ? 'text-emerald-700' : 'text-amber-700'}`}>{loading ? '—' : pending.length}</p>
+              <p className={`text-[11px] ${!loading && pending.length === 0 ? 'text-emerald-400' : 'text-amber-400'}`}>미응시</p>
+            </div>
+          </div>
+
+          {/* 응시율 바 */}
+          <div className="bg-white rounded-xl border border-gray-100 px-4 py-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-gray-600">전체 응시율</span>
+              <span className="text-lg font-extrabold text-gray-900">{pct}%</span>
+            </div>
+            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div className={`h-full rounded-full transition-all ${pct >= 80 ? 'bg-emerald-500' : pct >= 50 ? 'bg-blue-500' : 'bg-amber-400'}`}
+                style={{ width: `${pct}%` }} />
+            </div>
+            {avgScore !== null && <p className="text-[11px] text-gray-400 mt-1.5 text-right">가채점 평균 {avgScore}%</p>}
+          </div>
+
+          {/* 학생 명단 */}
+          <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+              <div className="flex gap-0.5 bg-gray-100 rounded-lg p-0.5">
+                <button onClick={() => setTab('pending')}
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition ${tab === 'pending' ? 'bg-white shadow-sm text-amber-600' : 'text-gray-500'}`}>
+                  미응시 {!loading && <span className="font-bold">{pending.length}</span>}
+                </button>
+                <button onClick={() => setTab('submitted')}
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition ${tab === 'submitted' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'}`}>
+                  응시 완료 {!loading && <span className="font-bold">{submitted.length}</span>}
+                </button>
+              </div>
+              {tab === 'pending' && !loading && pending.length > 0 && isActive && (
+                <button onClick={handleEncourage} disabled={sending || done}
+                  className={`flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-lg transition ${done ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'} disabled:opacity-60`}>
+                  {sending ? <Loader2 size={10} className="animate-spin" /> : <Bell size={10} />}
+                  {done ? '발송 완료!' : `${pending.length}명 독려`}
+                </button>
+              )}
+            </div>
+
+            {loading ? (
+              <div className="py-8 flex justify-center"><Loader2 size={18} className="animate-spin text-gray-300" /></div>
+            ) : tab === 'pending' ? (
+              pending.length === 0 ? (
+                <p className="py-8 text-center text-sm text-gray-400">🎉 모든 학생이 응시했어요!</p>
+              ) : pending.map((s, i) => (
+                <div key={s.id} className={`flex items-center px-4 py-2.5 ${i > 0 ? 'border-t border-gray-50' : ''}`}>
+                  <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center text-xs font-bold text-amber-600 flex-shrink-0 mr-2.5">{s.name[0]}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-800">{s.name}</p>
+                    <p className="text-[11px] text-gray-400 truncate">{s.email}</p>
+                  </div>
+                  <span className="text-[11px] text-amber-500 font-semibold bg-amber-50 px-1.5 py-0.5 rounded-full">미응시</span>
+                </div>
+              ))
+            ) : (
+              submitted.length === 0 ? (
+                <p className="py-8 text-center text-sm text-gray-400">아직 응시한 학생이 없어요</p>
+              ) : submitted.map((s, i) => {
+                const sub = subMap[s.id]
+                return (
+                  <div key={s.id} className={`flex items-center px-4 py-2.5 ${i > 0 ? 'border-t border-gray-50' : ''}`}>
+                    <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600 flex-shrink-0 mr-2.5">{s.name[0]}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800">{s.name}</p>
+                      <p className="text-[11px] text-gray-400">{sub?.submitted_at ? new Date(sub.submitted_at).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</p>
+                    </div>
+                    {sub?.percentage != null ? (
+                      <div className="text-right flex-shrink-0">
+                        <p className={`text-sm font-bold ${sub.percentage >= 80 ? 'text-emerald-600' : sub.percentage >= 60 ? 'text-blue-600' : 'text-amber-600'}`}>{sub.percentage}%</p>
+                        {sub.score != null && sub.total_points != null && <p className="text-[11px] text-gray-400">{sub.score}/{sub.total_points}점</p>}
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">채점 대기</span>
+                    )}
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -158,33 +342,33 @@ function DraftCard({ exam, onDeploy, onDeleted }: {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1 pr-3">
-          <h3 className="font-bold text-gray-900">{exam.title}</h3>
-          <div className="flex items-center gap-3 text-xs text-gray-400 mt-1.5">
-            <span className="flex items-center gap-1"><FileText size={11} />{exam.qCount}문제</span>
-            {exam.time_limit && <span className="flex items-center gap-1"><Clock size={11} />{exam.time_limit}분</span>}
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 md:p-5">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex-1 min-w-0 pr-2">
+          <h3 className="text-sm font-bold text-gray-900 truncate">{exam.title}</h3>
+          <div className="flex items-center gap-2 text-[11px] text-gray-400 mt-0.5">
+            <span className="flex items-center gap-0.5"><FileText size={10} />{exam.qCount}문제</span>
+            {exam.time_limit && <span className="flex items-center gap-0.5"><Clock size={10} />{exam.time_limit}분</span>}
           </div>
         </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />초안
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 flex items-center gap-1">
+            <span className="w-1 h-1 rounded-full bg-gray-400" />초안
           </span>
           <button onClick={handleDelete} disabled={deleting}
-            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-100 text-gray-300 hover:text-red-500 transition disabled:opacity-40">
-            {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+            className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-red-100 text-gray-300 hover:text-red-500 transition disabled:opacity-40">
+            {deleting ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
           </button>
         </div>
       </div>
-      <div className="flex items-center gap-2 mt-3">
+      <div className="flex items-center gap-1.5">
         <Link href={`/teacher/exams/${exam.id}`}
-          className="flex-1 text-center text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition">
+          className="flex-1 text-center text-xs font-semibold px-2 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition">
           문제 보기
         </Link>
         <button onClick={() => onDeploy(exam)}
-          className="flex-1 text-center text-xs font-bold px-3 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition flex items-center justify-center gap-1">
-          <Plus size={12} /> 출제하기
+          className="flex-1 text-center text-xs font-bold px-2 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition flex items-center justify-center gap-1">
+          <Plus size={11} /> 출제하기
         </button>
       </div>
     </div>
@@ -325,6 +509,7 @@ export default function ExamsPageClient({ drafts, active, grading, completed, cl
   const [tab, setTab] = useState<TabKey>(active.length > 0 ? 'active' : 'draft')
   const [filterClass, setFilterClass] = useState<string>('all')
   const [deployTarget, setDeployTarget] = useState<ExamDraft | null>(null)
+  const [selectedDep, setSelectedDep] = useState<Deployment | null>(null)
   const [localDrafts, setLocalDrafts] = useState(drafts)
   const [localActive, setLocalActive] = useState(active)
   const [localGrading, setLocalGrading] = useState(grading)
@@ -341,11 +526,11 @@ export default function ExamsPageClient({ drafts, active, grading, completed, cl
     setLocalCompleted(prev => prev.filter(d => d.id !== id))
   }
 
-  const tabs: { key: TabKey; label: string; count: number; color: string }[] = [
-    { key: 'draft',     label: '초안',      count: localDrafts.length,   color: 'text-gray-600' },
-    { key: 'active',    label: '진행 중',   count: localActive.length,   color: 'text-blue-600' },
-    { key: 'grading',   label: '채점 대기', count: localGrading.length,  color: 'text-purple-600' },
-    { key: 'completed', label: '완료',      count: localCompleted.length, color: 'text-emerald-600' },
+  const tabs: { key: TabKey; label: string; short: string; count: number; color: string }[] = [
+    { key: 'draft',     label: '초안',      short: '초안', count: localDrafts.length,   color: 'text-gray-600' },
+    { key: 'active',    label: '진행 중',   short: '진행', count: localActive.length,   color: 'text-blue-600' },
+    { key: 'grading',   label: '채점 대기', short: '채점', count: localGrading.length,  color: 'text-purple-600' },
+    { key: 'completed', label: '완료',      short: '완료', count: localCompleted.length, color: 'text-emerald-600' },
   ]
 
   const deploymentsByTab: Record<TabKey, Deployment[]> = {
@@ -357,33 +542,36 @@ export default function ExamsPageClient({ drafts, active, grading, completed, cl
   )
 
   return (
-    <div className="p-4 md:p-7">
+    <div className="p-3 md:p-7">
       {/* 헤더 */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-3 md:mb-6">
         <div>
-          <h1 className="text-2xl font-extrabold text-gray-900">📝 시험 관리</h1>
-          <p className="text-gray-500 text-sm mt-1">
+          <h1 className="text-lg md:text-2xl font-extrabold text-gray-900">📝 시험 관리</h1>
+          <p className="text-gray-500 text-xs md:text-sm mt-0.5">
             초안 {localDrafts.length} · 진행 중 {active.length} · 채점 대기 {grading.length}
           </p>
         </div>
         <Link href="/teacher/exams/smart"
-          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold transition shadow-sm">
-          <Plus size={16} /> 새 시험 만들기
+          className="flex items-center gap-1.5 px-3 py-2 md:px-4 md:py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs md:text-sm font-bold transition shadow-sm">
+          <Plus size={14} />
+          <span className="hidden sm:inline">새 시험 만들기</span>
+          <span className="sm:hidden">새 시험</span>
         </Link>
       </div>
 
       {/* 탭 + 필터 */}
-      <div className="flex items-center justify-between mb-5 gap-4">
-        <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+      <div className="flex items-center justify-between mb-3 md:mb-5 gap-2">
+        <div className="flex gap-0.5 md:gap-1 bg-gray-100 rounded-xl p-1 flex-1 md:flex-none">
           {tabs.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition ${
+              className={`flex items-center gap-1 md:gap-1.5 px-2 md:px-3.5 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-semibold transition whitespace-nowrap flex-1 md:flex-none justify-center ${
                 tab === t.key
                   ? 'bg-white shadow-sm text-gray-900'
                   : 'text-gray-500 hover:text-gray-700'
               }`}>
-              {t.label}
-              <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
+              <span className="sm:hidden">{t.short}</span>
+              <span className="hidden sm:inline">{t.label}</span>
+              <span className={`text-[10px] md:text-xs font-bold px-1 md:px-1.5 py-0.5 rounded-full ${
                 tab === t.key ? `bg-gray-100 ${t.color}` : 'bg-gray-200 text-gray-500'
               }`}>
                 {t.count}
@@ -395,7 +583,7 @@ export default function ExamsPageClient({ drafts, active, grading, completed, cl
         {/* 반별 필터 (초안 탭 제외) */}
         {tab !== 'draft' && classes.length > 0 && (
           <select value={filterClass} onChange={e => setFilterClass(e.target.value)}
-            className="text-sm border border-gray-200 rounded-xl px-3 py-2 outline-none focus:border-blue-400 bg-white">
+            className="text-xs md:text-sm border border-gray-200 rounded-xl px-2 md:px-3 py-1.5 md:py-2 outline-none focus:border-blue-400 bg-white flex-shrink-0">
             <option value="all">전체 반</option>
             {classes.map(cls => (
               <option key={cls.id} value={cls.id}>{cls.name}</option>
@@ -427,10 +615,15 @@ export default function ExamsPageClient({ drafts, active, grading, completed, cl
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {filteredDeployments.map(dep => (
-              <DeploymentCard key={dep.id} dep={dep} onDelete={handleDelete} />
+              <DeploymentCard key={dep.id} dep={dep} onDelete={handleDelete} onClick={() => setSelectedDep(dep)} />
             ))}
           </div>
         )
+      )}
+
+      {/* 배포 상세 플로팅 모달 */}
+      {selectedDep && (
+        <DeploymentModal dep={selectedDep} onClose={() => setSelectedDep(null)} />
       )}
 
       {/* 배포 모달 */}

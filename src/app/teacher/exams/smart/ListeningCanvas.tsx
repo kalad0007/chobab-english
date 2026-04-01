@@ -371,6 +371,8 @@ export default function ListeningCanvas({
   classId, targetBand, maxBand, filling, setFilling, allIds,
 }: ListeningCanvasProps) {
 
+  const [activeModule, setActiveModule] = useState<'LM1' | 'LM2up' | 'LM2down'>('LM1')
+
   // Response 직접 선택 상태
   const [respPicker, setRespPicker] = useState<{
     mod: 'LM1' | 'LM2up' | 'LM2down'
@@ -619,28 +621,48 @@ export default function ListeningCanvas({
         </div>
       </div>
 
-      <div className="flex gap-3 p-4 min-w-[900px] flex-1 overflow-auto items-start">
+      {/* 모바일 모듈 탭 */}
+      <div className="md:hidden flex items-center gap-1 px-3 pt-3 pb-0">
+        {([
+          { key: 'LM1',    label: 'LM1',   color: 'bg-gray-800 text-white',    inactive: 'bg-gray-100 text-gray-500' },
+          { key: 'LM2up',  label: 'LM2↑',  color: 'bg-emerald-600 text-white', inactive: 'bg-emerald-50 text-emerald-600' },
+          { key: 'LM2down',label: 'LM2↓',  color: 'bg-amber-500 text-white',   inactive: 'bg-amber-50 text-amber-600' },
+        ] as const).map(m => (
+          <button key={m.key} onClick={() => setActiveModule(m.key)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex-1 ${activeModule === m.key ? m.color : m.inactive}`}>
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex gap-3 p-3 md:p-4 md:min-w-[900px] flex-1 overflow-auto items-start">
 
       {/* Module 1 */}
+      <div className={activeModule !== 'LM1' ? 'hidden md:contents' : 'contents'}>
       <ModuleColumn
         title="Module 1" subtitle="공통 모듈 — 전체 학생 (30문항)"
         headerColor="bg-gray-50" borderColor="border-gray-100"
         {...makeProps(lm1, 'LM1', setLM1, 12, 3, 3)}
       />
+      </div>
 
       {/* Module 2-Up */}
+      <div className={activeModule !== 'LM2up' ? 'hidden md:contents' : 'contents'}>
       <ModuleColumn
         title="Module 2-Up" subtitle="M1 70%+ → 진입 (15문항)"
         headerColor="bg-emerald-50" borderColor="border-emerald-100"
         {...makeProps(lm2up, 'LM2up', setLM2Up, 3, 2, 2)}
       />
+      </div>
 
       {/* Module 2-Down */}
+      <div className={activeModule !== 'LM2down' ? 'hidden md:contents' : 'contents'}>
       <ModuleColumn
         title="Module 2-Down" subtitle="M1 70% 미만 → 진입 (15문항)"
         headerColor="bg-amber-50" borderColor="border-amber-100"
         {...makeProps(lm2down, 'LM2down', setLM2Down, 3, 2, 2)}
       />
+      </div>
 
       <QuestionPickerModal
         open={!!respPicker}

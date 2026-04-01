@@ -217,25 +217,25 @@ export default function GenerateQuestionsPage() {
   const perSetLabel = speakingLabels?.perSetLabel ?? '지문당 문제 개수'
 
   return (
-    <div className="p-7 max-w-3xl">
-      <div className="mb-6">
-        <div className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-1.5 rounded-full text-sm font-bold mb-3">
-          <Sparkles size={14} /> AI 문제 생성
+    <div className="p-3 md:p-7 max-w-3xl">
+      <div className="mb-3 md:mb-6">
+        <div className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-3 py-1 rounded-full text-xs md:text-sm font-bold mb-2">
+          <Sparkles size={12} /> AI 문제 생성
         </div>
-        <h1 className="text-2xl font-extrabold text-gray-900">AI로 TOEFL 문제 생성</h1>
-        <p className="text-gray-500 text-sm mt-1">Claude AI가 TOEFL iBT 형식 문제를 생성해드려요. 생성 후 직접 선택해 저장하세요.</p>
+        <h1 className="text-lg md:text-2xl font-extrabold text-gray-900">AI로 TOEFL 문제 생성</h1>
+        <p className="text-gray-500 text-xs md:text-sm mt-0.5">Claude AI가 TOEFL iBT 형식 문제를 생성해드려요.</p>
       </div>
 
       {/* 생성 옵션 폼 */}
-      <form onSubmit={handleGenerate} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6 space-y-5">
+      <form onSubmit={handleGenerate} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 md:p-6 mb-4 md:mb-6 space-y-3 md:space-y-5">
 
         {/* 섹션 선택 */}
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">TOEFL 섹션</label>
-          <div className="grid grid-cols-4 gap-2">
+          <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1.5">TOEFL 섹션</label>
+          <div className="grid grid-cols-4 gap-1.5">
             {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
               <button key={k} type="button" onClick={() => handleCategoryChange(k)}
-                className={`py-2.5 rounded-xl text-sm font-bold transition ${
+                className={`py-2 rounded-xl text-xs md:text-sm font-bold transition ${
                   category === k
                     ? k === 'reading' ? 'bg-blue-600 text-white'
                       : k === 'listening' ? 'bg-emerald-600 text-white'
@@ -251,28 +251,28 @@ export default function GenerateQuestionsPage() {
 
         {/* 세부 유형 카드 — Reading */}
         {category === 'reading' && (
-          <div className="space-y-3">
-            <label className="block text-sm font-semibold text-gray-700">
-              문제 유형 <span className="text-xs font-normal text-gray-400">(선택 — 미선택 시 학술 지문으로 생성)</span>
+          <div className="space-y-2">
+            <label className="block text-xs md:text-sm font-semibold text-gray-700">
+              문제 유형 <span className="text-[10px] md:text-xs font-normal text-gray-400">(선택)</span>
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-1.5">
               {READING_TOP_TYPES.map(opt => {
                 const isSelected = readingTopType === opt.value
                 return (
                   <button key={opt.value} type="button"
                     onClick={() => handleReadingTopType(opt.value)}
-                    className={`text-left p-3 rounded-xl border-2 transition ${
+                    className={`text-left p-2 md:p-3 rounded-xl border-2 transition ${
                       isSelected ? 'border-purple-500 bg-purple-50' : 'border-gray-100 hover:border-gray-200 bg-white'
                     }`}>
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${opt.badge}`}>{opt.label}</span>
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className={`text-[10px] md:text-xs px-1.5 py-0.5 rounded-full font-semibold ${opt.badge}`}>{opt.label}</span>
                       {isSelected && (
-                        <span className="w-4 h-4 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-                          <Check size={10} className="text-white" />
+                        <span className="w-3.5 h-3.5 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                          <Check size={8} className="text-white" />
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">{opt.desc}</p>
+                    <p className="text-[10px] text-gray-500 hidden md:block mt-1">{opt.desc}</p>
                   </button>
                 )
               })}
@@ -281,25 +281,25 @@ export default function GenerateQuestionsPage() {
             {/* Daily Life 하위 형식 */}
             {readingTopType === 'daily_life' && (
               <div className="pl-1">
-                <label className="block text-xs font-semibold text-gray-600 mb-2">Daily Life 형식 선택</label>
-                <div className="grid grid-cols-2 gap-2">
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Daily Life 형식 선택</label>
+                <div className="grid grid-cols-2 gap-1.5">
                   {DAILY_LIFE_FORMATS.map(fmt => {
                     const isSelected = subtype === fmt.value
                     return (
                       <button key={fmt.value} type="button"
                         onClick={() => handleSubtypeToggle(fmt.value)}
-                        className={`text-left p-3 rounded-xl border-2 transition ${
+                        className={`text-left p-2 md:p-3 rounded-xl border-2 transition ${
                           isSelected ? 'border-cyan-500 bg-cyan-50' : 'border-gray-100 hover:border-gray-200 bg-white'
                         }`}>
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${fmt.badge}`}>{fmt.label}</span>
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className={`text-[10px] md:text-xs px-1.5 py-0.5 rounded-full font-semibold ${fmt.badge}`}>{fmt.label}</span>
                           {isSelected && (
-                            <span className="w-4 h-4 bg-cyan-600 rounded-full flex items-center justify-center flex-shrink-0">
-                              <Check size={10} className="text-white" />
+                            <span className="w-3.5 h-3.5 bg-cyan-600 rounded-full flex items-center justify-center flex-shrink-0">
+                              <Check size={8} className="text-white" />
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">{fmt.desc}</p>
+                        <p className="text-[10px] text-gray-500 hidden md:block mt-1">{fmt.desc}</p>
                       </button>
                     )
                   })}
@@ -312,25 +312,25 @@ export default function GenerateQuestionsPage() {
         {/* 세부 유형 카드 — Listening / Writing / Speaking */}
         {category !== 'reading' && subtypeList.length > 0 && (
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              문제 유형 <span className="text-xs font-normal text-gray-400">(선택)</span>
+            <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1.5">
+              문제 유형 <span className="text-[10px] md:text-xs font-normal text-gray-400">(선택)</span>
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-1.5">
               {subtypeList.map(opt => (
                 <button key={opt.value} type="button"
                   onClick={() => handleSubtypeToggle(opt.value)}
-                  className={`text-left p-3 rounded-xl border-2 transition ${
+                  className={`text-left p-2 md:p-3 rounded-xl border-2 transition ${
                     subtype === opt.value ? 'border-purple-500 bg-purple-50' : 'border-gray-100 hover:border-gray-200 bg-white'
                   }`}>
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${opt.badge}`}>{opt.label}</span>
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className={`text-[10px] md:text-xs px-1.5 py-0.5 rounded-full font-semibold ${opt.badge}`}>{opt.label}</span>
                     {subtype === opt.value && (
-                      <span className="w-4 h-4 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Check size={10} className="text-white" />
+                      <span className="w-3.5 h-3.5 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Check size={8} className="text-white" />
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">{opt.desc}</p>
+                  <p className="text-[10px] text-gray-500 hidden md:block mt-1">{opt.desc}</p>
                 </button>
               ))}
             </div>
@@ -422,13 +422,31 @@ export default function GenerateQuestionsPage() {
 
         {/* 난이도 */}
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-            난이도 (10단계 정밀 그리드)
-            <span className="ml-2 text-xs font-normal text-gray-400">
+          <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1.5">
+            난이도
+            <span className="ml-2 text-[10px] md:text-xs font-normal text-gray-400">
               {DIFFICULTY_LEVELS.find(l => l.value === difficulty)?.level} · Band {difficulty}
             </span>
           </label>
-          <div className="flex flex-wrap gap-1">
+          {/* 모바일: 슬라이더 */}
+          <div className="md:hidden">
+            <input
+              type="range"
+              min="1" max="6" step="0.5"
+              value={difficulty}
+              onChange={e => setDifficulty(Number(e.target.value))}
+              className="w-full accent-purple-600"
+            />
+            <div className="flex justify-between text-[10px] text-gray-400 mt-0.5 px-0.5">
+              <span>L1 · 1.0</span>
+              <span className={`font-bold text-xs px-2 py-0.5 rounded-full ${DIFFICULTY_LEVELS.find(l => l.value === difficulty)?.color ?? ''}`}>
+                {DIFFICULTY_LEVELS.find(l => l.value === difficulty)?.level} · {DIFFICULTY_LEVELS.find(l => l.value === difficulty)?.label}
+              </span>
+              <span>MAX · 6.0</span>
+            </div>
+          </div>
+          {/* 데스크톱: 그리드 버튼 */}
+          <div className="hidden md:flex flex-wrap gap-1">
             {DIFFICULTY_LEVELS.map(l => (
               <button key={l.value} type="button" onClick={() => setDifficulty(l.value)}
                 title={`${l.name} (${l.cefr})`}
@@ -445,21 +463,21 @@ export default function GenerateQuestionsPage() {
         </div>
 
         {/* 문제 개수 + 주제 */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-2 md:gap-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+            <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1">
               {isMultiQpp ? setCountLabel : '문제 개수'}
             </label>
             <select value={count} onChange={e => setCount(Number(e.target.value))}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500">
+              className="w-full px-2 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500">
               {(isMultiQpp ? [1, 2, 3, 5] : [1, 2, 3, 5, 10]).map(n => <option key={n} value={n}>{n}개</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">주제/키워드 (선택)</label>
+            <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1">주제/키워드 (선택)</label>
             <input value={topic} onChange={e => setTopic(e.target.value)}
-              placeholder="예: 생태학, 천문학, 캠퍼스 생활..."
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500" />
+              placeholder="생태학, 캠퍼스 생활..."
+              className="w-full px-2 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500" />
           </div>
         </div>
 
@@ -488,8 +506,8 @@ export default function GenerateQuestionsPage() {
         {error && <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-lg border border-red-200">{error}</div>}
 
         <button type="submit" disabled={loading}
-          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:opacity-60 text-white font-bold py-3 rounded-xl transition text-sm shadow-md">
-          {loading ? <><Loader2 size={16} className="animate-spin" /> 생성 중...</> : <><Sparkles size={16} /> 문제 생성하기</>}
+          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:opacity-60 text-white font-bold py-2.5 rounded-xl transition text-sm shadow-md">
+          {loading ? <><Loader2 size={15} className="animate-spin" /> 생성 중...</> : <><Sparkles size={15} /> 문제 생성하기</>}
         </button>
       </form>
 

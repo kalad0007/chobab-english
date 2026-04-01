@@ -77,187 +77,174 @@ export function ClickableQRow({ idx, q }: Props) {
         )}
       </button>
 
-      {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          onClick={() => setOpen(false)}
-        >
-          {/* 배경 */}
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      {open && <QuestionModal q={q} onClose={() => setOpen(false)} />}
+    </>
+  )
+}
 
-          {/* 패널 */}
-          <div
-            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto"
-            onClick={e => e.stopPropagation()}
+export function QuestionModal({ q, onClose }: { q: PreviewQuestion; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      {/* 배경 */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+
+      {/* 패널 */}
+      <div
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* 헤더 */}
+        <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between rounded-t-2xl z-10">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${CATEGORY_COLOR[q.category] ?? 'bg-gray-100 text-gray-600'}`}>
+              {CATEGORY_ICON[q.category]}
+              {q.category}
+            </span>
+            <span className="text-xs font-semibold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full">
+              {SUBTYPE_LABEL[q.question_subtype ?? ''] ?? q.question_subtype}
+            </span>
+            {q.diffLabel && (
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${q.diffColor ?? ''}`}>
+                Band {q.diffLabel}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition flex-shrink-0"
           >
-            {/* 헤더 */}
-            <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between rounded-t-2xl z-10">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className={`flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${CATEGORY_COLOR[q.category] ?? 'bg-gray-100 text-gray-600'}`}>
-                  {CATEGORY_ICON[q.category]}
-                  {q.category}
-                </span>
-                <span className="text-xs font-semibold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full">
-                  {SUBTYPE_LABEL[q.question_subtype ?? ''] ?? q.question_subtype}
-                </span>
-                {q.diffLabel && (
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${q.diffColor ?? ''}`}>
-                    Band {q.diffLabel}
-                  </span>
+            <X size={14} />
+          </button>
+        </div>
+
+        {/* 음성 플레이어 (리스닝/스피킹) */}
+        {q.audio_url && (q.category === 'listening' || q.category === 'speaking') && (
+          <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
+            <audio controls src={q.audio_url} className="w-full h-9" />
+          </div>
+        )}
+
+        <div className="px-5 py-4 space-y-4">
+          {/* 지문 */}
+          {q.passage && q.question_subtype !== 'email_writing' && (
+            <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+              {q.passage}
+            </div>
+          )}
+
+          {/* 문제 본문 */}
+          <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap font-medium">
+            {q.question_subtype === 'email_writing'
+              ? (q.content ?? '')
+                  .split(/\n{2,}/)
+                  .filter(para => {
+                    const first = para.trim()[0] ?? ''
+                    return !/^[\uAC00-\uD7A3\u3131-\uD79D【]/.test(first)
+                  })
+                  .join('\n\n')
+                  .trim()
+              : q.content}
+          </div>
+
+          {/* 음성 스크립트 */}
+          {q.audio_script && (
+            <div className={`rounded-xl px-4 py-3 border ${
+              q.category === 'speaking' ? 'bg-orange-50 border-orange-200' : 'bg-sky-50 border-sky-200'
+            }`}>
+              <span className={`text-xs font-bold block mb-1.5 ${
+                q.category === 'speaking' ? 'text-orange-600' : 'text-sky-600'
+              }`}>음성 스크립트</span>
+              <p className={`text-sm leading-relaxed whitespace-pre-wrap ${
+                q.category === 'speaking' ? 'text-orange-900' : 'text-sky-900'
+              }`}>{q.audio_script}</p>
+            </div>
+          )}
+
+          {/* 보기 — sentence_reordering: 단어 칩 */}
+          {q.question_subtype === 'sentence_reordering' && q.options && q.options.length > 0 && (() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const words = q.options.map((opt: any) => typeof opt === 'string' ? opt : opt?.text ?? String(opt))
+            const answerWords: string[] = (() => {
+              if (!q.answer) return []
+              if (/^[A-Z](,[A-Z])*$/.test(q.answer.trim())) {
+                return q.answer.split(',').map(l => words[l.charCodeAt(0) - 65]).filter(Boolean)
+              }
+              return []
+            })()
+            return (
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">단어 목록</p>
+                  <div className="flex flex-wrap gap-2">
+                    {words.map((w: string, i: number) => (
+                      <span key={i} className="px-3 py-1.5 bg-purple-50 border border-purple-200 text-purple-800 text-sm font-semibold rounded-lg">{w}</span>
+                    ))}
+                  </div>
+                </div>
+                {answerWords.length > 0 && (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+                    <p className="text-xs font-bold text-emerald-600 mb-2">정답 문장</p>
+                    <div className="flex flex-wrap gap-2">
+                      {answerWords.map((w: string, i: number) => (
+                        <span key={i} className="px-3 py-1.5 bg-emerald-100 border border-emerald-300 text-emerald-800 text-sm font-semibold rounded-lg">{w}</span>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
-              <button
-                onClick={() => setOpen(false)}
-                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition flex-shrink-0"
-              >
-                <X size={14} />
-              </button>
-            </div>
+            )
+          })()}
 
-            {/* 음성 플레이어 (리스닝/스피킹) */}
-            {q.audio_url && (q.category === 'listening' || q.category === 'speaking') && (
-              <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
-                <audio controls src={q.audio_url} className="w-full h-9" />
-              </div>
-            )}
-
-            <div className="px-5 py-4 space-y-4">
-              {/* 지문 — email_writing은 passage가 한글 번역이므로 숨김 */}
-              {q.passage && q.question_subtype !== 'email_writing' && (
-                <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {q.passage}
-                </div>
-              )}
-
-              {/* 문제 본문 — email_writing은 한국어/번역 단락 제거 */}
-              <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap font-medium">
-                {q.question_subtype === 'email_writing'
-                  ? (q.content ?? '')
-                      .split(/\n{2,}/)
-                      .filter(para => {
-                        const first = para.trim()[0] ?? ''
-                        // 【 (전각 괄호) 또는 한글 시작 단락 제거
-                        return !/^[\uAC00-\uD7A3\u3131-\uD79D【]/.test(first)
-                      })
-                      .join('\n\n')
-                      .trim()
-                  : q.content}
-              </div>
-
-              {/* 음성 스크립트 (스피킹 / 리스닝) */}
-              {q.audio_script && (
-                <div className={`rounded-xl px-4 py-3 border ${
-                  q.category === 'speaking'
-                    ? 'bg-orange-50 border-orange-200'
-                    : 'bg-sky-50 border-sky-200'
-                }`}>
-                  <span className={`text-xs font-bold block mb-1.5 ${
-                    q.category === 'speaking' ? 'text-orange-600' : 'text-sky-600'
-                  }`}>음성 스크립트</span>
-                  <p className={`text-sm leading-relaxed whitespace-pre-wrap ${
-                    q.category === 'speaking' ? 'text-orange-900' : 'text-sky-900'
-                  }`}>{q.audio_script}</p>
-                </div>
-              )}
-
-              {/* 보기 — sentence_reordering: 단어 칩 */}
-              {q.question_subtype === 'sentence_reordering' && q.options && q.options.length > 0 && (() => {
+          {/* 보기 — 일반 객관식 */}
+          {q.question_subtype !== 'sentence_reordering' && q.options && q.options.length > 0 && (
+            <div className="space-y-2">
+              {q.options.map((opt, i) => {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const words = q.options.map((opt: any) => typeof opt === 'string' ? opt : opt?.text ?? String(opt))
-                // answer는 "B,D,A,..." 같은 순서 또는 완성 문장
-                const answerWords: string[] = (() => {
-                  if (!q.answer) return []
-                  // 콤마로 구분된 알파벳 순서인 경우
-                  if (/^[A-Z](,[A-Z])*$/.test(q.answer.trim())) {
-                    return q.answer.split(',').map(l => words[l.charCodeAt(0) - 65]).filter(Boolean)
-                  }
-                  return []
-                })()
+                const optText: string = typeof opt === 'string' ? opt : (opt as any)?.text ?? String(opt)
+                const letter = String.fromCharCode(65 + i)
+                const isAnswer = q.answer === letter || q.answer === optText || q.answer === String(i + 1)
                 return (
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">단어 목록</p>
-                      <div className="flex flex-wrap gap-2">
-                        {words.map((w, i) => (
-                          <span key={i} className="px-3 py-1.5 bg-purple-50 border border-purple-200 text-purple-800 text-sm font-semibold rounded-lg">
-                            {w}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    {answerWords.length > 0 && (
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
-                        <p className="text-xs font-bold text-emerald-600 mb-2">정답 문장</p>
-                        <div className="flex flex-wrap gap-2">
-                          {answerWords.map((w, i) => (
-                            <span key={i} className="px-3 py-1.5 bg-emerald-100 border border-emerald-300 text-emerald-800 text-sm font-semibold rounded-lg">
-                              {w}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                  <div key={i} className={`flex items-start gap-3 rounded-xl px-4 py-2.5 text-sm ${
+                    isAnswer ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' : 'bg-gray-50 border border-gray-100 text-gray-700'
+                  }`}>
+                    <span className={`font-bold flex-shrink-0 ${isAnswer ? 'text-emerald-600' : 'text-gray-400'}`}>{letter}</span>
+                    <span>{optText}</span>
+                    {isAnswer && <span className="ml-auto text-emerald-500 text-xs font-bold flex-shrink-0">정답</span>}
                   </div>
                 )
-              })()}
-
-              {/* 보기 — 일반 객관식 */}
-              {q.question_subtype !== 'sentence_reordering' && q.options && q.options.length > 0 && (
-                <div className="space-y-2">
-                  {q.options.map((opt, i) => {
-                    // options may be stored as {num, text} objects or plain strings
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const optText: string = typeof opt === 'string' ? opt : (opt as any)?.text ?? String(opt)
-                    const letter = String.fromCharCode(65 + i) // A, B, C, D
-                    const isAnswer = q.answer === letter || q.answer === optText || q.answer === String(i + 1)
-                    return (
-                      <div
-                        key={i}
-                        className={`flex items-start gap-3 rounded-xl px-4 py-2.5 text-sm ${
-                          isAnswer
-                            ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
-                            : 'bg-gray-50 border border-gray-100 text-gray-700'
-                        }`}
-                      >
-                        <span className={`font-bold flex-shrink-0 ${isAnswer ? 'text-emerald-600' : 'text-gray-400'}`}>
-                          {letter}
-                        </span>
-                        <span>{optText}</span>
-                        {isAnswer && <span className="ml-auto text-emerald-500 text-xs font-bold flex-shrink-0">정답</span>}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-
-              {/* 정답 (보기 없는 경우, email_writing 제외) */}
-              {q.answer && (!q.options || q.options.length === 0) && q.question_subtype !== 'email_writing' && (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm">
-                  <span className="text-xs font-bold text-emerald-600 block mb-1">정답</span>
-                  <span className="text-emerald-800 font-medium">{q.answer}</span>
-                </div>
-              )}
-
-              {/* 모범 답안 (email_writing) — explanation 우선, fallback to answer */}
-              {q.question_subtype === 'email_writing' && (q.explanation || q.answer) && (
-                <div className="bg-purple-50 border border-purple-200 rounded-xl px-4 py-3 text-sm">
-                  <span className="text-xs font-bold text-purple-600 block mb-2">모범 답안</span>
-                  <p className="text-purple-900 leading-relaxed whitespace-pre-wrap">
-                    {((q.explanation || q.answer) ?? '')
-                      .split(/\n{2,}/)
-                      .filter(para => {
-                        const first = para.trim()[0] ?? ''
-                        return !/^[\uAC00-\uD7A3\u3131-\uD79D【]/.test(first)
-                      })
-                      .join('\n\n')
-                      .trim()}
-                  </p>
-                </div>
-              )}
+              })}
             </div>
-          </div>
+          )}
+
+          {/* 정답 (보기 없는 경우) */}
+          {q.answer && (!q.options || q.options.length === 0) && q.question_subtype !== 'email_writing' && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm">
+              <span className="text-xs font-bold text-emerald-600 block mb-1">정답</span>
+              <span className="text-emerald-800 font-medium">{q.answer}</span>
+            </div>
+          )}
+
+          {/* 모범 답안 (email_writing) */}
+          {q.question_subtype === 'email_writing' && (q.explanation || q.answer) && (
+            <div className="bg-purple-50 border border-purple-200 rounded-xl px-4 py-3 text-sm">
+              <span className="text-xs font-bold text-purple-600 block mb-2">모범 답안</span>
+              <p className="text-purple-900 leading-relaxed whitespace-pre-wrap">
+                {((q.explanation || q.answer) ?? '')
+                  .split(/\n{2,}/)
+                  .filter(para => {
+                    const first = para.trim()[0] ?? ''
+                    return !/^[\uAC00-\uD7A3\u3131-\uD79D【]/.test(first)
+                  })
+                  .join('\n\n')
+                  .trim()}
+              </p>
+            </div>
+          )}
         </div>
-      )}
-    </>
+      </div>
+    </div>
   )
 }

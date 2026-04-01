@@ -30,20 +30,21 @@ export default function ExamActions({ examId, examTitle, examTimeLimitMins, curr
 
   return (
     <>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         {currentStatus === 'draft' && (
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold transition"
+            className="flex items-center gap-1 px-2.5 py-1.5 md:px-3 md:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs md:text-sm font-bold transition"
           >
-            <Megaphone size={14} /> 출제하기
+            <Megaphone size={13} /> 출제하기
           </button>
         )}
         <button
           onClick={handleDelete}
-          className="flex items-center gap-1.5 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-sm font-semibold transition"
+          className="flex items-center gap-1 px-2.5 py-1.5 md:px-3 md:py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs md:text-sm font-semibold transition"
         >
-          <Trash2 size={14} /> 삭제
+          <Trash2 size={13} />
+          <span className="hidden sm:inline">삭제</span>
         </button>
       </div>
 

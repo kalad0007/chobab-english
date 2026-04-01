@@ -161,24 +161,24 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
       <div className="max-w-5xl mx-auto p-4 md:p-7 space-y-5">
 
         {/* ── 히어로 헤더 ── */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-slate-800 via-blue-900 to-indigo-900 rounded-2xl text-white p-6 md:p-8 shadow-xl">
+        <div className="relative overflow-hidden bg-gradient-to-br from-slate-800 via-blue-900 to-indigo-900 rounded-2xl text-white p-4 md:p-8 shadow-xl">
           {/* 배경 장식 */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4 pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-40 h-40 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/4 pointer-events-none" />
 
           <div className="relative">
-            <Link href="/teacher/exams" className="inline-flex items-center gap-1 text-xs text-white/50 hover:text-white/80 mb-4 transition">
+            <Link href="/teacher/exams" className="inline-flex items-center gap-1 text-xs text-white/50 hover:text-white/80 mb-3 transition">
               <ArrowLeft size={12} /> 시험 목록
             </Link>
 
-            <div className="flex items-start justify-between gap-4 mb-6">
-              <div>
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <h1 className="text-2xl md:text-3xl font-extrabold">{exam.title}</h1>
-                  {cfg && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-400/30 text-blue-200 border border-blue-400/30">스마트 빌더</span>}
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${statusCfg.cls}`}>{statusCfg.label}</span>
+            <div className="flex items-start justify-between gap-2 mb-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                  <h1 className="text-xl md:text-3xl font-extrabold truncate">{exam.title}</h1>
+                  {cfg && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-400/30 text-blue-200 border border-blue-400/30 flex-shrink-0">스마트 빌더</span>}
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${statusCfg.cls}`}>{statusCfg.label}</span>
                 </div>
-                {cls && <p className="text-sm text-white/50">{cls.name}</p>}
+                {cls && <p className="text-xs text-white/50">{cls.name}</p>}
               </div>
               <ExamActions
                 examId={examId}
@@ -190,46 +190,45 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
             </div>
 
             {/* 핵심 지표 4개 */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="bg-white/10 rounded-xl px-4 py-3 backdrop-blur-sm border border-white/10">
-                <div className="text-2xl font-black">120<span className="text-sm font-semibold ml-0.5">점</span></div>
-                <div className="text-xs text-white/60 mt-0.5">구 TOEFL 총점</div>
+            <div className="grid grid-cols-4 gap-2">
+              <div className="bg-white/10 rounded-xl px-2.5 py-2 md:px-4 md:py-3 backdrop-blur-sm border border-white/10">
+                <div className="text-lg md:text-2xl font-black">120<span className="text-xs md:text-sm font-semibold ml-0.5">점</span></div>
+                <div className="text-[10px] md:text-xs text-white/60 mt-0.5">구 TOEFL</div>
               </div>
               {cfg ? (
-                <div className="bg-white/10 rounded-xl px-4 py-3 backdrop-blur-sm border border-white/10">
-                  <div className="text-2xl font-black flex items-end gap-1">
+                <div className="bg-white/10 rounded-xl px-2.5 py-2 md:px-4 md:py-3 backdrop-blur-sm border border-white/10">
+                  <div className="text-lg md:text-2xl font-black flex items-end gap-0.5">
                     {cfg.maxBand ?? '—'}
-                    <span className="text-sm font-semibold mb-0.5">Band</span>
+                    <span className="text-xs md:text-sm font-semibold mb-0.5">B</span>
                   </div>
-                  <div className="text-xs text-white/60 mt-0.5">최고 출제 밴드</div>
-                  <div className="text-[10px] font-bold text-yellow-300 mt-1 tracking-wide">2026 New TOEFL Band</div>
+                  <div className="text-[10px] md:text-xs text-white/60 mt-0.5">Max Band</div>
                 </div>
               ) : (
-                <div className="bg-white/10 rounded-xl px-4 py-3 backdrop-blur-sm border border-white/10">
-                  <div className="text-2xl font-black">{totalQCount}<span className="text-sm font-semibold ml-0.5">문</span></div>
-                  <div className="text-xs text-white/60 mt-0.5">총 문제 수</div>
+                <div className="bg-white/10 rounded-xl px-2.5 py-2 md:px-4 md:py-3 backdrop-blur-sm border border-white/10">
+                  <div className="text-lg md:text-2xl font-black">{totalQCount}<span className="text-xs md:text-sm font-semibold ml-0.5">문</span></div>
+                  <div className="text-[10px] md:text-xs text-white/60 mt-0.5">총 문제</div>
                 </div>
               )}
-              <div className="bg-white/10 rounded-xl px-4 py-3 backdrop-blur-sm border border-white/10">
-                <div className="text-2xl font-black">{submissions?.length ?? 0}<span className="text-sm font-semibold ml-0.5">명</span></div>
-                <div className="text-xs text-white/60 mt-0.5">제출자</div>
+              <div className="bg-white/10 rounded-xl px-2.5 py-2 md:px-4 md:py-3 backdrop-blur-sm border border-white/10">
+                <div className="text-lg md:text-2xl font-black">{submissions?.length ?? 0}<span className="text-xs md:text-sm font-semibold ml-0.5">명</span></div>
+                <div className="text-[10px] md:text-xs text-white/60 mt-0.5">제출자</div>
               </div>
-              <div className="bg-white/10 rounded-xl px-4 py-3 backdrop-blur-sm border border-white/10">
-                <div className={`text-2xl font-black ${avgPct !== null ? (avgPct >= 80 ? 'text-emerald-300' : avgPct >= 60 ? 'text-blue-300' : 'text-amber-300') : ''}`}>
+              <div className="bg-white/10 rounded-xl px-2.5 py-2 md:px-4 md:py-3 backdrop-blur-sm border border-white/10">
+                <div className={`text-lg md:text-2xl font-black ${avgPct !== null ? (avgPct >= 80 ? 'text-emerald-300' : avgPct >= 60 ? 'text-blue-300' : 'text-amber-300') : ''}`}>
                   {avgPct !== null ? `${avgPct}%` : '—'}
                 </div>
-                <div className="text-xs text-white/60 mt-0.5">평균 점수</div>
+                <div className="text-[10px] md:text-xs text-white/60 mt-0.5">평균</div>
               </div>
             </div>
 
             {/* 스마트 빌더 밴드 범위 */}
             {cfg && (
-              <div className="mt-4 flex items-center gap-3 text-sm text-white/60">
-                <Award size={14} className="text-yellow-400" />
-                <span>목표 밴드 <strong className="text-white">{cfg.targetBand}</strong></span>
+              <div className="mt-3 flex items-center gap-2 text-xs text-white/60 flex-wrap">
+                <Award size={12} className="text-yellow-400" />
+                <span>목표 <strong className="text-white">{cfg.targetBand}</strong></span>
                 <span>·</span>
-                <TrendingUp size={14} className="text-emerald-400" />
-                <span>최고 밴드 <strong className="text-white">{cfg.maxBand}</strong></span>
+                <TrendingUp size={12} className="text-emerald-400" />
+                <span>최고 <strong className="text-white">{cfg.maxBand}</strong></span>
                 <span>·</span>
                 <span>총 <strong className="text-white">{totalQCount}문제</strong></span>
               </div>
@@ -239,15 +238,15 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
 
         {/* ── 스마트 빌더: 섹션 오버뷰 카드 4개 ── */}
         {cfg && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-4 gap-2 md:gap-3">
             {sections.map(s => (
-              <div key={s.key} className={`bg-white rounded-2xl border ${s.border} shadow-sm p-4 flex flex-col gap-3`}>
-                <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center shadow-sm`}>
-                  <s.icon size={17} className="text-white" />
+              <div key={s.key} className={`bg-white rounded-xl md:rounded-2xl border ${s.border} shadow-sm p-2.5 md:p-4 flex flex-col gap-2 md:gap-3`}>
+                <div className={`w-7 h-7 md:w-9 md:h-9 rounded-lg md:rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center shadow-sm`}>
+                  <s.icon size={14} className="text-white" />
                 </div>
                 <div>
-                  <div className="text-2xl font-extrabold text-gray-900">{s.count}</div>
-                  <div className={`text-xs font-bold ${s.text}`}>{s.label}</div>
+                  <div className="text-xl md:text-2xl font-extrabold text-gray-900">{s.count}</div>
+                  <div className={`text-[10px] md:text-xs font-bold ${s.text}`}>{s.label}</div>
                 </div>
                 {/* 미니 모듈 분포바 */}
                 {s.key === 'reading' && cfg && (
