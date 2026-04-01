@@ -46,3 +46,7 @@ body {
 .prose tr:nth-child(even) td {
   background-color: #f8fafc;
 }
+
+@theme {
+  --breakpoint-md: 1024px;
+}
