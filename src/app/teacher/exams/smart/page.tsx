@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
-  Zap, X, ChevronRight, Save, Info,
+  Zap, X, ChevronRight, Save, Info, ChevronDown,
   BookOpen, AlignLeft, Globe, ArrowUp, ArrowDown,
   Loader2, CheckCircle2, AlertCircle, Headphones, FileText,
   PenLine, Mic, Plus, Minus, Clock,
@@ -251,6 +251,8 @@ export default function SmartBuilderPage() {
     slotType: 'fillBlank' | 'dailyLife' | 'deep'
     idx: number
   } | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [activeModule, setActiveModule] = useState<'M1' | 'M2up' | 'M2down'>('M1')
 
   // 클래스 목록 로드
   useEffect(() => {
@@ -597,109 +599,163 @@ export default function SmartBuilderPage() {
     <div className="flex flex-col h-full">
 
       {/* ── 상단 헤더 ── */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-gray-100 bg-white flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <Zap size={18} className="text-blue-600" />
+      <div className="flex items-center justify-between px-3 md:px-6 py-2 md:py-3 border-b border-gray-100 bg-white flex-shrink-0 gap-2">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <Zap size={16} className="text-blue-600 flex-shrink-0" />
           <input
             value={examTitle}
             onChange={e => setExamTitle(e.target.value)}
-            placeholder="시험 제목을 입력하세요..."
-            className="text-lg font-bold text-gray-900 bg-transparent border-none outline-none w-72 placeholder-gray-300"
+            placeholder="시험 제목..."
+            className="text-sm md:text-lg font-bold text-gray-900 bg-transparent border-none outline-none flex-1 min-w-0 placeholder-gray-300"
           />
         </div>
-        <div className="flex items-center gap-2">
-          {error && <span className="text-xs text-red-500">{error}</span>}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {error && <span className="text-xs text-red-500 hidden sm:inline">{error}</span>}
           <button onClick={() => router.back()}
-            className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">
+            className="px-2.5 py-1.5 md:px-3 border border-gray-200 rounded-lg text-xs md:text-sm text-gray-600 hover:bg-gray-50 transition">
             취소
           </button>
           <button onClick={saveExam} disabled={saving}
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg text-sm font-bold transition">
-            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-            시험 저장
+            className="inline-flex items-center gap-1 md:gap-1.5 px-2.5 py-1.5 md:px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg text-xs md:text-sm font-bold transition">
+            {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+            저장
           </button>
         </div>
       </div>
 
       {/* ── 설정 바 ── */}
-      <div className="flex items-center gap-4 px-6 py-3 bg-gray-50 border-b border-gray-100 flex-shrink-0 flex-wrap">
-        {/* 클래스 */}
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-semibold text-gray-500 whitespace-nowrap">클래스</label>
+      <div className="bg-gray-50 border-b border-gray-100 flex-shrink-0">
+        {/* 항상 보이는 첫 행: 클래스 + 시험 성격 + 아코디언 토글(모바일) */}
+        <div className="flex items-center gap-2 px-3 md:px-6 py-2 flex-wrap">
+          {/* 클래스 */}
           <select value={classId} onChange={e => setClassId(e.target.value)}
-            className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[130px] md:max-w-none">
             <option value="">전체 (이력 미적용)</option>
             {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-        </div>
 
-        {/* 시험 성격 */}
-        <div className="flex items-center gap-1">
-          {TEST_TYPES.map(t => (
-            <button key={t.v} onClick={() => setTestType(t.v)}
-              title={t.desc}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
-                testType === t.v ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-blue-300'
-              }`}>
-              {t.label}
-            </button>
-          ))}
-        </div>
+          {/* 시험 성격 */}
+          <div className="flex items-center gap-1">
+            {TEST_TYPES.map(t => (
+              <button key={t.v} onClick={() => setTestType(t.v)}
+                title={t.desc}
+                className={`px-2 py-1.5 rounded-lg text-xs font-bold transition ${
+                  testType === t.v ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-blue-300'
+                }`}>
+                <span className="hidden sm:inline">{t.label}</span>
+                <span className="sm:hidden">{t.v === 'weekly' ? '주간' : t.v === 'monthly' ? '월말' : '모의'}</span>
+              </button>
+            ))}
+          </div>
 
-        {/* Target Band — 11단계 */}
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-semibold text-gray-500 whitespace-nowrap">목표 Band (T)</label>
-          <div className="flex gap-0.5 flex-wrap">
-            {DIFF_VALUES.map(v => {
-              const info = getDiffInfo(v)
-              return (
-                <button key={v} onClick={() => setTargetBand(v)}
-                  title={`${info.level} · ${info.name} (${info.cefr})`}
-                  className={`w-9 h-7 rounded text-[11px] font-bold transition ${
-                    targetBand === v
-                      ? `${info.color} ring-2 ring-blue-400`
-                      : 'bg-white border border-gray-200 text-gray-500 hover:border-blue-300'
-                  }`}>
-                  {info.label}
-                </button>
-              )
-            })}
+          {/* 모바일: Target/Max Band 요약 + 토글 */}
+          <button
+            className="md:hidden ml-auto flex items-center gap-1 text-xs text-gray-500 bg-white border border-gray-200 rounded-lg px-2 py-1.5 font-semibold"
+            onClick={() => setSettingsOpen(o => !o)}
+          >
+            <span>T: {getDiffInfo(targetBand).label}</span>
+            <span className="text-gray-300">|</span>
+            <span>Max: {getDiffInfo(maxBand).label}</span>
+            <ChevronDown size={12} className={`ml-1 transition-transform ${settingsOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* 데스크탑: Target Band */}
+          <div className="hidden md:flex items-center gap-2">
+            <label className="text-xs font-semibold text-gray-500 whitespace-nowrap">목표 Band (T)</label>
+            <div className="flex gap-0.5">
+              {DIFF_VALUES.map(v => {
+                const info = getDiffInfo(v)
+                return (
+                  <button key={v} onClick={() => setTargetBand(v)}
+                    title={`${info.level} · ${info.name} (${info.cefr})`}
+                    className={`w-9 h-7 rounded text-[11px] font-bold transition ${
+                      targetBand === v
+                        ? `${info.color} ring-2 ring-blue-400`
+                        : 'bg-white border border-gray-200 text-gray-500 hover:border-blue-300'
+                    }`}>
+                    {info.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* 데스크탑: Max Band */}
+          <div className="hidden md:flex items-center gap-2">
+            <label className="text-xs font-semibold text-gray-500 whitespace-nowrap">Max Band</label>
+            <div className="flex gap-0.5">
+              {DIFF_VALUES.map(v => {
+                const info = getDiffInfo(v)
+                return (
+                  <button key={v} onClick={() => setMaxBand(v)}
+                    disabled={v < targetBand}
+                    title={`${info.level} · ${info.name}`}
+                    className={`w-9 h-7 rounded text-[11px] font-bold transition ${
+                      maxBand === v
+                        ? 'bg-orange-500 text-white ring-2 ring-orange-300'
+                        : v < targetBand
+                        ? 'bg-gray-50 border border-gray-100 text-gray-300 cursor-not-allowed'
+                        : 'bg-white border border-gray-200 text-gray-500 hover:border-orange-300'
+                    }`}>
+                    {info.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* 데스크탑: 창 안내 */}
+          <div className="hidden md:flex ml-auto items-center gap-1.5 text-xs text-gray-400">
+            <Info size={12} />
+            <span>
+              M1: {snapBand(targetBand-0.5)}~{snapBand(targetBand+0.5)} |
+              M2↑: {snapBand(targetBand+0.5)}~{snapBand(targetBand+1.0)} |
+              M2↓: {snapBand(targetBand-1.0)}~{snapBand(targetBand-0.5)}
+            </span>
           </div>
         </div>
 
-        {/* Max Band — 11단계 */}
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-semibold text-gray-500 whitespace-nowrap">Max Band</label>
-          <div className="flex gap-0.5 flex-wrap">
-            {DIFF_VALUES.map(v => {
-              const info = getDiffInfo(v)
-              return (
-                <button key={v} onClick={() => setMaxBand(v)}
-                  disabled={v < targetBand}
-                  title={`${info.level} · ${info.name}`}
-                  className={`w-9 h-7 rounded text-[11px] font-bold transition ${
-                    maxBand === v
-                      ? 'bg-orange-500 text-white ring-2 ring-orange-300'
-                      : v < targetBand
-                      ? 'bg-gray-50 border border-gray-100 text-gray-300 cursor-not-allowed'
-                      : 'bg-white border border-gray-200 text-gray-500 hover:border-orange-300'
-                  }`}>
-                  {info.label}
-                </button>
-              )
-            })}
+        {/* 모바일 아코디언: Band 슬라이더 */}
+        {settingsOpen && (
+          <div className="md:hidden px-3 pb-3 space-y-3 border-t border-gray-100 pt-3">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-semibold text-gray-500">목표 Band (T)</label>
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getDiffInfo(targetBand).color}`}>
+                  {getDiffInfo(targetBand).level} · {getDiffInfo(targetBand).label}
+                </span>
+              </div>
+              <input type="range" min="1" max="6" step="0.5" value={targetBand}
+                onChange={e => setTargetBand(Number(e.target.value))}
+                className="w-full accent-blue-600" />
+              <div className="flex justify-between text-[10px] text-gray-400 mt-0.5 px-0.5">
+                <span>L1 · 1.0</span><span>MAX · 6.0</span>
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-semibold text-gray-500">Max Band</label>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">
+                  {getDiffInfo(maxBand).level} · {getDiffInfo(maxBand).label}
+                </span>
+              </div>
+              <input type="range" min={targetBand} max="6" step="0.5" value={maxBand}
+                onChange={e => setMaxBand(Number(e.target.value))}
+                className="w-full accent-orange-500" />
+              <div className="flex justify-between text-[10px] text-gray-400 mt-0.5 px-0.5">
+                <span>T+0 · {targetBand}</span><span>MAX · 6.0</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 text-[10px] text-gray-400">
+              <Info size={10} />
+              <span>
+                M1: {snapBand(targetBand-0.5)}~{snapBand(targetBand+0.5)} |
+                M2↑: {snapBand(targetBand+0.5)}~{snapBand(targetBand+1.0)} |
+                M2↓: {snapBand(targetBand-1.0)}~{snapBand(targetBand-0.5)}
+              </span>
+            </div>
           </div>
-        </div>
-
-        {/* 창 안내 */}
-        <div className="ml-auto flex items-center gap-1.5 text-xs text-gray-400">
-          <Info size={12} />
-          <span>
-            M1: {snapBand(targetBand-0.5)}~{snapBand(targetBand+0.5)} |
-            M2↑: {snapBand(targetBand+0.5)}~{snapBand(targetBand+1.0)} |
-            M2↓: {snapBand(targetBand-1.0)}~{snapBand(targetBand-0.5)}
-          </span>
-        </div>
+        )}
       </div>
 
       {/* ── 실시간 분석 (가로) ── */}
@@ -777,20 +833,22 @@ export default function SmartBuilderPage() {
       )}
 
       {/* ── 섹션 탭 ── */}
-      <div className="flex items-center gap-1 px-6 py-2 border-b border-gray-100 bg-white flex-shrink-0">
+      <div className="flex items-center gap-1 px-3 md:px-6 py-2 border-b border-gray-100 bg-white flex-shrink-0 flex-wrap">
         {([
-          { key: 'reading',   label: 'Reading',   icon: <FileText size={14} />,  active: 'bg-blue-600',    total: 50,  filled: filledCount },
-          { key: 'listening', label: 'Listening', icon: <Headphones size={14} />,active: 'bg-emerald-600', total: null, filled: null },
-          { key: 'writing',   label: 'Writing',   icon: <PenLine size={14} />,   active: 'bg-purple-600',  total: writingSlots.reordering.length + writingSlots.email.length, filled: [...writingSlots.reordering, ...writingSlots.email].filter(Boolean).length },
-          { key: 'speaking',  label: 'Speaking',  icon: <Mic size={14} />,       active: 'bg-teal-600',    total: speakingSlots.listenRepeat.length + speakingSlots.interview.length, filled: [...speakingSlots.listenRepeat, ...speakingSlots.interview].filter(Boolean).length },
+          { key: 'reading',   label: 'Reading',   short: 'R', icon: <FileText size={13} />,   active: 'bg-blue-600',    total: 50,  filled: filledCount },
+          { key: 'listening', label: 'Listening', short: 'L', icon: <Headphones size={13} />, active: 'bg-emerald-600', total: null, filled: null },
+          { key: 'writing',   label: 'Writing',   short: 'W', icon: <PenLine size={13} />,    active: 'bg-purple-600',  total: writingSlots.reordering.length + writingSlots.email.length, filled: [...writingSlots.reordering, ...writingSlots.email].filter(Boolean).length },
+          { key: 'speaking',  label: 'Speaking',  short: 'S', icon: <Mic size={13} />,        active: 'bg-teal-600',    total: speakingSlots.listenRepeat.length + speakingSlots.interview.length, filled: [...speakingSlots.listenRepeat, ...speakingSlots.interview].filter(Boolean).length },
         ] as const).map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key as typeof activeTab)}
-            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition ${
+            className={`inline-flex items-center gap-1 md:gap-1.5 px-2.5 md:px-4 py-1.5 md:py-2 rounded-xl text-xs md:text-sm font-bold transition ${
               activeTab === tab.key ? `${tab.active} text-white` : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
             }`}>
-            {tab.icon} {tab.label}
+            {tab.icon}
+            <span className="sm:hidden">{tab.short}</span>
+            <span className="hidden sm:inline">{tab.label}</span>
             {tab.total !== null && (
-              <span className={`text-[10px] ml-1 ${activeTab === tab.key ? 'text-white/70' : 'text-gray-400'}`}>
+              <span className={`text-[10px] ml-0.5 ${activeTab === tab.key ? 'text-white/70' : 'text-gray-400'}`}>
                 {tab.filled}/{tab.total}
               </span>
             )}
@@ -803,10 +861,23 @@ export default function SmartBuilderPage() {
 
         {/* 3열 캔버스 */}
         <div className={`flex-1 overflow-x-auto overflow-y-auto ${activeTab !== 'reading' ? 'hidden' : ''}`}>
-          <div className="flex gap-3 p-4 min-w-[900px] h-full items-start">
+          {/* 모바일 모듈 탭 */}
+          <div className="md:hidden flex items-center gap-1 px-3 pt-3 pb-0">
+            {([
+              { key: 'M1',     label: 'M1',   color: 'bg-gray-800 text-white', inactive: 'bg-gray-100 text-gray-500' },
+              { key: 'M2up',   label: 'M2↑',  color: 'bg-blue-600 text-white', inactive: 'bg-blue-50 text-blue-500' },
+              { key: 'M2down', label: 'M2↓',  color: 'bg-amber-500 text-white', inactive: 'bg-amber-50 text-amber-500' },
+            ] as const).map(m => (
+              <button key={m.key} onClick={() => setActiveModule(m.key)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex-1 ${activeModule === m.key ? m.color : m.inactive}`}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-3 p-3 md:p-4 md:min-w-[900px] h-full items-start">
 
             {/* ── Module 1 ── */}
-            <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className={`flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden ${activeModule !== 'M1' ? 'hidden md:block' : ''}`}>
               <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
                 <div className="flex items-center justify-between">
                   <div>
@@ -842,7 +913,7 @@ export default function SmartBuilderPage() {
             </div>
 
             {/* ── Module 2-Up ── */}
-            <div className="flex-1 bg-white rounded-2xl border border-blue-100 shadow-sm overflow-hidden">
+            <div className={`flex-1 bg-white rounded-2xl border border-blue-100 shadow-sm overflow-hidden ${activeModule !== 'M2up' ? 'hidden md:block' : ''}`}>
               <div className="px-4 py-3 bg-blue-50 border-b border-blue-100">
                 <div className="flex items-center justify-between">
                   <div>
@@ -878,7 +949,7 @@ export default function SmartBuilderPage() {
             </div>
 
             {/* ── Module 2-Down ── */}
-            <div className="flex-1 bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden">
+            <div className={`flex-1 bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden ${activeModule !== 'M2down' ? 'hidden md:block' : ''}`}>
               <div className="px-4 py-3 bg-amber-50 border-b border-amber-100">
                 <div className="flex items-center justify-between">
                   <div>
