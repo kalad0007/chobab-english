@@ -27,6 +27,9 @@ interface GeneratedWord {
   definition_en: string
   synonyms: string[]
   antonyms: string[]
+  idioms?: string[]
+  collocations?: string[]
+  morphemes?: object | null
   example_sentence: string
   example_sentence_ko: string
   audio_url: string | null
@@ -190,6 +193,9 @@ export default function VocabGeneratePage() {
               definition_en: data.definition_en ?? '',
               synonyms: data.synonyms ?? [],
               antonyms: data.antonyms ?? [],
+              idioms: data.idioms ?? [],
+              collocations: data.collocations ?? [],
+              morphemes: data.morphemes ?? null,
               example_sentence: data.example_sentence ?? '',
               example_sentence_ko: data.example_sentence_ko ?? '',
               audio_url: audioUrl,

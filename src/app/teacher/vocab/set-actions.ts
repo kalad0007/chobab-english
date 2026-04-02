@@ -18,6 +18,9 @@ export async function createVocabSet(payload: {
     definition_en: string
     synonyms: string[]
     antonyms: string[]
+    idioms?: string[]
+    collocations?: string[]
+    morphemes?: object | null
     audio_url?: string | null
     example_sentence?: string | null
     example_sentence_ko?: string | null
@@ -57,6 +60,9 @@ export async function createVocabSet(payload: {
           definition_en:   w.definition_en,
           synonyms:        w.synonyms,
           antonyms:        w.antonyms,
+          idioms:          w.idioms?.length ? w.idioms : undefined,
+          collocations:    w.collocations?.length ? w.collocations : undefined,
+          morphemes:       w.morphemes ?? undefined,
           topic_category:  payload.topic_category,
           difficulty:      payload.difficulty,
           word_level:      setWordLevel,
