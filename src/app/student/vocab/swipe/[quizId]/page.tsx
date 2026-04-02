@@ -45,5 +45,5 @@ export default async function SwipeGamePage({ params }: { params: Promise<{ quiz
 
   if (gameItems.length === 0) redirect('/student/vocab')
 
-  return <SwipeGameClient quizTitle={quiz.title} items={gameItems} />
+  return <SwipeGameClient quizTitle={quiz.title} quizId={quiz.id} items={gameItems} />
 }

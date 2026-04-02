@@ -28,6 +28,7 @@ interface GameItem {
 
 interface Props {
   quizTitle: string
+  quizId: string
   items: GameItem[]
 }
 
@@ -35,7 +36,7 @@ function extractPartner(word: string, collocation: string): string {
   return collocation.replace(new RegExp(`\\b${word}\\b`, 'gi'), '').replace(/\s+/g, ' ').trim()
 }
 
-export default function SwipeGameClient({ quizTitle, items }: Props) {
+export default function SwipeGameClient({ quizTitle, quizId, items }: Props) {
   const router = useRouter()
 
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -48,6 +49,8 @@ export default function SwipeGameClient({ quizTitle, items }: Props) {
   const [btnSwap, setBtnSwap] = useState(false)
   const [cardFlying, setCardFlying] = useState(false)
   const [coinPopValue, setCoinPopValue] = useState<number | null>(null)
+  const [newBest, setNewBest] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   const currentItem = items[currentIndex]
 
@@ -69,9 +72,26 @@ export default function SwipeGameClient({ quizTitle, items }: Props) {
   const leftChoice = btnSwap ? distractor : partner
   const rightChoice = btnSwap ? partner : distractor
 
-  function nextQuestion() {
+  async function handleSaveResult(finalCoins: number, finalCorrect: number, finalMaxCombo: number) {
+    setSaving(true)
+    try {
+      const { saveQuizResult } = await import('../actions')
+      const res = await saveQuizResult({
+        quizId,
+        coinsEarned: finalCoins,
+        correctCount: finalCorrect,
+        maxCombo: finalMaxCombo,
+      })
+      if (res.newBest) setNewBest(true)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function nextQuestion(latestCoins: number, latestCorrect: number, latestMaxCombo: number) {
     if (currentIndex + 1 >= items.length) {
       setPhase('result')
+      handleSaveResult(latestCoins, latestCorrect, latestMaxCombo)
     } else {
       setCurrentIndex(prev => prev + 1)
       setBtnSwap(Math.random() > 0.5)
@@ -83,8 +103,10 @@ export default function SwipeGameClient({ quizTitle, items }: Props) {
     if (chosen === correct) {
       const newCombo = combo + 1
       setCombo(newCombo)
-      setMaxCombo(prev => Math.max(prev, newCombo))
-      setCorrectCount(prev => prev + 1)
+      const newMaxCombo = Math.max(maxCombo, newCombo)
+      setMaxCombo(newMaxCombo)
+      const newCorrect = correctCount + 1
+      setCorrectCount(newCorrect)
       const multiplier = newCombo >= 10 ? 3 : newCombo >= 5 ? 2 : 1
       const earned = 10 * multiplier
       setCoins(prev => prev + earned)
@@ -94,7 +116,7 @@ export default function SwipeGameClient({ quizTitle, items }: Props) {
       setTimeout(() => {
         setCardFlying(false)
         setCoinPopValue(null)
-        nextQuestion()
+        nextQuestion(coins + earned, newCorrect, newMaxCombo)
       }, 380)
     } else {
       setCombo(0)
@@ -105,7 +127,7 @@ export default function SwipeGameClient({ quizTitle, items }: Props) {
 
   function handleWrongClose() {
     setPhase('playing')
-    nextQuestion()
+    nextQuestion(coins, correctCount, maxCombo)
   }
 
   function handleRestart() {
@@ -117,6 +139,7 @@ export default function SwipeGameClient({ quizTitle, items }: Props) {
     setPhase('playing')
     setWrongInfo(null)
     setBtnSwap(Math.random() > 0.5)
+    setNewBest(false)
   }
 
   // 결과 화면
@@ -143,7 +166,17 @@ export default function SwipeGameClient({ quizTitle, items }: Props) {
           <h2 className="text-xl font-extrabold text-gray-900 mb-1">
             {starCount === 3 ? 'Word Master!' : starCount === 2 ? 'Great Job!' : 'Keep Going!'}
           </h2>
-          <p className="text-sm text-gray-500 mb-6">{quizTitle}</p>
+          <p className="text-sm text-gray-500 mb-4">{quizTitle}</p>
+
+          {newBest && (
+            <div className="bg-yellow-100 text-yellow-700 font-bold text-xs px-3 py-1.5 rounded-full mb-4 inline-block">
+              🏆 새로운 최고 기록!
+            </div>
+          )}
+
+          {saving && (
+            <p className="text-xs text-gray-400 mb-4">저장 중...</p>
+          )}
 
           <div className="grid grid-cols-3 gap-3 mb-6">
             <div className="bg-gray-50 rounded-2xl p-3">
