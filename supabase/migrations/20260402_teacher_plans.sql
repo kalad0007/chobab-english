@@ -34,3 +34,21 @@ INSERT INTO plan_limits VALUES
   ('standard', 30,   5,  NULL,100, 50,  '{"smart_builder":true,"analytics_full":true,"passage_write":true}'),
   ('pro',      80,   15, NULL,300, 150, '{"smart_builder":true,"analytics_full":true,"passage_write":true}'),
   ('premium',  NULL, NULL,NULL,NULL,NULL,'{"smart_builder":true,"analytics_full":true,"passage_write":true,"api_access":true}');
+
+-- plan_limits RLS
+ALTER TABLE plan_limits ENABLE ROW LEVEL SECURITY;
+
+-- 모든 인증된 사용자가 읽기 가능 (플랜 정보는 공개)
+CREATE POLICY "plan_limits_read" ON plan_limits
+  FOR SELECT TO authenticated USING (true);
+
+-- admin만 수정 가능
+CREATE POLICY "plan_limits_admin_write" ON plan_limits
+  FOR ALL TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE profiles.id = auth.uid()
+      AND profiles.role = 'admin'
+    )
+  );

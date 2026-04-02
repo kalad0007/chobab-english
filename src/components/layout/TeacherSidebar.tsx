@@ -42,9 +42,10 @@ const navItems = [
   {
     section: '콘텐츠',
     items: [
-      { href: '/teacher/vocab',          label: '어휘 데이터베이스', icon: BookA },
-      { href: '/teacher/vocab/generate', label: 'AI 단어세트 생성',  icon: Sparkles },
-      { href: '/teacher/vocab/sets',     label: '단어 세트 관리',    icon: BookMarked },
+      { href: '/teacher/vocab',                    label: '어휘 데이터베이스', icon: BookA },
+      { href: '/teacher/vocab/generate',           label: 'AI 단어세트 생성',  icon: Sparkles },
+      { href: '/teacher/vocab/sets',               label: '단어 세트 관리',    icon: BookMarked },
+      { href: '/teacher/vocab/collocation-quiz',   label: '스와이프 퀴즈',         icon: Zap },
       { href: '/teacher/passages',       label: '지문 라이브러리',   icon: ScrollText },
       { href: '/teacher/contents', label: 'TOEFL 학습 자료',  icon: BookMarked },
     ],

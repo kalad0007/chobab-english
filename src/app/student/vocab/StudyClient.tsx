@@ -14,6 +14,7 @@ interface Card {
   synonyms: string[]
   antonyms: string[]
   idioms?: string[]
+  collocations?: string[]
   topic_category: string
   difficulty: number
   audio_url: string | null
@@ -321,6 +322,22 @@ export default function StudyClient({ cards, reviewCount, newCount, totalLearned
                 <div className="flex flex-wrap gap-1.5">
                   {current.idioms.map(s => (
                     <span key={s} className="text-xs font-bold bg-white border border-emerald-200 text-emerald-700 px-2.5 py-1 rounded-full shadow-sm">
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Collocations */}
+            {current.collocations && current.collocations.length > 0 && (
+              <div className="bg-sky-50 border border-sky-200 rounded-2xl p-3.5 mb-3">
+                <p className="text-[10px] font-extrabold text-sky-600 uppercase tracking-widest mb-2">
+                  🔵 Collocations · 연어
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {current.collocations.map(s => (
+                    <span key={s} className="text-xs font-semibold bg-white border border-sky-200 text-sky-700 px-2.5 py-1 rounded-full">
                       {s}
                     </span>
                   ))}

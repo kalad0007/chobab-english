@@ -220,10 +220,7 @@ export default function EditVocabPage() {
         <button onClick={() => router.back()} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition">
           <ChevronLeft size={20} />
         </button>
-        <div>
-          <h1 className="text-base font-extrabold text-gray-900 leading-tight">단어 수정</h1>
-          <p className="text-xs font-bold text-blue-600">{wordName}</p>
-        </div>
+        <h1 className="text-base font-extrabold text-gray-900 leading-tight">단어 수정</h1>
         <button onClick={handleAiFill} disabled={filling}
           className="ml-auto flex items-center gap-1.5 px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 text-xs font-bold rounded-xl transition disabled:opacity-50">
           {filling ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
@@ -234,6 +231,14 @@ export default function EditVocabPage() {
       {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl mb-3">{error}</div>}
 
       <div className="space-y-3">
+        {/* 표제어 블록 */}
+        <div className="bg-gray-50 rounded-2xl border border-gray-100 px-4 py-3 flex items-center gap-3">
+          <div className="flex-1">
+            <p className="text-2xl font-extrabold text-gray-900 leading-tight">{wordName}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{WORD_LEVEL_CONFIG[wordLevel]?.label ?? wordLevel}</p>
+          </div>
+        </div>
+
         {/* Word Level Toggle */}
         <div className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5">
           {(Object.entries(WORD_LEVEL_CONFIG) as [WordLevel, typeof WORD_LEVEL_CONFIG[WordLevel]][]).map(([key, cfg]) => (

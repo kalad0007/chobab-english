@@ -48,7 +48,7 @@ export default async function SetStudyPage({
   // Get words in this set (ordered)
   const { data: setWords } = await admin
     .from('vocab_set_words')
-    .select('order_num, vocab_words(id, word, part_of_speech, definition_ko, definition_en, synonyms, antonyms, idioms, topic_category, difficulty, audio_url, example_sentence, example_sentence_ko)')
+    .select('order_num, vocab_words(id, word, part_of_speech, definition_ko, definition_en, synonyms, antonyms, idioms, collocations, topic_category, difficulty, audio_url, example_sentence, example_sentence_ko)')
     .eq('set_id', setId)
     .order('order_num')
 
@@ -57,7 +57,7 @@ export default async function SetStudyPage({
     .filter(Boolean) as {
       id: string; word: string; part_of_speech: string;
       definition_ko: string; definition_en: string;
-      synonyms: string[]; antonyms: string[]; idioms?: string[];
+      synonyms: string[]; antonyms: string[]; idioms?: string[]; collocations?: string[];
       topic_category: string; difficulty: number;
       audio_url: string | null; example_sentence: string | null; example_sentence_ko: string | null
     }[]

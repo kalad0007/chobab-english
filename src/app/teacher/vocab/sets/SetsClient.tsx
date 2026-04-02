@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useTransition, useMemo } from 'react'
-import { Eye, EyeOff, Trash2, Users, Check, X, Search, BookOpen } from 'lucide-react'
+import Link from 'next/link'
+import { Eye, EyeOff, Trash2, Users, Check, X, Search, BookOpen, Zap } from 'lucide-react'
 import { deleteVocabSet, toggleSetPublish } from '../set-actions'
 import VocabSetPreview from './VocabSetPreview'
 import type { WordLevel } from '../constants'
@@ -161,6 +162,12 @@ export default function SetsClient({
                 >
                   <BookOpen size={12} /> 미리보기
                 </button>
+                <Link
+                  href={`/teacher/vocab/collocation-quiz/new?setId=${set.id}`}
+                  className="flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg transition"
+                >
+                  <Zap size={12} /> 스와이프 퀴즈
+                </Link>
                 <button
                   onClick={() => setExpandedClassPicker(isExpanded ? null : set.id)}
                   className="flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition"

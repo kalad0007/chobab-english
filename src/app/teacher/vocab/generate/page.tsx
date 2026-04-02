@@ -88,6 +88,7 @@ export default function VocabGeneratePage() {
         .from('vocab_words')
         .select('word')
         .eq('teacher_id', user.id)
+        .eq('is_active', true)
       setExistingWords((data ?? []).map((r: { word: string }) => r.word.toLowerCase()))
     }
     loadExistingWords()

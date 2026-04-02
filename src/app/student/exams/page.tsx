@@ -97,45 +97,47 @@ export default async function StudentExamsPage() {
               : (dep.time_limit_mins ?? exam?.time_limit ?? null)
 
             return (
-              <div key={dep.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                  isSubmitted ? 'bg-green-100' : (isExpired || isCompleted) ? 'bg-gray-100' : 'bg-blue-100'
-                }`}>
-                  {isSubmitted
-                    ? <CheckCircle size={22} className="text-green-600" />
-                    : (isExpired || isCompleted)
-                    ? <AlertCircle size={22} className="text-gray-400" />
-                    : <Clock size={22} className="text-blue-600" />
-                  }
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-gray-900">{exam?.title ?? '시험'}</h3>
-                    {cls?.name && (
-                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{cls.name}</span>
-                    )}
+              <div key={dep.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                    isSubmitted ? 'bg-green-100' : (isExpired || isCompleted) ? 'bg-gray-100' : 'bg-blue-100'
+                  }`}>
+                    {isSubmitted
+                      ? <CheckCircle size={22} className="text-green-600" />
+                      : (isExpired || isCompleted)
+                      ? <AlertCircle size={22} className="text-gray-400" />
+                      : <Clock size={22} className="text-blue-600" />
+                    }
                   </div>
-                  <div className="flex items-center gap-3 mt-1">
-                    {timeLimit && <span className="text-xs text-gray-400">⏱ {timeLimit}분</span>}
-                    {dep.end_at && <span className="text-xs text-gray-400">마감: {formatDate(dep.end_at)}</span>}
-                    {sub?.status === 'graded' && sub.percentage != null && (
-                      <span className="text-xs font-bold text-emerald-600">{sub.percentage}%</span>
-                    )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-bold text-gray-900">{exam?.title ?? '시험'}</h3>
+                      {cls?.name && (
+                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{cls.name}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 mt-1 flex-wrap">
+                      {timeLimit && <span className="text-xs text-gray-400">⏱ {timeLimit}분</span>}
+                      {dep.end_at && <span className="text-xs text-gray-400">마감: {formatDate(dep.end_at)}</span>}
+                      {sub?.status === 'graded' && sub.percentage != null && (
+                        <span className="text-xs font-bold text-emerald-600">{sub.percentage}%</span>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div>
+                <div className="flex-shrink-0">
                   {isSubmitted && isCompleted ? (
                     <Link href={`/student/exams/${dep.exam_id}/result`}
-                      className="px-4 py-2 text-sm font-semibold text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition">
+                      className="block w-full sm:w-auto text-center px-4 py-2 text-sm font-semibold text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition whitespace-nowrap">
                       결과 보기
                     </Link>
                   ) : isSubmitted ? (
-                    <span className="px-4 py-2 text-sm font-semibold text-gray-500 bg-gray-50 rounded-xl">제출 완료</span>
+                    <span className="block w-full sm:w-auto text-center px-4 py-2 text-sm font-semibold text-gray-500 bg-gray-50 rounded-xl whitespace-nowrap">제출 완료</span>
                   ) : (isExpired || isCompleted) ? (
-                    <span className="px-4 py-2 text-sm font-semibold text-gray-400 bg-gray-50 rounded-xl">마감됨</span>
+                    <span className="block w-full sm:w-auto text-center px-4 py-2 text-sm font-semibold text-gray-400 bg-gray-50 rounded-xl whitespace-nowrap">마감됨</span>
                   ) : (
                     <Link href={`/student/exams/${dep.exam_id}?deployment=${dep.id}`}
-                      className="px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition">
+                      className="block w-full sm:w-auto text-center px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition whitespace-nowrap">
                       {isInProgress ? '이어서 풀기 →' : '시험 시작 →'}
                     </Link>
                   )}

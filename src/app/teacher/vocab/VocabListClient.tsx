@@ -361,16 +361,18 @@ export default function VocabListClient({
                 </div>
               )}
 
-              {/* Word */}
-              <p className="font-extrabold text-gray-900 text-sm w-28 truncate flex-shrink-0">{word.word}</p>
-
-              {/* POS badge */}
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 hidden md:inline ${POS_COLOR[word.part_of_speech] ?? 'bg-gray-100 text-gray-600'}`}>
-                {word.part_of_speech}
-              </span>
-
-              {/* Definition */}
-              <p className="text-xs text-gray-500 flex-1 truncate">{word.definition_ko}</p>
+              {/* Word + Definition (모바일: 세로 스택, 데스크톱: 가로) */}
+              <div className="flex-1 min-w-0 flex flex-col md:flex-row md:items-center md:gap-2">
+                <div className="flex items-center gap-1.5">
+                  <p className="font-extrabold text-gray-900 text-sm truncate flex-shrink-0">{word.word}</p>
+                  {/* POS badge - 모바일에서도 표시 */}
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${POS_COLOR[word.part_of_speech] ?? 'bg-gray-100 text-gray-600'}`}>
+                    {word.part_of_speech}
+                  </span>
+                </div>
+                {/* Definition */}
+                <p className="text-xs text-gray-500 line-clamp-2 md:flex-1 md:truncate md:line-clamp-none">{word.definition_ko}</p>
+              </div>
 
               {/* Synonyms - desktop only */}
               <div className="hidden lg:flex gap-1 flex-shrink-0 w-36 overflow-hidden">

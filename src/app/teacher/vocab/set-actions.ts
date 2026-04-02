@@ -40,6 +40,7 @@ export async function createVocabSet(payload: {
       .from('vocab_words')
       .select('id')
       .eq('teacher_id', user.id)
+      .eq('is_active', true)
       .ilike('word', w.word.trim())
       .single()
 
