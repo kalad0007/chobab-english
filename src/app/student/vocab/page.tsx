@@ -1,6 +1,6 @@
 import { createAdminClient, getUserFromCookie } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { BookA, ChevronRight, Star } from 'lucide-react'
+import { BookA, ChevronRight, Zap } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,6 +52,23 @@ export default async function StudentVocabPage() {
         .in('id', setIds)
         .eq('is_published', true)
         .order('published_at', { ascending: false })
+    : { data: [] }
+
+  // Get swipe quizzes assigned to my classes
+  const { data: swipeQuizRows } = await admin
+    .from('collocation_quiz_classes')
+    .select('quiz_id')
+    .in('class_id', classIds)
+
+  const quizIds = [...new Set((swipeQuizRows ?? []).map(r => r.quiz_id))]
+
+  const { data: swipeQuizzes } = quizIds.length > 0
+    ? await admin
+        .from('collocation_quizzes')
+        .select('id, title, order_num, collocation_quiz_items(count)')
+        .in('id', quizIds)
+        .eq('status', 'published')
+        .order('order_num')
     : { data: [] }
 
   // Get student progress count per set
@@ -138,6 +155,38 @@ export default async function StudentVocabPage() {
               </Link>
             )
           })}
+        </div>
+      )}
+
+      {/* 스와이프 퀴즈 섹션 */}
+      {(swipeQuizzes ?? []).length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-lg font-extrabold text-gray-900 flex items-center gap-2 mb-3">
+            <Zap size={20} className="text-purple-600" /> 스와이프 퀴즈
+          </h2>
+          <div className="space-y-3">
+            {(swipeQuizzes ?? []).map((quiz) => {
+              const itemCount = (quiz.collocation_quiz_items as unknown as { count: number }[])?.[0]?.count ?? 0
+              return (
+                <Link
+                  key={quiz.id}
+                  href={`/student/vocab/swipe/${quiz.id}`}
+                  className="block bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:border-purple-200 hover:shadow-md transition group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center flex-shrink-0">
+                      <Zap size={22} className="text-purple-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-gray-900 text-sm truncate">{quiz.title}</h3>
+                      <p className="text-xs text-gray-400 mt-0.5">연어 {itemCount}문항</p>
+                    </div>
+                    <ChevronRight size={18} className="text-gray-300 group-hover:text-purple-400 flex-shrink-0 transition" />
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>
