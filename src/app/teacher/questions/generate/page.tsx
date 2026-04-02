@@ -20,10 +20,10 @@ interface GeneratedQuestion {
 
 // Reading 상위 유형 (Daily Life는 하위 선택 있음)
 const READING_TOP_TYPES = [
-  { value: 'complete_the_words',  label: '1-1A · Complete the Words',  desc: '지문 속 단어 뒷부분 마스킹 (단락형 빈칸)', badge: 'bg-teal-100 text-teal-700' },
-  { value: 'sentence_completion', label: '1-1B · Sentence Completion',  desc: '독립 문장 1개에 빈칸 1개 (문법/어휘)', badge: 'bg-blue-100 text-blue-700' },
-  { value: 'daily_life',          label: '1-2 · Daily Life',            desc: '이메일·문자·공지·가이드·기사·학교공지 6가지 형식 + MCQ', badge: 'bg-cyan-100 text-cyan-700' },
-  { value: 'academic_passage',    label: '1-3 · Academic Passage',      desc: '200-300단어 학술 지문 + 여러 문제 세트', badge: 'bg-indigo-100 text-indigo-700' },
+  { value: 'complete_the_words',  label: 'Complete the Words',  desc: '지문 속 단어 뒷부분 마스킹 (단락형 빈칸)', badge: 'bg-teal-100 text-teal-700' },
+  { value: 'sentence_completion', label: 'Sentence Completion',  desc: '독립 문장 1개에 빈칸 1개 (문법/어휘)', badge: 'bg-blue-100 text-blue-700' },
+  { value: 'daily_life',          label: 'Daily Life',            desc: '이메일·문자·공지·가이드·기사·학교공지 6가지 형식 + MCQ', badge: 'bg-cyan-100 text-cyan-700' },
+  { value: 'academic_passage',    label: 'Academic Passage',      desc: '200-300단어 학술 지문 + 여러 문제 세트', badge: 'bg-indigo-100 text-indigo-700' },
 ]
 
 // Daily Life 하위 형식

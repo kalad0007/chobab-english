@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
+import { checkAndIncrementAiQuestion } from '@/lib/plan-guard'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
@@ -395,6 +396,15 @@ export async function POST(req: NextRequest) {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const planCheck = await checkAndIncrementAiQuestion(session.user.id)
+  if (!planCheck.allowed) {
+    return NextResponse.json({
+      error: 'monthly_limit_reached',
+      plan: planCheck.plan,
+      message: '이번 달 AI 문제 생성 한도에 도달했습니다. 플랜을 업그레이드하세요.',
+    }, { status: 403 })
+  }
+
   const apiKey = getAnthropicKey()
   if (!apiKey) return NextResponse.json({ error: 'ANTHROPIC_API_KEY가 서버에 설정되지 않았습니다.' }, { status: 500 })
 
@@ -424,6 +434,9 @@ export async function POST(req: NextRequest) {
     })
   } catch (apiErr: unknown) {
     const msg = apiErr instanceof Error ? apiErr.message : String(apiErr)
+    // 카운트 원복 (AI 호출 실패 시)
+    const { ai_question_count } = await (await import('@/lib/plan-guard')).getTeacherPlan(session.user.id)
+    await supabase.from('profiles').update({ ai_question_count }).eq('id', session.user.id)
     return NextResponse.json({ error: `AI API 오류: ${msg}` }, { status: 502 })
   }
 
