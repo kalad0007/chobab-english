@@ -188,7 +188,7 @@ export default async function StudentDashboard() {
         </div>
 
         {/* 섹션별 밴드 바 */}
-        <div className="grid grid-cols-4 gap-3 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           {Object.keys(CATEGORY_LABELS).map(cat => {
             const band = sectionBands[cat]
             const pct  = band > 0 ? (band / 6.0) * 100 : 0
@@ -223,7 +223,7 @@ export default async function StudentDashboard() {
 
       {/* ── 섹션별 연습 카드 (feature_level 3 이상만) ── */}
       {featureLevel >= 3 ? (
-        <div className="grid grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           {Object.keys(CATEGORY_LABELS).map(cat => {
             const Icon  = SECTION_ICONS[cat]
             const colors = SECTION_COLORS[cat]
@@ -245,7 +245,7 @@ export default async function StudentDashboard() {
       ) : null}
 
       {/* ── 퀵 액션 ── */}
-      <div className={`grid gap-3 mb-6 ${featureLevel >= 2 ? 'grid-cols-4' : 'grid-cols-3'}`}>
+      <div className={`grid gap-3 mb-6 ${featureLevel >= 2 ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2 md:grid-cols-3'}`}>
         <Link href="/student/exams"
           className="bg-white border border-gray-200 hover:border-blue-300 hover:bg-blue-50 rounded-xl p-3 flex items-center gap-2 transition">
           <FileText size={18} className="text-blue-600 flex-shrink-0" />

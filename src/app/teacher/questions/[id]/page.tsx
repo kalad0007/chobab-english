@@ -106,7 +106,7 @@ export default async function QuestionPreviewPage({
   // fill-blank 메타 파싱 (위저드 저장 포맷: {title, timeLimit, format, explanation})
   let fbMeta: { title?: string; timeLimit?: number; explanation?: string } = {}
   let explanationText = question.explanation ?? ''
-  let krTranslation = ''  // academic_discussion 한글 번역
+  let krTranslation = ''  // academic_discussion / email_writing 한글 번역
   if (isFillBlank) {
     const rawExp = question.explanation ?? ''
     if (rawExp.startsWith('{')) {
@@ -118,7 +118,7 @@ export default async function QuestionPreviewPage({
         }
       } catch { /* ignore */ }
     }
-  } else if (question.question_subtype === 'academic_discussion') {
+  } else if (question.question_subtype === 'academic_discussion' || question.question_subtype === 'email_writing') {
     const KR_DELIMITER = '\n\n===번역==='
     const parts = (question.explanation ?? '').split(KR_DELIMITER)
     explanationText = parts[0].trim()
@@ -334,16 +334,12 @@ export default async function QuestionPreviewPage({
             )}
           </div>
           {/* email_writing / academic_discussion 한글 번역 */}
-          {question.question_subtype === 'email_writing' && question.passage && (
+          {(question.question_subtype === 'email_writing' || question.question_subtype === 'academic_discussion') && (krTranslation || (question.question_subtype === 'email_writing' && question.passage)) && (
             <div>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">한글 번역</p>
-              <p className="text-sm text-gray-700 bg-blue-50 px-3 py-2.5 rounded-lg whitespace-pre-wrap leading-6">{question.passage}</p>
-            </div>
-          )}
-          {question.question_subtype === 'academic_discussion' && krTranslation && (
-            <div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">한글 번역</p>
-              <p className="text-sm text-gray-700 bg-blue-50 px-3 py-2.5 rounded-lg whitespace-pre-wrap leading-6">{krTranslation}</p>
+              <p className="text-sm text-gray-700 bg-blue-50 px-3 py-2.5 rounded-lg whitespace-pre-wrap leading-6">
+                {krTranslation || question.passage}
+              </p>
             </div>
           )}
           {explanationText && (

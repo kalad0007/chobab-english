@@ -685,17 +685,17 @@ export default function ExamTakePage() {
                 {/* 이전/다음 버튼 */}
                 <div className="flex justify-between mt-6">
                   <button onClick={() => setCurrent(c => Math.max(0, c - 1))} disabled={current === 0}
-                    className="flex items-center gap-1 px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition">
+                    className="flex items-center gap-1 px-4 py-2.5 md:py-2 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition">
                     <ChevronLeft size={16} /> 이전
                   </button>
                   {current < questions.length - 1 ? (
                     <button onClick={() => setCurrent(c => Math.min(questions.length - 1, c + 1))}
-                      className="flex items-center gap-1 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition">
+                      className="flex items-center gap-1 px-4 py-2.5 md:py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition">
                       다음 <ChevronRight size={16} />
                     </button>
                   ) : (
                     <button onClick={handleSubmit} disabled={submitting}
-                      className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 disabled:opacity-60 transition">
+                      className="flex items-center gap-2 px-5 py-2.5 md:py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 disabled:opacity-60 transition">
                       <CheckSquare size={16} /> {submitting ? '제출 중...' : '시험 제출'}
                     </button>
                   )}
@@ -731,7 +731,7 @@ export default function ExamTakePage() {
                       <div className="flex flex-wrap gap-1.5">
                         {groups[cat].map(({ q: q2, i }) => (
                           <button key={i} onClick={() => setCurrent(i)}
-                            className={`w-7 h-7 flex-shrink-0 rounded-md text-xs font-bold border-2 transition ${
+                            className={`w-8 h-8 flex-shrink-0 rounded-md text-xs font-bold border-2 transition ${
                               i === current ? 'bg-purple-600 border-purple-600 text-white' :
                               answers[q2.id] ? 'bg-blue-50 border-blue-400 text-blue-700' :
                               'bg-white border-gray-200 text-gray-400 hover:border-gray-300'

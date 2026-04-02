@@ -201,7 +201,44 @@ export default function StudentTableClient({ students }: { students: StudentRow[
         <div className="px-5 py-4 border-b border-gray-50">
           <h2 className="font-bold text-gray-900">👥 전체 학생 밴드 현황</h2>
         </div>
-        <div className="overflow-x-auto">
+
+        {/* 모바일: 카드 리스트 */}
+        <div className="md:hidden space-y-3 p-4">
+          {students.map(s => (
+            <div key={s.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="font-bold text-gray-900 text-sm">{s.name}</p>
+                  <p className="text-xs text-gray-400">{s.className}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {bandTag(s.overall)}
+                  <button
+                    onClick={() => setSelected(s)}
+                    className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 font-semibold px-2.5 py-1.5 rounded-lg transition min-h-[32px]"
+                  >
+                    상세
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {([['R', s.reading], ['L', s.listening], ['S', s.speaking], ['W', s.writing]] as [string, number | null][]).map(([label, val]) => (
+                  <div key={label} className="text-center bg-gray-50 rounded-xl p-2">
+                    <p className="text-xs font-bold text-gray-400 mb-1">{label}</p>
+                    <p className="text-sm font-bold text-gray-900">{val != null && val > 0 ? val.toFixed(1) : '—'}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
+                <span className="text-xs text-gray-400">응시 {s.submCount}회</span>
+                <MiniSparkline data={s.recentSubs} />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* 데스크탑: 테이블 */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 text-xs font-bold text-gray-400 uppercase tracking-wide">

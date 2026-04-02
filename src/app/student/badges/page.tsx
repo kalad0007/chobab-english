@@ -220,7 +220,7 @@ export default async function BadgesPage() {
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             { label: '획득 뱃지', value: `${earned.length}개`, icon: '🏅' },
             { label: '연속 학습', value: `${stats.streak}일`, icon: '🔥' },

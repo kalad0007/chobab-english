@@ -128,6 +128,70 @@ function StudentRow({ m, color, stats, classColorMap }: {
   )
 }
 
+function StudentCard({ m, color, stats }: {
+  m: any // eslint-disable-line @typescript-eslint/no-explicit-any
+  color: (typeof CLASS_COLORS)[number]
+  stats: { count: number; avgScore: number | null } | undefined
+}) {
+  const [isPending, startTransition] = useTransition()
+
+  const profile = m.profiles as any // eslint-disable-line @typescript-eslint/no-explicit-any
+  const classInfo = m.classes as any // eslint-disable-line @typescript-eslint/no-explicit-any
+  const name: string = profile?.name ?? '알 수 없음'
+  const email: string = profile?.email ?? ''
+  const className: string = classInfo?.name ?? ''
+  const featureLevel: number = m.feature_level ?? 1
+
+  function handleLevelChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const level = Number(e.target.value)
+    startTransition(() => { updateFeatureLevel(m.class_id, m.student_id, level) })
+  }
+
+  function handleRemove() {
+    if (!confirm(`"${name}" 학생을 "${className}" 반에서 제외하시겠습니까?`)) return
+    startTransition(() => { removeStudentFromClass(m.class_id, m.student_id) })
+  }
+
+  return (
+    <div className={`p-4 transition ${isPending ? 'opacity-50' : ''}`}>
+      <div className="flex items-start justify-between mb-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-gray-900 truncate">{name}</p>
+          {email && <p className="text-xs text-gray-400 truncate mt-0.5">{email}</p>}
+        </div>
+        <button
+          type="button"
+          onClick={handleRemove}
+          disabled={isPending}
+          title="반에서 제외"
+          className="p-2 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition disabled:opacity-50 min-h-[36px]"
+        >
+          <UserMinus size={14} />
+        </button>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${color.badge}`}>{className}</span>
+        <select
+          value={featureLevel}
+          onChange={handleLevelChange}
+          disabled={isPending}
+          className={`text-xs font-semibold border rounded-lg px-1.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-blue-400 transition ${LEVEL_STYLES[featureLevel] ?? LEVEL_STYLES[1]}`}
+        >
+          {LEVEL_OPTIONS.map(l => (
+            <option key={l.value} value={l.value}>{l.label}</option>
+          ))}
+        </select>
+        <span className="text-xs text-gray-500">{stats?.count ?? 0}회</span>
+        {stats && stats.count > 0 && stats.avgScore !== null ? (
+          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${scoreColor(stats.avgScore)}`}>{stats.avgScore}%</span>
+        ) : (
+          <span className="text-xs text-gray-300">점수 없음</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function StudentsClient({ members, classes, submissionMap }: Props) {
   const [selectedClass, setSelectedClass] = useState<string>('all')
 
@@ -183,6 +247,21 @@ export default function StudentsClient({ members, classes, submissionMap }: Prop
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+
+          {/* 모바일: 카드 리스트 */}
+          <div className="md:hidden divide-y divide-gray-50">
+            {filtered.map(m => (
+              <StudentCard
+                key={`${m.student_id}-${m.class_id}-card`}
+                m={m}
+                color={classColorMap[m.class_id] ?? CLASS_COLORS[0]}
+                stats={submissionMap[m.student_id]}
+              />
+            ))}
+          </div>
+
+          {/* 데스크탑: 테이블 */}
+          <div className="hidden md:block overflow-x-auto">
           {/* Table header */}
           <div className="grid grid-cols-[1fr_68px_68px_44px_44px_34px] items-center gap-2 px-3 md:px-5 py-3 bg-gray-50 border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wide">
             <span>학생 정보</span>
@@ -203,6 +282,7 @@ export default function StudentsClient({ members, classes, submissionMap }: Prop
                 classColorMap={classColorMap}
               />
             ))}
+          </div>
           </div>
         </div>
       )}

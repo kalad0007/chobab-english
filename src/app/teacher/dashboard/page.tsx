@@ -166,7 +166,7 @@ export default async function TeacherDashboard() {
           </h1>
           <p className="text-gray-500 text-sm mt-1">TOEFL 수업을 관리하세요.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link
             href="/teacher/questions/generate"
             className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition"

@@ -70,7 +70,7 @@ export default async function StudentExamsPage() {
   const submissionMap = Object.fromEntries((mySubmissions ?? []).map(s => [s.deployment_id, s]))
 
   return (
-    <div className="p-7">
+    <div className="p-4 md:p-7">
       <div className="mb-6">
         <h1 className="text-2xl font-extrabold text-gray-900">📝 시험 목록</h1>
         <p className="text-gray-500 text-sm mt-1">선생님이 배정한 시험을 확인하세요</p>

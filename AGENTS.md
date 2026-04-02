@@ -22,3 +22,21 @@ These defaults are optimized for AI coding agents (and humans) working on apps t
   needed. Always curl https://ai-gateway.vercel.sh/v1/models first; never trust model IDs from memory
 - For durable agent loops or untrusted code: use Workflow (pause/resume/state) + Sandbox; use Vercel MCP for secure infra access
 <!-- VERCEL BEST PRACTICES END -->
+
+## 모바일 우선 코딩 규칙
+
+새 컴포넌트/페이지 작성 또는 기존 코드 수정 시 반드시 준수:
+
+### 필수 규칙
+1. **패딩**: `p-6` 이상은 반드시 `p-4 md:p-6` 형태로 (모바일 먼저)
+2. **그리드**: `grid-cols-3` 이상은 반드시 `grid-cols-2 md:grid-cols-3` 이상으로
+3. **터치 타깃**: 클릭/탭 가능한 요소는 `min-h-[44px]` 이상 확보
+4. **테이블**: 5열 이상 테이블은 `md:hidden` 카드 뷰 + `hidden md:block` 테이블 쌍으로
+5. **고정 너비 금지**: `w-[NNNpx]` 대신 `max-w-[NNNpx] w-full` 사용
+6. **가로 넘침**: 넘칠 가능성 있는 컨테이너에 `overflow-x-auto` 추가
+7. **모달**: `p-4` 안전 여백 + `max-h-[90vh] overflow-y-auto`
+8. **텍스트**: `text-[10px]` 이하 금지 (보조 정보는 `text-xs` = 12px 최소)
+
+### 공통 Wrapper 컴포넌트 사용
+- `PageContainer`: 페이지 최상위 패딩 컨테이너 (`p-4 md:p-7`)
+- `ResponsiveGrid`: 반응형 그리드 (`cols={{ base:2, md:4 }}` 등)

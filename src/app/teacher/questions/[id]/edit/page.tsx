@@ -69,9 +69,9 @@ export default function EditQuestionPage() {
   const isListenAndRepeat = questionSubtype === 'listen_and_repeat'
   const isWritingLong = questionSubtype === 'email_writing' || questionSubtype === 'academic_discussion' || questionSubtype === 'take_an_interview'
 
-  // academic_discussion: explanation 필드를 채점기준 + 번역으로 분리
+  // academic_discussion / email_writing: explanation 필드를 채점기준 + 번역으로 분리
   const KR_DELIMITER = '\n\n===번역==='
-  const isAcadDisc = questionSubtype === 'academic_discussion'
+  const isAcadDisc = questionSubtype === 'academic_discussion' || questionSubtype === 'email_writing'
   const explanationScore = isAcadDisc ? (explanation.split(KR_DELIMITER)[0] ?? explanation) : explanation
   const explanationTranslation = isAcadDisc ? (explanation.split(KR_DELIMITER)[1]?.replace(/^\n\n/, '') ?? '') : ''
   function setExplanationScore(val: string) {
@@ -161,7 +161,18 @@ export default function EditQuestionPage() {
           loadedAnswer = numToLetter[loadedAnswer] ?? loadedAnswer
         }
         setAnswer(loadedAnswer)
-        setExplanation(data.explanation ?? '')
+        // email_writing: 구버전 데이터에서 passage에 번역이 있는 경우 explanation에 합쳐서 로드
+        if (subtype === 'email_writing') {
+          const rawExp = data.explanation ?? ''
+          const rawPassage = data.passage ?? ''
+          if (rawPassage && !rawExp.includes('===번역===')) {
+            setExplanation(rawExp + KR_DELIMITER + '\n\n' + rawPassage)
+          } else {
+            setExplanation(rawExp)
+          }
+        } else {
+          setExplanation(data.explanation ?? '')
+        }
       }
 
       if (data.type === 'multiple_choice' && Array.isArray(data.options)) {
@@ -193,6 +204,13 @@ export default function EditQuestionPage() {
       setAudioScript(speakingPrompt)
     }
   }, [isSpeaking, isListenAndRepeat, speakingPrompt])
+
+  // listen_and_repeat: audio_script 변경 시 speaking_prompt 자동 동기화
+  useEffect(() => {
+    if (isListenAndRepeat) {
+      setSpeakingPrompt(audioScript)
+    }
+  }, [audioScript, isListenAndRepeat])
 
   async function generateAudio() {
     // 스피킹(L&R 제외): speaking_prompt를 스크립트로 사용
@@ -268,7 +286,7 @@ export default function EditQuestionPage() {
         summary: summary || null,
         difficulty,
         content,
-        passage: (isSpeaking && !isListenAndRepeat) ? null : (passage || null),
+        passage: (isSpeaking && !isListenAndRepeat && questionSubtype !== 'take_an_interview') || questionSubtype === 'email_writing' ? null : (passage || null),
         options: type === 'multiple_choice' ? options.filter(o => o.text.trim()) : null,
         answer: finalAnswer,
         explanation: savedExplanation,
@@ -546,7 +564,7 @@ export default function EditQuestionPage() {
         )}
 
         {/* 지문 — 리스닝/스피킹/fill-blank/sentence_reordering/email_writing은 숨김 */}
-        {!isListening && !isSpeaking && !isFillBlank && questionSubtype !== 'sentence_reordering' && questionSubtype !== 'email_writing' && (
+        {!isListening && !(isSpeaking && questionSubtype !== 'take_an_interview') && !isFillBlank && questionSubtype !== 'sentence_reordering' && questionSubtype !== 'email_writing' && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
           <h2 className="font-bold text-gray-900">지문 (선택)</h2>
           <UnderlineTextarea
@@ -612,12 +630,12 @@ export default function EditQuestionPage() {
         </div>
         )}
 
-        {/* academic_discussion 한글 번역 (explanation 분리) */}
+        {/* academic_discussion / email_writing 한글 번역 (explanation 분리) */}
         {isAcadDisc && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
           <h2 className="font-bold text-gray-900">한글 번역 (선택)</h2>
           <AutoResizeTextarea value={explanationTranslation} onChange={e => setExplanationTranslation(e.target.value)}
-            placeholder="지문 및 모범 답안의 한글 번역을 입력하세요..."
+            placeholder="문제 및 모범 답안의 한글 번역을 입력하세요..."
             minRows={3}
             className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
         </div>
@@ -641,17 +659,6 @@ export default function EditQuestionPage() {
                 className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </div>
-        </div>
-        )}
-
-        {/* email_writing 한글 번역 (passage 필드, 답안 다음에 위치) */}
-        {questionSubtype === 'email_writing' && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-          <h2 className="font-bold text-gray-900">한글 번역 (선택)</h2>
-          <AutoResizeTextarea value={passage} onChange={e => setPassage(e.target.value)}
-            placeholder="문제 및 모범 답안의 한글 번역을 입력하세요..."
-            minRows={3}
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
         </div>
         )}
 

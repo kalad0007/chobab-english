@@ -14,12 +14,43 @@ export async function POST(req: NextRequest) {
     'academic_discussion',
   ])
 
+  const DEFAULT_TIME_LIMITS: Record<string, number> = {
+    listen_and_repeat: 30,
+    take_an_interview: 90,
+    complete_the_words: 600,
+    sentence_completion: 600,
+    email_writing: 1200,
+    sentence_reordering: 60,
+    academic_discussion: 1200,
+    conversation: 30,
+    academic_talk: 30,
+    campus_announcement: 30,
+    choose_response: 15,
+    daily_life_email: 120,
+    daily_life_text_chain: 120,
+    daily_life_notice: 120,
+    daily_life_guide: 120,
+    daily_life_article: 120,
+    daily_life_campus_notice: 120,
+    read_in_daily_life: 120,
+    factual: 120,
+    negative_factual: 120,
+    inference: 120,
+    rhetorical_purpose: 120,
+    vocabulary: 60,
+    reference: 60,
+    sentence_simplification: 120,
+    insert_text: 120,
+    academic_passage: 120,
+  }
+
   const rows = questions.map((q: {
     content: string; passage?: string | null; options?: { num: number; text: string }[] | null;
     answer: string; explanation?: string | null; category: string; difficulty: number;
     question_subtype?: string | null; audio_script?: string | null; audio_url?: string | null;
     speaking_prompt?: string | null; summary?: string | null; subcategory?: string | null;
     vocab_words?: { word: string; def: string; example?: string }[] | null;
+    email_to?: string | null; email_subject?: string | null;
   }) => ({
     teacher_id: user.id,
     type: ESSAY_SUBTYPES.has(q.question_subtype ?? '') ? 'essay' : 'multiple_choice',
@@ -40,9 +71,12 @@ export async function POST(req: NextRequest) {
     response_time: null,
     word_limit: null,
     task_number: null,
+    time_limit: DEFAULT_TIME_LIMITS[q.question_subtype ?? ''] ?? null,
     source: 'ai_generated',
     summary: q.summary ?? null,
     vocab_words: Array.isArray(q.vocab_words) && q.vocab_words.length > 0 ? q.vocab_words : null,
+    email_to: q.email_to ?? null,
+    email_subject: q.email_subject ?? null,
   }))
 
   // Group questions sharing the same passage OR audio_script with a shared UUID

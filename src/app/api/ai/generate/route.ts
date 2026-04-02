@@ -254,21 +254,23 @@ Respond with pure JSON only (no markdown):
 【content 형식 — 아래 구조를 정확히 따르세요】
 "[상황 설명 문단 (2-3문장)]\\n\\nWrite an email to [이름]. In your email, do the following:\\n• [조건 1]\\n• [조건 2]\\n• [조건 3]\\n\\nWrite as much as you can and in complete sentences."
 
-【explanation 형식 — 모범 답안 + 채점 기준】
-"To: [수신자 이름]\\nSubject: [이메일 제목]\\n\\n[${wc10}단어 이상의 모범 이메일 본문]\\n\\n---\\n채점 기준: 조건 3가지 충족, 격식체 이메일 형식, 논리적 구성"
+【answer 형식 — 모범 이메일 답안 (필수)】
+"To: [수신자 이름]\\nSubject: [이메일 제목]\\n\\n[${wc10}단어 이상의 모범 이메일 본문]"
 
-【passage 필드 — 한글 번역】
-"【문제 번역】\\n[content 전체 한글 번역]\\n\\n【모범 답안 번역】\\nTo: [수신자]\\nSubject: [제목 번역]\\n\\n[explanation 모범 답안 한글 번역]"
+【explanation 형식 — 채점 기준 + 한글 번역】
+"채점 기준: 조건 3가지 충족, 격식체 이메일 형식, 논리적 구성\\n\\n===번역===\\n\\n【문제 번역】\\n[content 전체 한글 번역]\\n\\n【모범 답안 번역】\\nTo: [수신자]\\nSubject: [제목 번역]\\n\\n[모범 답안 한글 번역]"
 
-- answer는 null로 설정하세요 (에세이형 문제이므로 단일 정답 없음)
+- passage는 null로 설정하세요
 - options는 null로 설정하세요
+- email_to: "Write an email to [이름]"에서 추출한 수신인 (예: "your neighbor Carl")
+- email_subject: answer의 Subject 줄에서 추출한 제목 (예: "Apology for the noise")
 - 난이도: ${diffDesc} ${topicNote}
 - difficulty 값은 반드시 ${difficulty}를 사용하세요
 - question_subtype은 반드시 "email_writing"으로 설정하세요
 - category는 반드시 "writing"으로 설정하세요
 
 반드시 다음 JSON 형식으로만 응답 (마크다운 코드블록 없이 순수 JSON):
-{"questions":[{"content":"You recently invited your family to your house. Your next-door neighbor has sent you a message complaining about the noise. You want to apologize and reassure him that it will not happen again.\\n\\nWrite an email to your neighbor. In your email, do the following:\\n• Explain the reasons for the noise\\n• Apologize to your neighbor\\n• Describe what actions you will take\\n\\nWrite as much as you can and in complete sentences.","passage":"【문제 번역】\\n최근 가족을 집으로 초대했습니다. 옆집 이웃이 소음에 대해 불만을 담은 메시지를 보냈습니다. 사과하고 다시는 이런 일이 없을 것이라고 안심시키고 싶습니다.\\n\\n이웃에게 이메일을 작성하세요. 이메일에 다음을 포함하세요:\\n• 소음의 이유를 설명하세요\\n• 이웃에게 사과하세요\\n• 취할 조치를 설명하세요\\n\\n최대한 많이, 완전한 문장으로 작성하세요.\\n\\n【모범 답안 번역】\\nTo: 이웃\\nSubject: 소음에 대한 사과\\n\\n안녕하세요, [이름]씨,\\n\\n어젯밤 소음으로 불편을 드려 정말 죄송합니다. 가족 모임이 있었고 모두가 즐거운 시간을 보내다 보니 소음을 인지하지 못했습니다. 다음부터는 늦은 시간에 소음을 줄이고 모임은 일찍 마치도록 하겠습니다.\\n\\n다시 한번 사과드립니다.\\n[이름]","options":null,"answer":null,"explanation":"To: Neighbor\\nSubject: Apology for the noise\\n\\nDear [Name],\\n\\nI am truly sorry for the noise caused last night. We had a family gathering and everyone was enjoying themselves, so we did not realize how loud it had become. I completely understand how frustrating this must have been for you, especially late in the evening.\\n\\nI assure you that this will not happen again. In the future, I will make sure to keep the noise level down and end any gatherings earlier in the evening.\\n\\nOnce again, please accept my sincere apologies.\\n\\nBest regards,\\n[Your Name]\\n\\n---\\n채점 기준: 조건 3가지 충족 (이유 설명, 사과, 조치 설명), 격식체 이메일 형식 (To/Subject/인사/본문/맺음), 논리적 구성","category":"writing","difficulty":${difficulty},"question_subtype":"email_writing","audio_script":null,"speaking_prompt":null}]}`,
+{"questions":[{"content":"You recently invited your family to your house. Your next-door neighbor has sent you a message complaining about the noise. You want to apologize and reassure him that it will not happen again.\\n\\nWrite an email to your neighbor. In your email, do the following:\\n• Explain the reasons for the noise\\n• Apologize to your neighbor\\n• Describe what actions you will take\\n\\nWrite as much as you can and in complete sentences.","passage":null,"options":null,"answer":"To: Neighbor\\nSubject: Apology for the noise\\n\\nDear [Name],\\n\\nI am truly sorry for the noise caused last night. We had a family gathering and everyone was enjoying themselves, so we did not realize how loud it had become. I completely understand how frustrating this must have been for you, especially late in the evening.\\n\\nI assure you that this will not happen again. In the future, I will make sure to keep the noise level down and end any gatherings earlier in the evening.\\n\\nOnce again, please accept my sincere apologies.\\n\\nBest regards,\\n[Your Name]","explanation":"채점 기준: 조건 3가지 충족 (이유 설명, 사과, 조치 설명), 격식체 이메일 형식 (To/Subject/인사/본문/맺음), 논리적 구성\\n\\n===번역===\\n\\n【문제 번역】\\n최근 가족을 집으로 초대했습니다. 옆집 이웃이 소음에 대해 불만을 담은 메시지를 보냈습니다. 사과하고 다시는 이런 일이 없을 것이라고 안심시키고 싶습니다.\\n\\n이웃에게 이메일을 작성하세요. 이메일에 다음을 포함하세요:\\n• 소음의 이유를 설명하세요\\n• 이웃에게 사과하세요\\n• 취할 조치를 설명하세요\\n\\n최대한 많이, 완전한 문장으로 작성하세요.\\n\\n【모범 답안 번역】\\nTo: 이웃\\nSubject: 소음에 대한 사과\\n\\n안녕하세요, [이름]씨,\\n\\n어젯밤 소음으로 불편을 드려 정말 죄송합니다. 가족 모임이 있었고 모두가 즐거운 시간을 보내다 보니 소음을 인지하지 못했습니다. 다음부터는 늦은 시간에 소음을 줄이고 모임은 일찍 마치도록 하겠습니다.\\n\\n다시 한번 사과드립니다.\\n[이름]","email_to":"your neighbor","email_subject":"Apology for the noise","category":"writing","difficulty":${difficulty},"question_subtype":"email_writing","audio_script":null,"speaking_prompt":null}]}`,
 
     academic_discussion: `TOEFL "Write for an Academic Discussion" 문제를 ${n}개 생성하세요.
 형식 규칙:
