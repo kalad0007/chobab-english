@@ -217,22 +217,26 @@ export default function GenerateQuestionsPage() {
   const perSetLabel = speakingLabels?.perSetLabel ?? '지문당 문제 개수'
 
   return (
-    <div className="p-3 md:p-7 max-w-3xl">
+    <div className="p-3 md:p-7">
       <div className="mb-3 md:mb-6">
         <div className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-3 py-1 rounded-full text-xs md:text-sm font-bold mb-2">
           <Sparkles size={12} /> AI 문제 생성
         </div>
         <h1 className="text-lg md:text-2xl font-extrabold text-gray-900">AI로 TOEFL 문제 생성</h1>
-        <p className="text-gray-500 text-xs md:text-sm mt-0.5">Claude AI가 TOEFL iBT 형식 문제를 생성해드려요.</p>
+        <p className="text-gray-500 text-xs md:text-sm mt-0.5">Claude AI가 TOEFL 문제를 생성해드려요.</p>
       </div>
 
       {/* 생성 옵션 폼 */}
       <form onSubmit={handleGenerate} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 md:p-6 mb-4 md:mb-6 space-y-3 md:space-y-5">
 
+        {/* Step 1: 유형 선택 */}
+        <div className="space-y-3 md:space-y-5">
+          <p className="text-[11px] font-bold text-purple-500 uppercase tracking-wider mb-2">유형 선택</p>
+
         {/* 섹션 선택 */}
         <div>
           <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1.5">TOEFL 섹션</label>
-          <div className="grid grid-cols-4 gap-1.5">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
               <button key={k} type="button" onClick={() => handleCategoryChange(k)}
                 className={`py-2 rounded-xl text-xs md:text-sm font-bold transition ${
@@ -336,6 +340,14 @@ export default function GenerateQuestionsPage() {
             </div>
           </div>
         )}
+
+        </div>{/* /Step 1 */}
+
+        <div className="border-t border-gray-100" />
+
+        {/* Step 2: 세부 설정 */}
+        <div className="space-y-3 md:space-y-5">
+          <p className="text-[11px] font-bold text-blue-500 uppercase tracking-wider mb-2">세부 설정</p>
 
         {/* Academic Discussion 세부 단어 수 */}
         {subtype === 'academic_discussion' && (
@@ -463,7 +475,7 @@ export default function GenerateQuestionsPage() {
         </div>
 
         {/* 문제 개수 + 주제 */}
-        <div className="grid grid-cols-2 gap-2 md:gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <div>
             <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1">
               {isMultiQpp ? setCountLabel : '문제 개수'}
@@ -505,10 +517,14 @@ export default function GenerateQuestionsPage() {
 
         {error && <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-lg border border-red-200">{error}</div>}
 
-        <button type="submit" disabled={loading}
-          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:opacity-60 text-white font-bold py-2.5 rounded-xl transition text-sm shadow-md">
-          {loading ? <><Loader2 size={15} className="animate-spin" /> 생성 중...</> : <><Sparkles size={15} /> 문제 생성하기</>}
-        </button>
+        </div>{/* /Step 2 */}
+
+        <div className="mt-2">
+          <button type="submit" disabled={loading}
+            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:opacity-60 text-white font-bold py-3.5 rounded-xl transition text-base shadow-md">
+            {loading ? <><Loader2 size={15} className="animate-spin" /> 생성 중...</> : <><Sparkles size={15} /> 문제 생성하기</>}
+          </button>
+        </div>
       </form>
 
       {/* 생성된 문제 목록 */}
