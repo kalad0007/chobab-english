@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createAdminClient, getUserFromCookie } from '@/lib/supabase/server'
-import { Zap, Plus, Trash2, BookOpen, Users } from 'lucide-react'
+import { Zap, Plus, BookOpen, Users } from 'lucide-react'
 import DeleteQuizButton from './DeleteQuizButton'
+import RenameQuizButton from './RenameQuizButton'
 
 export default async function CollocationQuizListPage() {
   const user = await getUserFromCookie()
@@ -71,7 +72,7 @@ export default async function CollocationQuizListPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-bold text-gray-900 text-sm">{q.title}</h3>
+                        <RenameQuizButton quizId={q.id} title={q.title} />
                         <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                           q.status === 'published'
                             ? 'bg-emerald-100 text-emerald-700'

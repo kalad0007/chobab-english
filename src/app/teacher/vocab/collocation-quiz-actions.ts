@@ -92,3 +92,20 @@ export async function toggleCollocationQuizPublish(quizId: string, classIds: str
   revalidatePath('/teacher/vocab/collocation-quiz')
   return {}
 }
+
+export async function renameCollocationQuiz(quizId: string, title: string) {
+  const user = await getUserFromCookie()
+  if (!user) return { error: '로그인이 필요합니다.' }
+  if (!title.trim()) return { error: '제목을 입력하세요.' }
+
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('collocation_quizzes')
+    .update({ title: title.trim() })
+    .eq('id', quizId)
+    .eq('teacher_id', user.id)
+
+  if (error) return { error: error.message }
+  revalidatePath('/teacher/vocab/collocation-quiz')
+  return {}
+}
