@@ -6,7 +6,7 @@ import { ArrowLeft, Zap, Check } from 'lucide-react'
 import { createCollocationQuiz } from '../../collocation-quiz-actions'
 
 interface Props {
-  set: { id: string; title: string; word_count: number }
+  set?: { id: string; title: string; word_count: number } | null
   words: { id: string; word: string; part_of_speech: string; collocations: string[] }[]
   allClasses: { id: string; name: string }[]
 }
@@ -21,7 +21,7 @@ export default function CollocationQuizNewClient({ set, words, allClasses }: Pro
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
-  const [title, setTitle] = useState(`${set.title} - 스와이프 퀴즈`)
+  const [title, setTitle] = useState(set ? `${set.title} - 스와이프 퀴즈` : '스와이프 퀴즈')
   const [orderNum, setOrderNum] = useState(0)
   const [selectedClassIds, setSelectedClassIds] = useState<Set<string>>(new Set())
   const [selectedItems, setSelectedItems] = useState<Set<ItemKey>>(new Set())
@@ -72,7 +72,7 @@ export default function CollocationQuizNewClient({ set, words, allClasses }: Pro
 
     startTransition(async () => {
       const result = await createCollocationQuiz({
-        setId: set.id,
+        setId: set?.id ?? null,
         title: title.trim(),
         orderNum,
         classIds: Array.from(selectedClassIds),
@@ -99,7 +99,9 @@ export default function CollocationQuizNewClient({ set, words, allClasses }: Pro
           </button>
           <div>
             <h1 className="text-base font-bold text-gray-900">새 스와이프 퀴즈</h1>
-            <p className="text-xs text-gray-500">{set.title} · {set.word_count}단어</p>
+            {set && (
+              <p className="text-xs text-gray-500">{set.title} · {set.word_count}단어</p>
+            )}
           </div>
         </div>
       </div>

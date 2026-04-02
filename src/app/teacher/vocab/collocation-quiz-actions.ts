@@ -4,7 +4,7 @@ import { createAdminClient, getUserFromCookie } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 export async function createCollocationQuiz(payload: {
-  setId: string
+  setId: string | null
   title: string
   orderNum: number
   classIds: string[]
