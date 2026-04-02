@@ -4,6 +4,20 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Star, X } from 'lucide-react'
 
+const styles = `
+@keyframes flyRight {
+  0%   { transform: translateX(0) rotate(0deg);   opacity: 1; }
+  100% { transform: translateX(120%) rotate(12deg); opacity: 0; }
+}
+@keyframes coinPop {
+  0%   { transform: translateY(0)   scale(1);   opacity: 1; }
+  60%  { transform: translateY(-40px) scale(1.2); opacity: 1; }
+  100% { transform: translateY(-70px) scale(0.8); opacity: 0; }
+}
+.fly-right  { animation: flyRight 0.38s ease-in forwards; }
+.coin-pop   { animation: coinPop  0.7s ease-out forwards; }
+`
+
 interface GameItem {
   id: string
   collocation: string
@@ -32,6 +46,8 @@ export default function SwipeGameClient({ quizTitle, items }: Props) {
   const [phase, setPhase] = useState<'playing' | 'wrong' | 'result'>('playing')
   const [wrongInfo, setWrongInfo] = useState<{ correct: string; collocation: string } | null>(null)
   const [btnSwap, setBtnSwap] = useState(false)
+  const [cardFlying, setCardFlying] = useState(false)
+  const [coinPopValue, setCoinPopValue] = useState<number | null>(null)
 
   const currentItem = items[currentIndex]
 
@@ -70,8 +86,16 @@ export default function SwipeGameClient({ quizTitle, items }: Props) {
       setMaxCombo(prev => Math.max(prev, newCombo))
       setCorrectCount(prev => prev + 1)
       const multiplier = newCombo >= 10 ? 3 : newCombo >= 5 ? 2 : 1
-      setCoins(prev => prev + 10 * multiplier)
-      nextQuestion()
+      const earned = 10 * multiplier
+      setCoins(prev => prev + earned)
+      // 카드 날아가기 애니메이션
+      setCardFlying(true)
+      setCoinPopValue(earned)
+      setTimeout(() => {
+        setCardFlying(false)
+        setCoinPopValue(null)
+        nextQuestion()
+      }, 380)
     } else {
       setCombo(0)
       setWrongInfo({ correct: partner, collocation: currentItem.collocation })
@@ -157,6 +181,7 @@ export default function SwipeGameClient({ quizTitle, items }: Props) {
 
   return (
     <>
+      <style>{styles}</style>
       <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-indigo-900 flex flex-col">
         {/* 헤더 */}
         <div className="flex items-center justify-between px-4 pt-safe pt-4 pb-2">
@@ -164,8 +189,13 @@ export default function SwipeGameClient({ quizTitle, items }: Props) {
             <X size={20} />
           </button>
           <p className="text-white/80 text-xs font-semibold truncate max-w-[200px]">{quizTitle}</p>
-          <div className="flex items-center gap-1 bg-yellow-400 text-yellow-900 font-bold text-sm px-3 py-1 rounded-full">
+          <div className="relative flex items-center gap-1 bg-yellow-400 text-yellow-900 font-bold text-sm px-3 py-1 rounded-full">
             <Star size={13} fill="currentColor" /> {coins}
+            {coinPopValue !== null && (
+              <span className="coin-pop absolute -top-1 -right-1 text-yellow-300 font-extrabold text-sm pointer-events-none">
+                +{coinPopValue}
+              </span>
+            )}
           </div>
         </div>
 
@@ -180,7 +210,7 @@ export default function SwipeGameClient({ quizTitle, items }: Props) {
 
         {/* 카드 */}
         <div className="flex-1 flex flex-col items-center justify-center px-4">
-          <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl p-8 text-center">
+          <div className={`w-full max-w-sm bg-white rounded-3xl shadow-2xl p-8 text-center ${cardFlying ? 'fly-right' : ''}`}>
             <p className="text-[10px] font-extrabold text-purple-400 tracking-widest uppercase mb-4">
               Complete the Collocation
             </p>
