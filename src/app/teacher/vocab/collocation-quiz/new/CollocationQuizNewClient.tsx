@@ -71,17 +71,21 @@ export default function CollocationQuizNewClient({ set, words, allClasses }: Pro
     })
 
     startTransition(async () => {
-      const result = await createCollocationQuiz({
-        setId: set?.id ?? null,
-        title: title.trim(),
-        orderNum,
-        classIds: Array.from(selectedClassIds),
-        items,
-      })
-      if (result.error) {
-        setError(result.error)
-      } else {
-        router.push('/teacher/vocab/collocation-quiz')
+      try {
+        const result = await createCollocationQuiz({
+          setId: set?.id ?? null,
+          title: title.trim(),
+          orderNum,
+          classIds: Array.from(selectedClassIds),
+          items,
+        })
+        if (result.error) {
+          setError(result.error)
+        } else {
+          router.push('/teacher/vocab/collocation-quiz')
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : '퀴즈 생성 중 오류가 발생했습니다.')
       }
     })
   }
