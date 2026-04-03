@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
 
 const PLAN_TIERS = ['free', 'standard', 'pro', 'premium'] as const
 
@@ -9,7 +10,7 @@ const PLAN_COLORS: Record<string, string> = {
   premium: 'bg-amber-100 text-amber-700',
 }
 
-export default async function AdminDashboardPage() {
+export default async function ManageDashboardPage() {
   const supabase = await createClient()
 
   const { data: teachers } = await supabase

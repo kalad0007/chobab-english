@@ -13,12 +13,12 @@ export default async function TeacherLayout({ children }: { children: React.Reac
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'teacher') redirect('/student/dashboard')
+  if (!['teacher', 'admin', 'superadmin'].includes(profile?.role ?? '')) redirect('/student/dashboard')
   if (!profile?.approved) redirect('/pending')
 
   return (
     <div className="flex min-h-screen bg-slate-50">
-      <TeacherSidebar teacherName={profile.name} />
+      <TeacherSidebar teacherName={profile.name} isAdmin={profile.role === 'admin'} isSuperadmin={profile.role === 'superadmin'} />
       <main className="flex-1 overflow-auto pt-14 md:pt-0">
         {children}
       </main>

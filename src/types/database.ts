@@ -1,6 +1,6 @@
 export type Json = string | number | boolean | null | { [key: string]: Json } | Json[]
 
-export type UserRole = 'teacher' | 'student' | 'admin'
+export type UserRole = 'teacher' | 'student' | 'admin' | 'superadmin'
 export type QuestionType = 'multiple_choice' | 'short_answer' | 'essay'
 export type QuestionCategory = 'reading' | 'listening' | 'speaking' | 'writing'
 export type ToeflSection = 'reading' | 'listening' | 'speaking' | 'writing'

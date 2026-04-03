@@ -7,7 +7,8 @@ import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, BookOpen, Sparkles, FileText,
-  Users, School, BarChart3, BookMarked, LogOut, Menu, X, Zap, BookA, ScrollText, KeyRound
+  Users, School, BarChart3, BookMarked, LogOut, Menu, X, Zap, BookA, ScrollText, KeyRound,
+  Shield, UserCog, Crown
 } from 'lucide-react'
 
 const navItems = [
@@ -52,7 +53,7 @@ const navItems = [
   },
 ]
 
-export default function TeacherSidebar({ teacherName }: { teacherName: string }) {
+export default function TeacherSidebar({ teacherName, isAdmin, isSuperadmin }: { teacherName: string; isAdmin?: boolean; isSuperadmin?: boolean }) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -192,6 +193,41 @@ export default function TeacherSidebar({ teacherName }: { teacherName: string })
               </ul>
             </div>
           ))}
+
+          {(isAdmin || isSuperadmin) && (
+            <div>
+              <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest px-2 mb-1.5">
+                {isSuperadmin ? '슈퍼관리' : '관리'}
+              </p>
+              <ul className="space-y-0.5">
+                {[
+                  { href: '/teacher/manage', label: '관리 대시보드', icon: Shield },
+                  { href: '/teacher/manage/teachers', label: '선생님 관리', icon: UserCog },
+                  ...(isSuperadmin ? [{ href: '/teacher/manage/admins', label: '관리자 관리', icon: Crown }] : []),
+                ].map(item => {
+                  const Icon = item.icon
+                  const active = pathname === item.href || pathname.startsWith(item.href + '/')
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        onClick={() => setMobileOpen(false)}
+                        className={cn(
+                          'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                          active
+                            ? 'bg-red-50 text-red-700 font-semibold'
+                            : 'text-gray-600 hover:bg-red-50 hover:text-red-700'
+                        )}
+                      >
+                        <Icon size={16} className={active ? 'text-red-600' : 'text-gray-400'} />
+                        {item.label}
+                      </Link>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )}
         </nav>
       </aside>
 

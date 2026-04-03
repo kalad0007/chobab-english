@@ -28,7 +28,13 @@ export async function middleware(request: NextRequest) {
   const { data: { session } } = await supabase.auth.getSession()
 
   const { pathname } = request.nextUrl
-  if (!session?.user && (pathname.startsWith('/teacher') || pathname.startsWith('/student') || pathname.startsWith('/admin'))) {
+
+  // /admin → /teacher/manage 리다이렉트
+  if (pathname.startsWith('/admin')) {
+    return NextResponse.redirect(new URL(pathname.replace('/admin', '/teacher/manage'), request.url))
+  }
+
+  if (!session?.user && (pathname.startsWith('/teacher') || pathname.startsWith('/student'))) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 

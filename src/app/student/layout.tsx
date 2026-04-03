@@ -13,7 +13,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'student') redirect('/teacher/dashboard')
+  if (!profile || !['student', 'admin', 'superadmin'].includes(profile.role)) redirect('/teacher/dashboard')
 
   const [classMemberResult, reviewsResult, classIdsResult, completedResult, featureLevelResult] = await Promise.all([
     supabase.from('class_members').select('classes(name)').eq('student_id', user.id).limit(1).single(),
