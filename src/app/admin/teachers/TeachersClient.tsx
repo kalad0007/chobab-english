@@ -1,15 +1,14 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { updateTeacherPlan, toggleTeacherApproval } from './actions'
+import { updateTeacherPlan, toggleTeacherApproval, addCredits } from './actions'
 
-const PLAN_TIERS = ['free', 'lite', 'standard', 'pro', 'premium'] as const
+const PLAN_TIERS = ['free', 'standard', 'pro', 'premium'] as const
 type PlanTier = typeof PLAN_TIERS[number]
 
 const PLAN_COLORS: Record<PlanTier, string> = {
   free: 'bg-gray-100 text-gray-600',
-  lite: 'bg-blue-100 text-blue-700',
-  standard: 'bg-teal-100 text-teal-700',
+  standard: 'bg-blue-100 text-blue-700',
   pro: 'bg-purple-100 text-purple-700',
   premium: 'bg-amber-100 text-amber-700',
 }
@@ -20,8 +19,7 @@ interface Teacher {
   email: string | null
   plan: PlanTier
   plan_expires_at: string | null
-  ai_question_count: number
-  ai_vocab_count: number
+  credits: number
   approved: boolean | null
   created_at: string
   student_count: number
@@ -30,6 +28,7 @@ interface Teacher {
 export default function TeachersClient({ teachers: initial }: { teachers: Teacher[] }) {
   const [teachers, setTeachers] = useState(initial)
   const [isPending, startTransition] = useTransition()
+  const [creditInput, setCreditInput] = useState<Record<string, string>>({})
 
   function handlePlanChange(teacherId: string, newPlan: PlanTier) {
     startTransition(async () => {
@@ -50,6 +49,18 @@ export default function TeachersClient({ teachers: initial }: { teachers: Teache
     })
   }
 
+  function handleAddCredits(teacherId: string) {
+    const amount = parseInt(creditInput[teacherId] ?? '0', 10)
+    if (!amount || amount <= 0) return
+    startTransition(async () => {
+      await addCredits(teacherId, amount)
+      setTeachers((prev) =>
+        prev.map((t) => (t.id === teacherId ? { ...t, credits: t.credits + amount } : t))
+      )
+      setCreditInput((prev) => ({ ...prev, [teacherId]: '' }))
+    })
+  }
+
   return (
     <div className="p-8">
       <div className="mb-6">
@@ -64,9 +75,10 @@ export default function TeachersClient({ teachers: initial }: { teachers: Teache
               <tr className="border-b border-gray-100 bg-gray-50">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 w-36">이름</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">이메일</th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 w-36">플랜</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 w-32">플랜</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 w-20">학생</th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 w-28">AI 사용 (문제/어휘)</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 w-24">크레딧</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 w-40">크레딧 충전</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 w-24">승인</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 w-28">가입일</th>
               </tr>
@@ -97,8 +109,26 @@ export default function TeachersClient({ teachers: initial }: { teachers: Teache
                   <td className="px-4 py-3 text-center text-gray-700 font-medium">
                     {teacher.student_count}
                   </td>
-                  <td className="px-4 py-3 text-center text-gray-500 text-xs">
-                    {teacher.ai_question_count} / {teacher.ai_vocab_count}
+                  <td className="px-4 py-3 text-center font-bold text-purple-700">
+                    {teacher.credits.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        placeholder="0"
+                        value={creditInput[teacher.id] ?? ''}
+                        onChange={(e) => setCreditInput((prev) => ({ ...prev, [teacher.id]: e.target.value }))}
+                        className="w-20 px-2 py-1 border border-gray-200 rounded-lg text-xs text-center focus:outline-none focus:ring-2 focus:ring-purple-300"
+                      />
+                      <button
+                        disabled={isPending}
+                        onClick={() => handleAddCredits(teacher.id)}
+                        className="px-2 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold hover:bg-purple-200 transition disabled:opacity-50"
+                      >
+                        충전
+                      </button>
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-center">
                     <button
@@ -120,7 +150,7 @@ export default function TeachersClient({ teachers: initial }: { teachers: Teache
               ))}
               {teachers.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-gray-400 text-sm">
+                  <td colSpan={8} className="px-4 py-12 text-center text-gray-400 text-sm">
                     등록된 선생님이 없습니다.
                   </td>
                 </tr>

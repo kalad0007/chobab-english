@@ -9,13 +9,13 @@ const styles = `
   0%   { transform: translateX(0) rotate(0deg);   opacity: 1; }
   100% { transform: translateX(120%) rotate(12deg); opacity: 0; }
 }
-@keyframes coinPop {
+@keyframes tokenPop {
   0%   { transform: translateY(0)   scale(1);   opacity: 1; }
   60%  { transform: translateY(-40px) scale(1.2); opacity: 1; }
   100% { transform: translateY(-70px) scale(0.8); opacity: 0; }
 }
 .fly-right  { animation: flyRight 0.38s ease-in forwards; }
-.coin-pop   { animation: coinPop  0.7s ease-out forwards; }
+.token-pop   { animation: tokenPop  0.7s ease-out forwards; }
 `
 
 interface GameItem {
@@ -43,12 +43,12 @@ export default function SwipeGameClient({ quizTitle, quizId, items }: Props) {
   const [combo, setCombo] = useState(0)
   const [maxCombo, setMaxCombo] = useState(0)
   const [correctCount, setCorrectCount] = useState(0)
-  const [coins, setCoins] = useState(0)
+  const [tokens, setTokens] = useState(0)
   const [phase, setPhase] = useState<'playing' | 'wrong' | 'result'>('playing')
   const [wrongInfo, setWrongInfo] = useState<{ correct: string; collocation: string } | null>(null)
   const [btnSwap, setBtnSwap] = useState(false)
   const [cardFlying, setCardFlying] = useState(false)
-  const [coinPopValue, setCoinPopValue] = useState<number | null>(null)
+  const [tokenPopValue, setTokenPopValue] = useState<number | null>(null)
   const [newBest, setNewBest] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -72,13 +72,13 @@ export default function SwipeGameClient({ quizTitle, quizId, items }: Props) {
   const leftChoice = btnSwap ? distractor : partner
   const rightChoice = btnSwap ? partner : distractor
 
-  async function handleSaveResult(finalCoins: number, finalCorrect: number, finalMaxCombo: number) {
+  async function handleSaveResult(finalTokens: number, finalCorrect: number, finalMaxCombo: number) {
     setSaving(true)
     try {
       const { saveQuizResult } = await import('../actions')
       const res = await saveQuizResult({
         quizId,
-        coinsEarned: finalCoins,
+        tokensEarned: finalTokens,
         correctCount: finalCorrect,
         maxCombo: finalMaxCombo,
       })
@@ -88,10 +88,10 @@ export default function SwipeGameClient({ quizTitle, quizId, items }: Props) {
     }
   }
 
-  function nextQuestion(latestCoins: number, latestCorrect: number, latestMaxCombo: number) {
+  function nextQuestion(latestTokens: number, latestCorrect: number, latestMaxCombo: number) {
     if (currentIndex + 1 >= items.length) {
       setPhase('result')
-      handleSaveResult(latestCoins, latestCorrect, latestMaxCombo)
+      handleSaveResult(latestTokens, latestCorrect, latestMaxCombo)
     } else {
       setCurrentIndex(prev => prev + 1)
       setBtnSwap(Math.random() > 0.5)
@@ -109,14 +109,14 @@ export default function SwipeGameClient({ quizTitle, quizId, items }: Props) {
       setCorrectCount(newCorrect)
       const multiplier = newCombo >= 10 ? 3 : newCombo >= 5 ? 2 : 1
       const earned = 10 * multiplier
-      setCoins(prev => prev + earned)
+      setTokens(prev => prev + earned)
       // 카드 날아가기 애니메이션
       setCardFlying(true)
-      setCoinPopValue(earned)
+      setTokenPopValue(earned)
       setTimeout(() => {
         setCardFlying(false)
-        setCoinPopValue(null)
-        nextQuestion(coins + earned, newCorrect, newMaxCombo)
+        setTokenPopValue(null)
+        nextQuestion(tokens + earned, newCorrect, newMaxCombo)
       }, 380)
     } else {
       setCombo(0)
@@ -127,7 +127,7 @@ export default function SwipeGameClient({ quizTitle, quizId, items }: Props) {
 
   function handleWrongClose() {
     setPhase('playing')
-    nextQuestion(coins, correctCount, maxCombo)
+    nextQuestion(tokens, correctCount, maxCombo)
   }
 
   function handleRestart() {
@@ -135,7 +135,7 @@ export default function SwipeGameClient({ quizTitle, quizId, items }: Props) {
     setCombo(0)
     setMaxCombo(0)
     setCorrectCount(0)
-    setCoins(0)
+    setTokens(0)
     setPhase('playing')
     setWrongInfo(null)
     setBtnSwap(Math.random() > 0.5)
@@ -188,8 +188,8 @@ export default function SwipeGameClient({ quizTitle, quizId, items }: Props) {
               <p className="text-2xl font-extrabold text-gray-900">{maxCombo}</p>
             </div>
             <div className="bg-yellow-50 rounded-2xl p-3">
-              <p className="text-[10px] text-yellow-600 font-bold uppercase">코인</p>
-              <p className="text-2xl font-extrabold text-yellow-600">{coins}</p>
+              <p className="text-[10px] text-yellow-600 font-bold uppercase">토큰</p>
+              <p className="text-2xl font-extrabold text-yellow-600">{tokens}</p>
             </div>
           </div>
 
@@ -223,10 +223,10 @@ export default function SwipeGameClient({ quizTitle, quizId, items }: Props) {
           </button>
           <p className="text-white/80 text-xs font-semibold truncate max-w-[200px]">{quizTitle}</p>
           <div className="relative flex items-center gap-1 bg-yellow-400 text-yellow-900 font-bold text-sm px-3 py-1 rounded-full">
-            <Star size={13} fill="currentColor" /> {coins}
-            {coinPopValue !== null && (
+            <Star size={13} fill="currentColor" /> {tokens}
+            {tokenPopValue !== null && (
               <span className="coin-pop absolute -top-1 -right-1 text-yellow-300 font-extrabold text-sm pointer-events-none">
-                +{coinPopValue}
+                +{tokenPopValue}
               </span>
             )}
           </div>

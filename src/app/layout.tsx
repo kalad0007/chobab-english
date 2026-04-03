@@ -13,13 +13,13 @@ export const viewport = {
 const geist = Geist({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "초밥샘 TOEFL",
+  title: "에듀원 TOEFL",
   description: "TOEFL iBT 대비 학습 플랫폼",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "초밥샘TOEFL",
+    title: "에듀원TOEFL",
   },
   icons: {
     icon: "/icons/icon-32x32.png",

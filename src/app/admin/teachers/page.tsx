@@ -6,7 +6,7 @@ export default async function AdminTeachersPage() {
 
   const { data: teachers } = await supabase
     .from('profiles')
-    .select('id, name, email, plan, plan_expires_at, ai_question_count, ai_vocab_count, approved, created_at, role')
+    .select('id, name, email, plan, plan_expires_at, credits, approved, created_at, role')
     .eq('role', 'teacher')
     .order('created_at', { ascending: false })
 

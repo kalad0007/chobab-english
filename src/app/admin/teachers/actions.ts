@@ -20,3 +20,17 @@ export async function toggleTeacherApproval(teacherId: string, approved: boolean
     .eq('id', teacherId)
   revalidatePath('/admin/teachers')
 }
+
+export async function addCredits(teacherId: string, amount: number) {
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('profiles')
+    .select('credits')
+    .eq('id', teacherId)
+    .single()
+  await supabase
+    .from('profiles')
+    .update({ credits: (data?.credits ?? 0) + amount })
+    .eq('id', teacherId)
+  revalidatePath('/admin/teachers')
+}

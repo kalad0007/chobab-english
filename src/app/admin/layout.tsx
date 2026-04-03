@@ -19,7 +19,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="flex min-h-screen bg-slate-50">
       <aside className="w-52 bg-white border-r border-gray-100 flex flex-col shadow-sm">
         <div className="px-5 py-5 border-b border-gray-100">
-          <p className="font-extrabold text-gray-900">초밥샘 TOEFL</p>
+          <p className="font-extrabold text-gray-900">에듀원 TOEFL</p>
           <p className="text-xs text-red-500 font-bold mt-0.5">관리자 패널</p>
         </div>
         <nav className="flex-1 py-4 px-3 space-y-1">

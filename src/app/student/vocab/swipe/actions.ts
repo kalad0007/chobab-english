@@ -4,7 +4,7 @@ import { createAdminClient, getUserFromCookie } from '@/lib/supabase/server'
 
 export async function saveQuizResult(payload: {
   quizId: string
-  coinsEarned: number
+  tokensEarned: number
   correctCount: number
   maxCombo: number
 }) {
@@ -16,28 +16,28 @@ export async function saveQuizResult(payload: {
   // 이전 최고 기록 조회
   const { data: prev } = await admin
     .from('collocation_quiz_progress')
-    .select('best_coins, attempts')
+    .select('best_tokens, attempts')
     .eq('student_id', user.id)
     .eq('quiz_id', payload.quizId)
     .single()
 
-  const prevBest = prev?.best_coins ?? 0
-  const coinDelta = Math.max(0, payload.coinsEarned - prevBest)
+  const prevBest = prev?.best_tokens ?? 0
+  const tokenDelta = Math.max(0, payload.tokensEarned - prevBest)
 
   // 최고 기록 갱신 (upsert)
   await admin.from('collocation_quiz_progress').upsert({
     student_id: user.id,
     quiz_id: payload.quizId,
-    best_coins: Math.max(prevBest, payload.coinsEarned),
+    best_tokens: Math.max(prevBest, payload.tokensEarned),
     best_correct: payload.correctCount,
     attempts: (prev?.attempts ?? 0) + 1,
     last_played_at: new Date().toISOString(),
   }, { onConflict: 'student_id,quiz_id' })
 
-  // 코인 차액만 profiles에 추가
-  if (coinDelta > 0) {
-    await admin.rpc('increment_coins', { user_id: user.id, amount: coinDelta })
+  // 토큰 차액만 profiles에 추가
+  if (tokenDelta > 0) {
+    await admin.rpc('increment_tokens', { user_id: user.id, amount: tokenDelta })
   }
 
-  return { coinDelta, newBest: coinDelta > 0 }
+  return { tokenDelta, newBest: tokenDelta > 0 }
 }

@@ -47,11 +47,11 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4 shadow-lg">
-            <span className="text-3xl">🍣</span>
+          <div className="inline-flex items-center justify-center mb-4">
+            <img src="/logo.png" alt="에듀원" className="h-12 w-auto" />
           </div>
           <h1 className="text-2xl font-extrabold text-gray-900">선생님 회원가입</h1>
-          <p className="text-gray-500 mt-1 text-sm">초밥샘의 영어공부에 오신 걸 환영해요!</p>
+          <p className="text-gray-500 mt-1 text-sm">에듀원 TOEFL에 오신 걸 환영해요!</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">

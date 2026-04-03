@@ -112,19 +112,25 @@ export default function TeacherSidebar({ teacherName }: { teacherName: string })
 
       {/* 사이드바 */}
       <aside className={cn(
-        'fixed inset-y-0 left-0 z-50 w-56 min-h-screen bg-white border-r border-gray-100 flex flex-col shadow-sm transition-transform duration-200',
+        'fixed inset-y-0 left-0 z-50 w-56 min-h-screen border-r border-gray-100 flex flex-col shadow-sm transition-transform duration-200 overflow-hidden',
         'md:relative md:translate-x-0 md:z-auto',
         mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       )}>
+        {/* 배경 패턴 */}
+        <div className="absolute inset-0 bg-gradient-to-b from-blue-100/50 via-white/80 to-indigo-50/40" />
+        <div
+          className="absolute inset-0 opacity-[0.08] pointer-events-none select-none"
+          aria-hidden="true"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='420'%3E%3Ctext x='15' y='35' font-size='18' fill='%234B5563' font-family='serif' font-weight='bold'%3EABC%3C/text%3E%3Ctext x='105' y='75' font-size='14' fill='%234B5563'%3E%F0%9F%93%9D%3C/text%3E%3Ctext x='45' y='120' font-size='16' fill='%234B5563'%3E%E2%9C%8F%EF%B8%8F%3C/text%3E%3Ctext x='110' y='170' font-size='16' fill='%234B5563'%3E%F0%9F%8E%93%3C/text%3E%3Ctext x='20' y='215' font-size='14' fill='%234B5563'%3EHello%3C/text%3E%3Ctext x='90' y='260' font-size='18' fill='%234B5563'%3E%F0%9F%93%96%3C/text%3E%3Ctext x='30' y='305' font-size='16' fill='%234B5563'%3E%E2%AD%90%3C/text%3E%3Ctext x='100' y='345' font-size='12' fill='%234B5563' font-family='serif' font-style='italic'%3EEnglish%3C/text%3E%3Ctext x='10' y='385' font-size='18' fill='%234B5563'%3E%F0%9F%8C%8D%3C/text%3E%3Ctext x='95' y='410' font-size='14' fill='%234B5563'%3E%E2%9C%A8%3C/text%3E%3C/svg%3E")`,
+            backgroundRepeat: 'repeat',
+          }}
+        />
         {/* 로고 */}
-        <div className="px-5 py-5 border-b border-gray-100 flex items-start justify-between">
+        <div className="px-5 py-5 border-b border-gray-100 flex items-start justify-between relative z-10">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-2xl">🍣</span>
-              <div>
-                <p className="font-extrabold text-gray-900 leading-tight">초밥샘</p>
-                <p className="font-extrabold text-blue-600 leading-tight">TOEFL</p>
-              </div>
+              <img src="/logo.png" alt="에듀원" className="h-10 w-auto" />
             </div>
             <p className="text-xs text-gray-400 mt-2">선생님 패널 · {teacherName}</p>
           </div>
@@ -137,7 +143,7 @@ export default function TeacherSidebar({ teacherName }: { teacherName: string })
         </div>
 
         {/* 로그아웃 + 비밀번호 변경 */}
-        <div className="px-3 py-3 border-b border-gray-100 space-y-0.5">
+        <div className="px-3 py-3 border-b border-gray-100 space-y-0.5 relative z-10">
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors"
@@ -155,7 +161,7 @@ export default function TeacherSidebar({ teacherName }: { teacherName: string })
         </div>
 
         {/* 네비게이션 */}
-        <nav className="flex-1 py-4 px-3 space-y-5 overflow-y-auto">
+        <nav className="flex-1 py-4 px-3 space-y-5 overflow-y-auto relative z-10">
           {navItems.map(group => (
             <div key={group.section}>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 mb-1.5">

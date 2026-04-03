@@ -1,20 +1,55 @@
 import { createClient } from '@/lib/supabase/server'
 
-export type PlanTier = 'free' | 'lite' | 'standard' | 'pro' | 'premium'
+export type PlanTier = 'free' | 'standard' | 'pro' | 'premium'
 
 const PLAN_ORDER: Record<PlanTier, number> = {
-  free: 0, lite: 1, standard: 2, pro: 3, premium: 4,
+  free: 0, standard: 1, pro: 2, premium: 3,
+}
+
+/** AI 생성 종류별 크레딧 단가 */
+export const CREDIT_COST: Record<string, number> = {
+  // 단순 문제
+  choose_response: 5,
+  complete_the_words: 5,
+  sentence_reordering: 5,
+  // 복잡한 문제 (문제당 10)
+  daily_life_email: 10,
+  daily_life_text_chain: 10,
+  daily_life_notice: 10,
+  daily_life_guide: 10,
+  daily_life_article: 10,
+  daily_life_campus_notice: 10,
+  academic_passage: 10,
+  conversation: 10,
+  academic_talk: 10,
+  campus_announcement: 10,
+  email_writing: 10,
+  academic_discussion: 10,
+  listen_and_repeat: 10,
+  take_an_interview: 10,
+  sentence_completion: 10,
+  // 퀴즈 생성
+  collocation_quiz: 20,
+  // 어휘 생성 (단어당 2)
+  vocab_per_word: 2,
+  // 지문 번역/해설
+  passage_translation: 5,
 }
 
 export function hasPlanAccess(current: PlanTier, required: PlanTier): boolean {
   return PLAN_ORDER[current] >= PLAN_ORDER[required]
 }
 
+export function getCreditCost(subtype: string, count: number = 1): number {
+  const unitCost = CREDIT_COST[subtype] ?? 10
+  return unitCost * count
+}
+
 export async function getTeacherPlan(userId: string) {
   const supabase = await createClient()
   const { data: profile } = await supabase
     .from('profiles')
-    .select('plan, plan_expires_at, ai_question_count, ai_question_reset_at, ai_vocab_count, ai_vocab_reset_at')
+    .select('plan, plan_expires_at, credits, credits_reset_at')
     .eq('id', userId)
     .single()
 
@@ -24,70 +59,60 @@ export async function getTeacherPlan(userId: string) {
     .eq('plan', profile?.plan ?? 'free')
     .single()
 
-  // 월 초기화 체크
+  // 월 초기화: 매월 기본 크레딧 리필
   const now = new Date()
-  const resetAt = profile?.ai_question_reset_at ? new Date(profile.ai_question_reset_at) : new Date(0)
+  const resetAt = profile?.credits_reset_at ? new Date(profile.credits_reset_at) : new Date(0)
   const needsReset = now.getMonth() !== resetAt.getMonth() || now.getFullYear() !== resetAt.getFullYear()
 
   if (needsReset && profile) {
+    const monthlyCredits = limits?.monthly_credits ?? 100
     await supabase.from('profiles').update({
-      ai_question_count: 0,
-      ai_question_reset_at: now.toISOString(),
-      ai_vocab_count: 0,
-      ai_vocab_reset_at: now.toISOString(),
+      credits: monthlyCredits,
+      credits_reset_at: now.toISOString(),
     }).eq('id', userId)
-    profile.ai_question_count = 0
-    profile.ai_vocab_count = 0
+    profile.credits = monthlyCredits
   }
 
   return {
     plan: (profile?.plan ?? 'free') as PlanTier,
     limits,
-    ai_question_count: profile?.ai_question_count ?? 0,
-    ai_vocab_count: profile?.ai_vocab_count ?? 0,
+    credits: profile?.credits ?? 0,
   }
 }
 
-export async function checkAndIncrementAiQuestion(userId: string): Promise<
-  { allowed: boolean; remaining: number | null; plan: PlanTier }
-> {
-  const { plan, limits, ai_question_count } = await getTeacherPlan(userId)
-  const max = limits?.ai_questions_per_month ?? null
+/** 크레딧 차감 시도. 잔액 부족 시 allowed: false */
+export async function deductCredits(
+  userId: string,
+  cost: number
+): Promise<{ allowed: boolean; remaining: number; plan: PlanTier }> {
+  const { plan, credits } = await getTeacherPlan(userId)
 
-  if (max !== null && ai_question_count >= max) {
-    return { allowed: false, remaining: 0, plan }
+  if (credits < cost) {
+    return { allowed: false, remaining: credits, plan }
   }
 
   const supabase = await createClient()
   await supabase.from('profiles')
-    .update({ ai_question_count: ai_question_count + 1 })
+    .update({ credits: credits - cost })
     .eq('id', userId)
 
   return {
     allowed: true,
-    remaining: max !== null ? max - ai_question_count - 1 : null,
+    remaining: credits - cost,
     plan,
   }
 }
 
-export async function checkAndIncrementAiVocab(userId: string): Promise<
-  { allowed: boolean; remaining: number | null; plan: PlanTier }
-> {
-  const { plan, limits, ai_vocab_count } = await getTeacherPlan(userId)
-  const max = limits?.ai_vocab_per_month ?? null
-
-  if (max !== null && ai_vocab_count >= max) {
-    return { allowed: false, remaining: 0, plan }
-  }
-
+/** 크레딧 환불 (AI 생성 실패 시) */
+export async function refundCredits(userId: string, cost: number) {
   const supabase = await createClient()
-  await supabase.from('profiles')
-    .update({ ai_vocab_count: ai_vocab_count + 1 })
+  const { data } = await supabase
+    .from('profiles')
+    .select('credits')
     .eq('id', userId)
+    .single()
 
-  return {
-    allowed: true,
-    remaining: max !== null ? max - ai_vocab_count - 1 : null,
-    plan,
-  }
+  await supabase.from('profiles')
+    .update({ credits: (data?.credits ?? 0) + cost })
+    .eq('id', userId)
 }

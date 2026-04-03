@@ -1,6 +1,6 @@
 export type Json = string | number | boolean | null | { [key: string]: Json } | Json[]
 
-export type UserRole = 'teacher' | 'student'
+export type UserRole = 'teacher' | 'student' | 'admin'
 export type QuestionType = 'multiple_choice' | 'short_answer' | 'essay'
 export type QuestionCategory = 'reading' | 'listening' | 'speaking' | 'writing'
 export type ToeflSection = 'reading' | 'listening' | 'speaking' | 'writing'
@@ -22,11 +22,9 @@ export interface Profile {
   approved: boolean
   plan: string
   plan_expires_at: string | null
-  ai_question_count: number
-  ai_question_reset_at: string
-  ai_vocab_count: number
-  ai_vocab_reset_at: string
-  coins: number
+  credits: number
+  credits_reset_at: string
+  tokens: number
   created_at: string
   updated_at: string
 }

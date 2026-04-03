@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { X, UserCircle2, Zap, GraduationCap } from 'lucide-react'
+import { X, UserCircle2, Zap } from 'lucide-react'
 
 const STORAGE_KEY = 'chobab_saved_accounts'
 
@@ -124,15 +124,22 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-emerald-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen relative flex items-center justify-center p-4 bg-gradient-to-br from-slate-100 via-gray-50 to-stone-100 overflow-hidden">
+      {/* 배경 패턴 */}
+      <div
+        className="absolute inset-0 opacity-[0.06] pointer-events-none select-none"
+        aria-hidden="true"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Ctext x='15' y='30' font-size='18' fill='%234B5563' font-family='serif' font-weight='bold'%3EABC%3C/text%3E%3Ctext x='130' y='55' font-size='14' fill='%234B5563'%3EHello%3C/text%3E%3Ctext x='70' y='95' font-size='16' fill='%234B5563'%3E%E2%9C%8F%EF%B8%8F%3C/text%3E%3Ctext x='160' y='105' font-size='18' fill='%234B5563'%3E%F0%9F%93%96%3C/text%3E%3Ctext x='10' y='140' font-size='16' fill='%234B5563'%3E%E2%AD%90%3C/text%3E%3Ctext x='100' y='150' font-size='12' fill='%234B5563' font-family='serif' font-style='italic'%3EEnglish%3C/text%3E%3Ctext x='30' y='190' font-size='18' fill='%234B5563'%3E%F0%9F%8C%8D%3C/text%3E%3Ctext x='170' y='180' font-size='16' fill='%234B5563'%3E%F0%9F%8E%93%3C/text%3E%3Ctext x='85' y='55' font-size='14' fill='%234B5563'%3E%F0%9F%93%9D%3C/text%3E%3Ctext x='150' y='195' font-size='14' fill='%234B5563'%3E%E2%9C%A8%3C/text%3E%3C/svg%3E")`,
+          backgroundRepeat: 'repeat',
+        }}
+      />
+
+      <div className="w-full max-w-md relative z-10">
         {/* 로고 */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-500 to-emerald-500 rounded-2xl mb-4 shadow-lg">
-            <GraduationCap size={32} className="text-white" />
-          </div>
-          <h1 className="text-2xl font-extrabold text-gray-900">EduOne</h1>
-          <p className="text-gray-500 mt-1 text-sm">영어 교육의 새로운 기준</p>
+          <img src="/logo.png" alt="에듀원" className="h-28 mx-auto mb-3" />
+          <p className="text-gray-500 text-sm font-medium">가장 쉽고 빠른 영어의 완성</p>
         </div>
 
         {/* 탭 */}
@@ -244,11 +251,13 @@ export default function LoginPage() {
                     const isLoading = quickLoadingEmail === account.email
                     const initials = account.name.slice(0, 2)
                     return (
-                      <button
+                      <div
                         key={account.email}
-                        onClick={() => handleQuickLogin(account)}
-                        disabled={!!quickLoadingEmail}
-                        className="w-full flex items-center gap-3 p-4 bg-gray-50 hover:bg-indigo-50 border border-gray-100 hover:border-indigo-200 rounded-2xl text-left transition disabled:opacity-60 group relative"
+                        onClick={() => !quickLoadingEmail && handleQuickLogin(account)}
+                        role="button"
+                        tabIndex={0}
+                        className="w-full flex items-center gap-3 p-4 bg-gray-50 hover:bg-indigo-50 border border-gray-100 hover:border-indigo-200 rounded-2xl text-left transition cursor-pointer group relative"
+                        style={quickLoadingEmail ? { opacity: 0.6, pointerEvents: 'none' } : undefined}
                       >
                         {/* Avatar */}
                         <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-emerald-500 flex items-center justify-center flex-shrink-0 text-white font-bold text-sm">
@@ -274,7 +283,7 @@ export default function LoginPage() {
                         >
                           <X size={14} />
                         </button>
-                      </button>
+                      </div>
                     )
                   })}
                   <button
