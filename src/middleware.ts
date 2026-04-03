@@ -1,7 +1,9 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function proxy(request: NextRequest) {
+export const runtime = 'experimental-edge'
+
+export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -23,8 +25,6 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  // 세션 확인 — getSession()은 쿠키에서 읽기만 (네트워크 없음, 타임아웃 없음)
-  // 토큰 갱신은 클라이언트 Supabase 인스턴스(autoRefreshToken 기본값 true)가 담당
   const { data: { session } } = await supabase.auth.getSession()
 
   const { pathname } = request.nextUrl

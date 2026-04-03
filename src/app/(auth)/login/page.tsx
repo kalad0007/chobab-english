@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { X, UserCircle2, Zap } from 'lucide-react'
+import { X, UserCircle2, Zap, GraduationCap } from 'lucide-react'
 
 const STORAGE_KEY = 'chobab_saved_accounts'
 
@@ -78,7 +78,7 @@ export default function LoginPage() {
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role, full_name')
+      .select('role, name')
       .eq('id', data.user.id)
       .single()
 
@@ -86,7 +86,7 @@ export default function LoginPage() {
       saveAccount({
         email: loginEmail,
         password: loginPassword,
-        name: profile.full_name ?? loginEmail.split('@')[0],
+        name: profile.name ?? loginEmail.split('@')[0],
         role: profile.role ?? 'student',
         savedAt: Date.now(),
       })
@@ -124,15 +124,15 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-emerald-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* 로고 */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4 shadow-lg">
-            <span className="text-3xl">🍣</span>
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-500 to-emerald-500 rounded-2xl mb-4 shadow-lg">
+            <GraduationCap size={32} className="text-white" />
           </div>
-          <h1 className="text-2xl font-extrabold text-gray-900">초밥샘 TOEFL</h1>
-          <p className="text-gray-500 mt-1 text-sm">TOEFL iBT 학습을 시작하세요</p>
+          <h1 className="text-2xl font-extrabold text-gray-900">EduOne</h1>
+          <p className="text-gray-500 mt-1 text-sm">영어 교육의 새로운 기준</p>
         </div>
 
         {/* 탭 */}
@@ -145,12 +145,12 @@ export default function LoginPage() {
           </button>
           <button
             onClick={() => setTab('quick')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-bold rounded-xl transition ${tab === 'quick' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-bold rounded-xl transition ${tab === 'quick' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}
           >
             <Zap size={14} />
             자동로그인
             {savedAccounts.length > 0 && (
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tab === 'quick' ? 'bg-blue-100 text-blue-600' : 'bg-gray-300 text-gray-600'}`}>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tab === 'quick' ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-300 text-gray-600'}`}>
                 {savedAccounts.length}
               </span>
             )}
@@ -172,24 +172,27 @@ export default function LoginPage() {
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">이메일</label>
                 <input
                   type="email"
+                  inputMode="email"
+                  autoComplete="email"
                   value={email}
                   onChange={e => setEmail(blockKorean(e.target.value))}
                   placeholder="example@email.com"
                   lang="en"
                   required
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
                 />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">비밀번호</label>
                 <input
                   type="password"
+                  autoComplete="current-password"
                   value={password}
                   onChange={e => setPassword(blockKorean(e.target.value))}
                   placeholder="••••••••"
                   lang="en"
                   required
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
                 />
               </div>
 
@@ -199,7 +202,7 @@ export default function LoginPage() {
                   type="checkbox"
                   checked={remember}
                   onChange={e => setRemember(e.target.checked)}
-                  className="w-4 h-4 rounded accent-blue-600"
+                  className="w-4 h-4 rounded accent-indigo-600"
                 />
                 <span className="text-sm text-gray-600">이 기기에 자동로그인 저장</span>
               </label>
@@ -207,7 +210,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-bold py-3 rounded-xl transition text-sm"
+                className="w-full bg-gradient-to-r from-indigo-500 to-emerald-500 hover:from-indigo-600 hover:to-emerald-600 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition text-sm shadow-sm"
               >
                 {loading ? '로그인 중...' : '로그인'}
               </button>
@@ -229,7 +232,7 @@ export default function LoginPage() {
                   <p className="text-xs text-gray-300 mt-1">로그인 시 "자동로그인 저장"을 체크하세요</p>
                   <button
                     onClick={() => setTab('login')}
-                    className="mt-4 text-sm text-blue-600 font-semibold hover:underline"
+                    className="mt-4 text-sm text-indigo-600 font-semibold hover:underline"
                   >
                     로그인하러 가기
                   </button>
@@ -245,10 +248,10 @@ export default function LoginPage() {
                         key={account.email}
                         onClick={() => handleQuickLogin(account)}
                         disabled={!!quickLoadingEmail}
-                        className="w-full flex items-center gap-3 p-4 bg-gray-50 hover:bg-blue-50 border border-gray-100 hover:border-blue-200 rounded-2xl text-left transition disabled:opacity-60 group relative"
+                        className="w-full flex items-center gap-3 p-4 bg-gray-50 hover:bg-indigo-50 border border-gray-100 hover:border-indigo-200 rounded-2xl text-left transition disabled:opacity-60 group relative"
                       >
                         {/* Avatar */}
-                        <div className="w-11 h-11 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0 text-white font-bold text-sm">
+                        <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-emerald-500 flex items-center justify-center flex-shrink-0 text-white font-bold text-sm">
                           {isLoading
                             ? <span className="animate-spin text-lg">⏳</span>
                             : initials
@@ -290,13 +293,13 @@ export default function LoginPage() {
             <div className="mt-6 text-center space-y-3">
               <p className="text-sm text-gray-500">
                 계정이 없으신가요?{' '}
-                <Link href="/register" className="text-blue-600 font-semibold hover:underline">
+                <Link href="/register" className="text-indigo-600 font-semibold hover:underline">
                   선생님 회원가입
                 </Link>
               </p>
               <p className="text-sm text-gray-500">
                 초대 코드가 있으신가요?{' '}
-                <Link href="/join" className="text-purple-600 font-semibold hover:underline">
+                <Link href="/join" className="text-emerald-600 font-semibold hover:underline">
                   학생 참여하기
                 </Link>
               </p>

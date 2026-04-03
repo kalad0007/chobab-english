@@ -125,12 +125,12 @@ export default function JoinPage() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">이메일</label>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="student@email.com" required
+                <input type="email" inputMode="email" lang="en" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="student@email.com" required
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">비밀번호</label>
-                <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="6자 이상" required
+                <input type="password" lang="en" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="6자 이상" required
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition" />
               </div>
               <button type="submit" disabled={loading}

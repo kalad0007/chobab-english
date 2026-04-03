@@ -78,6 +78,9 @@ export default function RegisterPage() {
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">이메일</label>
               <input
                 type="email"
+                inputMode="email"
+                lang="en"
+                autoComplete="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="teacher@school.com"
@@ -90,6 +93,8 @@ export default function RegisterPage() {
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">비밀번호</label>
               <input
                 type="password"
+                lang="en"
+                autoComplete="new-password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="6자 이상"

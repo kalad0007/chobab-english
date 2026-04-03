@@ -19,6 +19,14 @@ export interface Profile {
   avatar_url: string | null
   telegram_chat_id: string | null
   telegram_username: string | null
+  approved: boolean
+  plan: string
+  plan_expires_at: string | null
+  ai_question_count: number
+  ai_question_reset_at: string
+  ai_vocab_count: number
+  ai_vocab_reset_at: string
+  coins: number
   created_at: string
   updated_at: string
 }
