@@ -3,12 +3,11 @@ import Link from 'next/link'
 import type { PlanTier } from '@/lib/plan-guard'
 
 const PLAN_NAMES: Record<PlanTier, string> = {
-  free: 'FREE', lite: 'LITE', standard: 'STANDARD', pro: 'PRO', premium: 'PREMIUM',
+  free: 'FREE', standard: 'STANDARD', pro: 'PRO', premium: 'PREMIUM',
 }
 
 const PLAN_COLORS: Record<PlanTier, string> = {
   free: 'bg-gray-100 text-gray-600',
-  lite: 'bg-blue-100 text-blue-700',
   standard: 'bg-teal-100 text-teal-700',
   pro: 'bg-purple-100 text-purple-700',
   premium: 'bg-amber-100 text-amber-700',
