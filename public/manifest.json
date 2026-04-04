@@ -1,6 +1,6 @@
 {
-  "name": "초밥샘 TOEFL",
-  "short_name": "초밥샘TOEFL",
+  "name": "에듀원",
+  "short_name": "에듀원",
   "description": "TOEFL iBT 대비 학습 플랫폼",
   "start_url": "/",
   "display": "standalone",
