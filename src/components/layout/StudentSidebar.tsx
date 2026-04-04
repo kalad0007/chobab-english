@@ -115,7 +115,7 @@ export default function StudentSidebar({ studentName, className, pendingReviews 
         mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       )}>
         {/* 배경 패턴 */}
-        <div className="absolute inset-0 bg-gradient-to-b from-purple-100/50 via-white/80 to-violet-50/40" />
+        <div className="absolute inset-0 bg-gradient-to-b from-purple-100 via-white to-violet-50" />
         <div
           className="absolute inset-0 opacity-[0.08] pointer-events-none select-none"
           aria-hidden="true"
@@ -202,6 +202,8 @@ export default function StudentSidebar({ studentName, className, pendingReviews 
                 </ul>
               </div>
             ))}
+          {/* 모바일 하단 브라우저 UI 가림 방지 */}
+          <div className="h-16 md:h-0 shrink-0" />
         </nav>
       </aside>
 

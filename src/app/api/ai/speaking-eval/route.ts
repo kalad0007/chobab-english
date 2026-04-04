@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromCookie } from '@/lib/supabase/server'
+import { deductCredits, refundCredits, getCreditCostFromDB } from '@/lib/plan-guard'
 
 export const maxDuration = 60 // Vercel Pro: 60초 타임아웃
 
@@ -14,6 +15,13 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_TTS_API_KEY
   if (!apiKey) return NextResponse.json({ error: 'API key not configured' }, { status: 500 })
 
+  const cost = await getCreditCostFromDB('speaking_eval', 1)
+  const { allowed, remaining } = await deductCredits(user.id, cost, '스피킹 평가')
+  if (!allowed) {
+    return NextResponse.json({ error: '크레딧이 부족합니다', remaining }, { status: 403 })
+  }
+
+  try {
   // 1단계: 오디오 파일 fetch
   const audioRes = await fetch(audioUrl)
   if (!audioRes.ok) {
@@ -78,5 +86,9 @@ Reply in JSON only (no markdown):
     return NextResponse.json(result)
   } catch {
     return NextResponse.json({ error: 'JSON parse failed', raw: text }, { status: 500 })
+  }
+  } catch (err) {
+    await refundCredits(user.id, cost)
+    throw err
   }
 }

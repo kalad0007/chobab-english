@@ -1,14 +1,36 @@
 import { createClient } from '@/lib/supabase/server'
+import { getUserFromCookie } from '@/lib/supabase/server'
 import TeachersClient from './TeachersClient'
 
 export default async function ManageTeachersPage() {
   const supabase = await createClient()
 
-  const { data: teachers } = await supabase
+  // 현재 사용자의 role 및 크레딧 파악
+  const user = await getUserFromCookie()
+  let callerRole: string | null = null
+  let callerCredits: number = 0
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role, credits')
+      .eq('id', user.id)
+      .single()
+    callerRole = profile?.role ?? null
+    callerCredits = profile?.credits ?? 0
+  }
+
+  // superadmin: 전체 조회 / admin: 자기 소속(managed_by = 본인 id)만 조회
+  let query = supabase
     .from('profiles')
     .select('id, name, email, plan, plan_expires_at, credits, approved, created_at, role')
     .eq('role', 'teacher')
     .order('created_at', { ascending: false })
+
+  if (callerRole === 'admin' && user) {
+    query = query.eq('managed_by', user.id)
+  }
+
+  const { data: teachers } = await query
 
   // 선생님별 학생 수 집계 (classes -> class_members)
   const teacherIds = (teachers ?? []).map((t) => t.id)
@@ -42,5 +64,11 @@ export default async function ManageTeachersPage() {
     student_count: studentCounts[t.id] ?? 0,
   }))
 
-  return <TeachersClient teachers={enriched} />
+  return (
+    <TeachersClient
+      teachers={enriched}
+      callerRole={callerRole ?? 'admin'}
+      callerCredits={callerCredits}
+    />
+  )
 }

@@ -164,7 +164,7 @@ export default async function TeacherDashboard() {
           <h1 className="text-xl md:text-2xl font-extrabold text-gray-900">
             안녕하세요, {profile?.name ?? '선생님'}샘! 👋
           </h1>
-          <p className="text-gray-500 text-sm mt-1">TOEFL 수업을 관리하세요.</p>
+          <p className="text-gray-500 text-sm mt-1">오늘도 좋은 수업 되세요.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link

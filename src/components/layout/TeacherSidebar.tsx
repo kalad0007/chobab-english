@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, BookOpen, Sparkles, FileText,
   Users, School, BarChart3, BookMarked, LogOut, Menu, X, Zap, BookA, ScrollText, KeyRound,
-  Shield, UserCog, Crown
+  Shield, UserCog, Crown, Coins
 } from 'lucide-react'
 
 const navItems = [
@@ -53,7 +53,7 @@ const navItems = [
   },
 ]
 
-export default function TeacherSidebar({ teacherName, isAdmin, isSuperadmin }: { teacherName: string; isAdmin?: boolean; isSuperadmin?: boolean }) {
+export default function TeacherSidebar({ teacherName, credits, isAdmin, isSuperadmin }: { teacherName: string; credits: number; isAdmin?: boolean; isSuperadmin?: boolean }) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -118,7 +118,7 @@ export default function TeacherSidebar({ teacherName, isAdmin, isSuperadmin }: {
         mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       )}>
         {/* 배경 패턴 */}
-        <div className="absolute inset-0 bg-gradient-to-b from-blue-100/50 via-white/80 to-indigo-50/40" />
+        <div className="absolute inset-0 bg-gradient-to-b from-blue-100 via-white to-indigo-50" />
         <div
           className="absolute inset-0 opacity-[0.08] pointer-events-none select-none"
           aria-hidden="true"
@@ -134,6 +134,10 @@ export default function TeacherSidebar({ teacherName, isAdmin, isSuperadmin }: {
               <img src="/logo.png" alt="에듀원" className="h-10 w-auto" />
             </div>
             <p className="text-xs text-gray-400 mt-2">선생님 패널 · {teacherName}</p>
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <Coins size={13} className="text-amber-500" />
+              <span className="text-xs font-semibold text-amber-600">{credits.toLocaleString()} 크레딧</span>
+            </div>
           </div>
           <button
             className="md:hidden p-1 text-gray-400 hover:text-gray-600"
@@ -203,7 +207,10 @@ export default function TeacherSidebar({ teacherName, isAdmin, isSuperadmin }: {
                 {[
                   { href: '/teacher/manage', label: '관리 대시보드', icon: Shield },
                   { href: '/teacher/manage/teachers', label: '선생님 관리', icon: UserCog },
-                  ...(isSuperadmin ? [{ href: '/teacher/manage/admins', label: '관리자 관리', icon: Crown }] : []),
+                  ...(isSuperadmin ? [
+                    { href: '/teacher/manage/admins', label: '관리자 관리', icon: Crown },
+                    { href: '/teacher/manage/credit-costs', label: '단가 조정', icon: Coins },
+                  ] : []),
                 ].map(item => {
                   const Icon = item.icon
                   const active = pathname === item.href || pathname.startsWith(item.href + '/')
@@ -228,6 +235,8 @@ export default function TeacherSidebar({ teacherName, isAdmin, isSuperadmin }: {
               </ul>
             </div>
           )}
+          {/* 모바일 하단 브라우저 UI 가림 방지 */}
+          <div className="h-16 md:h-0 shrink-0" />
         </nav>
       </aside>
 

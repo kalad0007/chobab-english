@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { updateTeacherPlan, toggleTeacherApproval, addCredits } from './actions'
+import { updateTeacherPlan, toggleTeacherApproval, addCredits, withdrawCredits } from './actions'
 
 const PLAN_TIERS = ['free', 'standard', 'pro', 'premium'] as const
 type PlanTier = typeof PLAN_TIERS[number]
@@ -25,10 +25,20 @@ interface Teacher {
   student_count: number
 }
 
-export default function TeachersClient({ teachers: initial }: { teachers: Teacher[] }) {
+interface TeachersClientProps {
+  teachers: Teacher[]
+  callerRole: string
+  callerCredits: number
+}
+
+export default function TeachersClient({ teachers: initial, callerRole, callerCredits: initialCallerCredits }: TeachersClientProps) {
   const [teachers, setTeachers] = useState(initial)
   const [isPending, startTransition] = useTransition()
   const [creditInput, setCreditInput] = useState<Record<string, string>>({})
+  const [creditError, setCreditError] = useState<Record<string, string>>({})
+  const [withdrawInput, setWithdrawInput] = useState<Record<string, string>>({})
+  const [withdrawError, setWithdrawError] = useState<Record<string, string>>({})
+  const [callerCredits, setCallerCredits] = useState(initialCallerCredits)
 
   function handlePlanChange(teacherId: string, newPlan: PlanTier) {
     startTransition(async () => {
@@ -52,20 +62,55 @@ export default function TeachersClient({ teachers: initial }: { teachers: Teache
   function handleAddCredits(teacherId: string) {
     const amount = parseInt(creditInput[teacherId] ?? '0', 10)
     if (!amount || amount <= 0) return
+    setCreditError((prev) => ({ ...prev, [teacherId]: '' }))
     startTransition(async () => {
-      await addCredits(teacherId, amount)
+      const result = await addCredits(teacherId, amount)
+      if (result?.error) {
+        setCreditError((prev) => ({ ...prev, [teacherId]: result.error! }))
+        return
+      }
       setTeachers((prev) =>
         prev.map((t) => (t.id === teacherId ? { ...t, credits: t.credits + amount } : t))
       )
+      if (callerRole === 'admin') {
+        setCallerCredits((prev) => prev - amount)
+      }
       setCreditInput((prev) => ({ ...prev, [teacherId]: '' }))
+    })
+  }
+
+  function handleWithdrawCredits(teacherId: string) {
+    const amount = parseInt(withdrawInput[teacherId] ?? '0', 10)
+    if (!amount || amount <= 0) return
+    setWithdrawError((prev) => ({ ...prev, [teacherId]: '' }))
+    startTransition(async () => {
+      const result = await withdrawCredits(teacherId, amount)
+      if (result?.error) {
+        setWithdrawError((prev) => ({ ...prev, [teacherId]: result.error! }))
+        return
+      }
+      setTeachers((prev) =>
+        prev.map((t) => (t.id === teacherId ? { ...t, credits: t.credits - amount } : t))
+      )
+      if (callerRole === 'admin') {
+        setCallerCredits((prev) => prev + amount)
+      }
+      setWithdrawInput((prev) => ({ ...prev, [teacherId]: '' }))
     })
   }
 
   return (
     <div className="p-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-gray-900">선생님 관리</h1>
-        <p className="text-sm text-gray-400 mt-1">총 {teachers.length}명</p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-extrabold text-gray-900">선생님 관리</h1>
+          <p className="text-sm text-gray-400 mt-1">총 {teachers.length}명</p>
+        </div>
+        {callerRole === 'admin' && (
+          <div className="text-sm text-gray-500 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2">
+            내 잔여 크레딧: <span className="font-bold text-purple-700">{callerCredits.toLocaleString()}</span>
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -79,6 +124,7 @@ export default function TeachersClient({ teachers: initial }: { teachers: Teache
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 w-20">학생</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 w-24">크레딧</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 w-40">크레딧 충전</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 w-40">크레딧 회수</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 w-24">승인</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 w-28">가입일</th>
               </tr>
@@ -113,21 +159,49 @@ export default function TeachersClient({ teachers: initial }: { teachers: Teache
                     {teacher.credits.toLocaleString()}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        placeholder="0"
-                        value={creditInput[teacher.id] ?? ''}
-                        onChange={(e) => setCreditInput((prev) => ({ ...prev, [teacher.id]: e.target.value }))}
-                        className="w-20 px-2 py-1 border border-gray-200 rounded-lg text-xs text-center focus:outline-none focus:ring-2 focus:ring-purple-300"
-                      />
-                      <button
-                        disabled={isPending}
-                        onClick={() => handleAddCredits(teacher.id)}
-                        className="px-2 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold hover:bg-purple-200 transition disabled:opacity-50"
-                      >
-                        충전
-                      </button>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          placeholder="0"
+                          value={creditInput[teacher.id] ?? ''}
+                          onChange={(e) => setCreditInput((prev) => ({ ...prev, [teacher.id]: e.target.value }))}
+                          className="w-20 px-2 py-1 border border-gray-200 rounded-lg text-xs text-center focus:outline-none focus:ring-2 focus:ring-purple-300"
+                        />
+                        <button
+                          disabled={isPending}
+                          onClick={() => handleAddCredits(teacher.id)}
+                          className="px-2 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold hover:bg-purple-200 transition disabled:opacity-50"
+                        >
+                          충전
+                        </button>
+                      </div>
+                      {creditError[teacher.id] && (
+                        <p className="text-xs text-red-500">{creditError[teacher.id]}</p>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          placeholder="0"
+                          value={withdrawInput[teacher.id] ?? ''}
+                          onChange={(e) => setWithdrawInput((prev) => ({ ...prev, [teacher.id]: e.target.value }))}
+                          className="w-20 px-2 py-1 border border-gray-200 rounded-lg text-xs text-center focus:outline-none focus:ring-2 focus:ring-red-300"
+                        />
+                        <button
+                          disabled={isPending}
+                          onClick={() => handleWithdrawCredits(teacher.id)}
+                          className="px-2 py-1 bg-red-100 text-red-600 rounded-lg text-xs font-bold hover:bg-red-200 transition disabled:opacity-50"
+                        >
+                          회수
+                        </button>
+                      </div>
+                      {withdrawError[teacher.id] && (
+                        <p className="text-xs text-red-500">{withdrawError[teacher.id]}</p>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center">
@@ -150,7 +224,7 @@ export default function TeachersClient({ teachers: initial }: { teachers: Teache
               ))}
               {teachers.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-gray-400 text-sm">
+                  <td colSpan={9} className="px-4 py-12 text-center text-gray-400 text-sm">
                     등록된 선생님이 없습니다.
                   </td>
                 </tr>

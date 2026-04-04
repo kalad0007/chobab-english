@@ -6,7 +6,7 @@ export default async function ManageAdminsPage() {
 
   const { data: admins } = await supabase
     .from('profiles')
-    .select('id, name, email, plan, credits, approved, created_at')
+    .select('id, name, email, plan, credits, approved, created_at, invite_code')
     .eq('role', 'admin')
     .order('created_at', { ascending: false })
 

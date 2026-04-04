@@ -9,7 +9,7 @@ export default async function TeacherLayout({ children }: { children: React.Reac
   const supabase = await createClient()
   const { data: profile } = await supabase
     .from('profiles')
-    .select('name, role, approved')
+    .select('name, role, approved, credits')
     .eq('id', user.id)
     .single()
 
@@ -18,7 +18,7 @@ export default async function TeacherLayout({ children }: { children: React.Reac
 
   return (
     <div className="flex min-h-screen bg-slate-50">
-      <TeacherSidebar teacherName={profile.name} isAdmin={profile.role === 'admin'} isSuperadmin={profile.role === 'superadmin'} />
+      <TeacherSidebar teacherName={profile.name} credits={profile.credits ?? 0} isAdmin={profile.role === 'admin'} isSuperadmin={profile.role === 'superadmin'} />
       <main className="flex-1 overflow-auto pt-14 md:pt-0">
         {children}
       </main>

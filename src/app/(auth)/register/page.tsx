@@ -12,6 +12,7 @@ export default function RegisterPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [inviteCode, setInviteCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -24,11 +25,39 @@ export default function RegisterPage() {
     setLoading(true)
     setError('')
 
+    const trimmedCode = inviteCode.trim().toUpperCase()
+
+    // 초대코드 입력 시: 해당 admin 찾기
+    let managedBy: string | null = null
+    if (trimmedCode) {
+      const { data: adminProfile, error: codeError } = await supabase
+        .from('profiles')
+        .select('id, role, approved')
+        .eq('invite_code', trimmedCode)
+        .single()
+
+      if (codeError || !adminProfile) {
+        setError('유효하지 않은 초대코드입니다.')
+        setLoading(false)
+        return
+      }
+      if (adminProfile.role !== 'admin' || !adminProfile.approved) {
+        setError('유효하지 않은 초대코드입니다.')
+        setLoading(false)
+        return
+      }
+      managedBy = adminProfile.id
+    }
+
     const { error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { name, role: 'teacher' },
+        data: {
+          name,
+          role: 'teacher',
+          ...(managedBy ? { managed_by: managedBy } : {}),
+        },
       },
     })
 
@@ -101,6 +130,25 @@ export default function RegisterPage() {
                 required
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                초대코드{' '}
+                <span className="text-gray-400 font-normal">(선택 — 원장님께 받은 코드)</span>
+              </label>
+              <input
+                type="text"
+                lang="en"
+                value={inviteCode}
+                onChange={e => setInviteCode(e.target.value.toUpperCase())}
+                placeholder="EDU-XXXX"
+                maxLength={8}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition tracking-widest font-mono"
+              />
+              {inviteCode.trim() && (
+                <p className="text-xs text-emerald-600 mt-1">초대코드 입력 시 해당 원장님 소속 강사로 등록됩니다.</p>
+              )}
             </div>
 
             <button

@@ -29,14 +29,6 @@ export default async function TeacherVocabPage() {
   const list = words ?? []
 
   // Stats
-  const byTopic: Record<string, number> = {}
-  for (const w of list) {
-    byTopic[w.topic_category] = (byTopic[w.topic_category] ?? 0) + 1
-  }
-  const topTopics = Object.entries(byTopic)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-
   const withAudio = list.filter(w => w.audio_url).length
   const withoutAudio = list.filter(w => !w.audio_url).map(w => ({ id: w.id, word: w.word }))
   const today = new Date().toISOString().slice(0, 10)
@@ -60,28 +52,18 @@ export default async function TeacherVocabPage() {
         </Link>
       </div>
 
-      {/* Stats bar — compact single row */}
-      <div className="flex items-center bg-white rounded-xl border border-gray-100 shadow-sm px-3 py-2.5 mb-4">
-        <div className="flex-1 text-center">
-          <p className="text-[10px] text-gray-400 font-medium">전체</p>
-          <p className="text-base font-extrabold text-gray-900">{list.length}<span className="text-[10px] font-normal text-gray-400 ml-0.5">개</span></p>
-        </div>
-        <div className="w-px h-7 bg-gray-100" />
-        <div className="flex-1 text-center">
-          <p className="text-[10px] text-gray-400 font-medium">오늘</p>
-          <p className="text-base font-extrabold text-blue-600">{addedToday}<span className="text-[10px] font-normal text-gray-400 ml-0.5">개</span></p>
-        </div>
-        <div className="w-px h-7 bg-gray-100" />
-        <div className="flex-1 text-center">
-          <p className="text-[10px] text-gray-400 font-medium">음성</p>
-          <p className="text-base font-extrabold text-emerald-600">
-            {list.length > 0 ? Math.round(withAudio / list.length * 100) : 0}<span className="text-[10px] font-normal text-gray-400 ml-0.5">%</span>
-          </p>
-        </div>
-        <div className="w-px h-7 bg-gray-100" />
-        <div className="flex-1 flex items-center justify-center">
-          <BulkTtsButton words={withoutAudio} />
-        </div>
+      {/* Stats bar — inline badge style */}
+      <div className="flex flex-wrap items-center gap-2 px-1 py-1 mb-3">
+        <span className="text-xs px-2 py-1 rounded-lg bg-gray-50 border border-gray-100 text-gray-700 font-semibold">
+          전체 <span className="font-extrabold text-gray-900">{list.length}</span>개
+        </span>
+        <span className="text-xs px-2 py-1 rounded-lg bg-blue-50 border border-blue-100 text-blue-600 font-semibold">
+          오늘 <span className="font-extrabold">{addedToday}</span>개
+        </span>
+        <span className="text-xs px-2 py-1 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 font-semibold">
+          음성 <span className="font-extrabold">{list.length > 0 ? Math.round(withAudio / list.length * 100) : 0}</span>%
+        </span>
+        {withoutAudio.length > 0 && <BulkTtsButton words={withoutAudio} />}
       </div>
 
       <VocabListClient initialWords={list} topics={allTopics} customTopics={customTopics} />

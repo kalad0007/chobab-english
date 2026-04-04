@@ -1,5 +1,17 @@
 export type Json = string | number | boolean | null | { [key: string]: Json } | Json[]
 
+export type CreditLogType = 'charge' | 'transfer_in' | 'transfer_out' | 'usage'
+
+export interface CreditLog {
+  id: string
+  user_id: string
+  amount: number          // 양수=충전/수신, 음수=사용/이전
+  type: CreditLogType
+  description: string | null
+  related_user_id: string | null  // 이전 상대방 user_id
+  created_at: string
+}
+
 export type UserRole = 'teacher' | 'student' | 'admin' | 'superadmin'
 export type QuestionType = 'multiple_choice' | 'short_answer' | 'essay'
 export type QuestionCategory = 'reading' | 'listening' | 'speaking' | 'writing'
@@ -234,6 +246,7 @@ export interface Database {
       student_skill_stats: TableDef<StudentSkillStats>
       student_gamification: TableDef<StudentGamification>
       learning_contents: TableDef<LearningContent>
+      credit_logs: TableDef<CreditLog>
     }
     Views: Record<string, never>
     Functions: Record<string, never>

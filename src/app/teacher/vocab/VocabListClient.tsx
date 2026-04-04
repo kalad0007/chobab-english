@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client'
 import { deleteVocabWord } from './actions'
 import { addCustomTopic, deleteCustomTopic } from './topic-actions'
 import { createVocabSetFromWordIds } from './set-actions'
+import { WORD_LEVEL_CONFIG, WordLevel } from './constants'
 
 interface Word {
   id: string
@@ -48,6 +49,7 @@ export default function VocabListClient({
   const [search, setSearch] = useState('')
   const [filterTopic, setFilterTopic] = useState('all')
   const [filterPos, setFilterPos] = useState('all')
+  const [filterLevel, setFilterLevel] = useState<string>('')
   const [isPending, startTransition] = useTransition()
   const [playingId, setPlayingId] = useState<string | null>(null)
 
@@ -177,6 +179,18 @@ export default function VocabListClient({
   const filtered = words.filter(w => {
     if (filterTopic !== 'all' && w.topic_category !== filterTopic) return false
     if (filterPos !== 'all' && w.part_of_speech !== filterPos) return false
+    if (filterLevel) {
+      const levelKey = filterLevel as WordLevel
+      const cfg = WORD_LEVEL_CONFIG[levelKey]
+      if (cfg) {
+        // TOEFL은 difficulty >= 3.0, 나머지는 정확히 일치
+        if (levelKey === 'toefl') {
+          if (w.difficulty < cfg.difficulty) return false
+        } else {
+          if (w.difficulty !== cfg.difficulty) return false
+        }
+      }
+    }
     if (search.trim()) {
       const q = search.toLowerCase()
       return w.word.toLowerCase().includes(q) || w.definition_ko.includes(q) ||
@@ -191,68 +205,78 @@ export default function VocabListClient({
   return (
     <div>
       {/* Filter bar */}
-      <div className="flex flex-col gap-2 mb-3">
-        {/* Row 1: search + topic */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2 flex-[2]">
-            <Search size={13} className="text-gray-400 flex-shrink-0" />
-            <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="단어, 뜻, 동의어..."
-              className="text-sm text-gray-900 flex-1 focus:outline-none min-w-0" />
-            {search && <button onClick={() => setSearch('')} className="text-gray-300 hover:text-gray-500"><X size={12} /></button>}
-          </div>
-          <select value={filterTopic} onChange={e => setFilterTopic(e.target.value)}
-            className="bg-white border border-gray-200 rounded-xl px-2 py-2 text-xs text-gray-700 focus:outline-none flex-[1]">
-            <option value="all">전체 주제</option>
-            {allTopics.filter(t => topicCounts[t.value]).map(t => (
-              <option key={t.value} value={t.value}>{t.emoji} {t.label} ({topicCounts[t.value]})</option>
-            ))}
-          </select>
+      <div className="flex flex-col gap-1.5 mb-3">
+        {/* Row 1: 검색창 전체 너비 */}
+        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2 w-full">
+          <Search size={13} className="text-gray-400 flex-shrink-0" />
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="단어, 뜻, 동의어..."
+            className="text-sm text-gray-900 flex-1 focus:outline-none min-w-0" />
+          {search && <button onClick={() => setSearch('')} className="text-gray-300 hover:text-gray-500"><X size={12} /></button>}
         </div>
 
-        {/* Row 2: topic manage + pos filter + select mode + count */}
-        <div className="flex items-center gap-2">
-          <button onClick={() => setShowTopicManager(v => !v)}
-            className="flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 bg-white border border-gray-200 hover:border-blue-300 text-gray-500 hover:text-blue-600 rounded-xl transition">
-            주제 <ChevronDown size={12} className={`transition-transform ${showTopicManager ? 'rotate-180' : ''}`} />
-          </button>
+        {/* Row 2: 주제/품사/난이도 드롭다운 + 선택버튼 + 카운트 */}
+        <div className="flex items-center gap-1.5">
+          <select value={filterTopic} onChange={e => setFilterTopic(e.target.value)}
+            className="flex-1 min-w-0 text-xs px-2 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 focus:outline-none">
+            <option value="all">주제</option>
+            {allTopics.filter(t => topicCounts[t.value]).map(t => (
+              <option key={t.value} value={t.value}>{t.label} ({topicCounts[t.value]})</option>
+            ))}
+          </select>
           <select value={filterPos} onChange={e => setFilterPos(e.target.value)}
-            className={`text-xs font-bold px-2 py-1.5 rounded-xl border transition focus:outline-none ${
-              filterPos !== 'all' ? 'bg-violet-50 border-violet-300 text-violet-700' : 'bg-white border-gray-200 text-gray-500'
+            className={`flex-1 min-w-0 text-xs px-2 py-1.5 rounded-lg border bg-white focus:outline-none ${
+              filterPos !== 'all' ? 'border-violet-300 text-violet-700' : 'border-gray-200 text-gray-600'
             }`}>
-            <option value="all">품사 전체</option>
+            <option value="all">품사</option>
             {Object.keys(POS_COLOR).map(pos => (
               <option key={pos} value={pos}>{pos}</option>
             ))}
           </select>
-
+          <select value={filterLevel} onChange={e => setFilterLevel(e.target.value)}
+            className={`flex-1 min-w-0 text-xs px-2 py-1.5 rounded-lg border bg-white focus:outline-none ${
+              filterLevel ? 'border-blue-300 text-blue-700' : 'border-gray-200 text-gray-600'
+            }`}>
+            <option value="">난이도</option>
+            <option value="elem_1_2">초1-2</option>
+            <option value="elem_3_4">초3-4</option>
+            <option value="elem_5_6">초5-6</option>
+            <option value="middle">중등</option>
+            <option value="toefl">TOEFL</option>
+          </select>
+          <button onClick={() => setShowTopicManager(v => !v)}
+            className={`flex-shrink-0 p-1.5 rounded-lg border transition ${showTopicManager ? 'border-blue-300 bg-blue-50 text-blue-600' : 'border-gray-200 bg-white text-gray-500 hover:text-blue-600'}`}
+            title="주제 관리">
+            <ChevronDown size={13} className={`transition-transform ${showTopicManager ? 'rotate-180' : ''}`} />
+          </button>
           {!selectMode ? (
             <>
               <button onClick={enterSelectMode}
-                className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition">
-                <Layers size={12} /> 선택
+                className="flex-shrink-0 p-1.5 rounded-lg border border-gray-200 bg-white text-gray-500 hover:text-blue-600 hover:border-blue-300 transition"
+                title="선택 모드">
+                <Layers size={13} />
               </button>
-              <span className="text-xs text-gray-400 ml-auto">{filtered.length}개</span>
+              <span className="text-xs text-gray-400 flex-shrink-0">{filtered.length}개</span>
             </>
           ) : (
-            <div className="flex items-center gap-1.5 flex-1">
-              <span className="text-xs text-blue-600 font-bold">{selected.size}개</span>
+            <div className="flex items-center gap-1 flex-1 min-w-0">
+              <span className="text-xs text-blue-600 font-bold flex-shrink-0">{selected.size}개</span>
               <button onClick={() => setSelected(new Set(filtered.map(w => w.id)))}
-                className="text-xs text-gray-500 hover:text-gray-700 underline">전체</button>
+                className="text-xs text-gray-500 hover:text-gray-700 underline flex-shrink-0">전체</button>
               <button onClick={() => setSelected(new Set())}
-                className="text-xs text-gray-400 hover:text-gray-600 underline">해제</button>
+                className="text-xs text-gray-400 hover:text-gray-600 underline flex-shrink-0">해제</button>
               <button onClick={exitSelectMode}
-                className="text-xs font-bold px-2 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition ml-auto">
+                className="text-xs font-bold px-2 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition ml-auto flex-shrink-0">
                 취소
               </button>
               {selected.size > 0 && (
                 <>
                   <button onClick={handleBulkDelete}
-                    className="text-xs font-bold px-2.5 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition whitespace-nowrap">
+                    className="text-xs font-bold px-2 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition whitespace-nowrap flex-shrink-0">
                     삭제
                   </button>
                   <button onClick={() => setShowSetPanel(true)}
-                    className="text-xs font-bold px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition whitespace-nowrap">
+                    className="text-xs font-bold px-2 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition whitespace-nowrap flex-shrink-0">
                     세트
                   </button>
                 </>

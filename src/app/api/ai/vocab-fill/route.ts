@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getUserFromCookie } from '@/lib/supabase/server'
+import { deductCredits, refundCredits, getCreditCostFromDB } from '@/lib/plan-guard'
 
 const TOPIC_OPTIONS = [
   'biology','chemistry','physics','astronomy','geology','ecology',
@@ -180,28 +181,39 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) return NextResponse.json({ error: 'Anthropic API key not configured' }, { status: 500 })
 
-  const client = new Anthropic({ apiKey })
+  const cost = await getCreditCostFromDB('vocab_per_word', 1)
+  const { allowed, remaining } = await deductCredits(user.id, cost, '어휘 카드 상세 생성')
+  if (!allowed) {
+    return NextResponse.json({ error: '크레딧이 부족합니다', remaining }, { status: 403 })
+  }
 
-  const prompt = buildPrompt(word.trim(), word_level)
-
-  const msg = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 1500,
-    messages: [{ role: 'user', content: prompt }],
-  })
-
-  const raw = (msg.content[0] as { type: string; text: string }).text?.trim()
   try {
-    const parsed = JSON.parse(raw)
-    return NextResponse.json(parsed)
-  } catch {
-    // Try to extract JSON from response
-    const match = raw.match(/\{[\s\S]*\}/)
-    if (match) {
-      try {
-        return NextResponse.json(JSON.parse(match[0]))
-      } catch { /* fall through */ }
+    const client = new Anthropic({ apiKey })
+
+    const prompt = buildPrompt(word.trim(), word_level)
+
+    const msg = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1500,
+      messages: [{ role: 'user', content: prompt }],
+    })
+
+    const raw = (msg.content[0] as { type: string; text: string }).text?.trim()
+    try {
+      const parsed = JSON.parse(raw)
+      return NextResponse.json(parsed)
+    } catch {
+      // Try to extract JSON from response
+      const match = raw.match(/\{[\s\S]*\}/)
+      if (match) {
+        try {
+          return NextResponse.json(JSON.parse(match[0]))
+        } catch { /* fall through */ }
+      }
+      return NextResponse.json({ error: 'AI 응답 파싱 실패', raw }, { status: 500 })
     }
-    return NextResponse.json({ error: 'AI 응답 파싱 실패', raw }, { status: 500 })
+  } catch (err) {
+    await refundCredits(user.id, cost)
+    throw err
   }
 }

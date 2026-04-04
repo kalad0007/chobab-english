@@ -43,6 +43,13 @@ export default function JoinPage() {
   async function handleJoin(e: React.FormEvent) {
     e.preventDefault()
     if (!classInfo) return
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setError('올바른 이메일 형식을 입력해주세요.')
+      return
+    }
+
     setLoading(true)
     setError('')
 
@@ -54,7 +61,25 @@ export default function JoinPage() {
     })
 
     if (authError || !data.user) {
-      setError('가입에 실패했습니다. 이미 사용 중인 이메일일 수 있어요.')
+      const msg = (authError?.message ?? '').toLowerCase()
+      if (msg.includes('already') || msg.includes('registered') || msg.includes('exists')) {
+        setError('이미 사용 중인 이메일입니다. 로그인을 시도해주세요.')
+      } else if (msg.includes('invalid') || msg.includes('email')) {
+        setError('올바른 이메일 형식을 입력해주세요.')
+      } else if (msg.includes('password') || msg.includes('weak')) {
+        setError('비밀번호는 6자 이상이어야 합니다.')
+      } else if (msg.includes('rate') || msg.includes('limit')) {
+        setError('요청이 너무 많습니다. 잠시 후 다시 시도해주세요.')
+      } else {
+        setError(`가입에 실패했습니다: ${authError?.message ?? '알 수 없는 오류'}`)
+      }
+      setLoading(false)
+      return
+    }
+
+    // 이메일 확인 모드에서 이미 존재하는 이메일이면 identities가 비어있음
+    if (data.user.identities && data.user.identities.length === 0) {
+      setError('이미 사용 중인 이메일입니다. 로그인을 시도해주세요.')
       setLoading(false)
       return
     }

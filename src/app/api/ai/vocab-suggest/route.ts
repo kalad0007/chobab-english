@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getUserFromCookie } from '@/lib/supabase/server'
+import { deductCredits, refundCredits, getCreditCostFromDB } from '@/lib/plan-guard'
 
 const TOPIC_EN: Record<string, string> = {
   biology: 'Biology', chemistry: 'Chemistry', physics: 'Physics',
@@ -102,34 +103,45 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) return NextResponse.json({ error: 'Anthropic API key not configured' }, { status: 500 })
 
-  const client = new Anthropic({ apiKey })
-
-  const excludeClause = excludeWords.length > 0
-    ? `\n\nDo NOT include any of these already-existing words: ${excludeWords.join(', ')}`
-    : ''
-
-  const prompt = buildPrompt(word_level, count, topic, difficulty, excludeClause)
-
-  const msg = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 512,
-    messages: [{ role: 'user', content: prompt }],
-  })
-
-  const raw = (msg.content[0] as { type: string; text: string }).text?.trim()
+  const cost = await getCreditCostFromDB('vocab_per_word', count)
+  const { allowed, remaining } = await deductCredits(user.id, cost, '어휘 추천 생성')
+  if (!allowed) {
+    return NextResponse.json({ error: '크레딧이 부족합니다', remaining }, { status: 403 })
+  }
 
   try {
-    const arr = JSON.parse(raw)
-    if (!Array.isArray(arr)) throw new Error('not array')
-    return NextResponse.json({ words: arr.slice(0, count) })
-  } catch {
-    const match = raw.match(/\[[\s\S]*\]/)
-    if (match) {
-      try {
-        const arr = JSON.parse(match[0])
-        return NextResponse.json({ words: arr.slice(0, count) })
-      } catch { /* fall through */ }
+    const client = new Anthropic({ apiKey })
+
+    const excludeClause = excludeWords.length > 0
+      ? `\n\nDo NOT include any of these already-existing words: ${excludeWords.join(', ')}`
+      : ''
+
+    const prompt = buildPrompt(word_level, count, topic, difficulty, excludeClause)
+
+    const msg = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 512,
+      messages: [{ role: 'user', content: prompt }],
+    })
+
+    const raw = (msg.content[0] as { type: string; text: string }).text?.trim()
+
+    try {
+      const arr = JSON.parse(raw)
+      if (!Array.isArray(arr)) throw new Error('not array')
+      return NextResponse.json({ words: arr.slice(0, count) })
+    } catch {
+      const match = raw.match(/\[[\s\S]*\]/)
+      if (match) {
+        try {
+          const arr = JSON.parse(match[0])
+          return NextResponse.json({ words: arr.slice(0, count) })
+        } catch { /* fall through */ }
+      }
+      return NextResponse.json({ error: 'AI 응답 파싱 실패', raw }, { status: 500 })
     }
-    return NextResponse.json({ error: 'AI 응답 파싱 실패', raw }, { status: 500 })
+  } catch (err) {
+    await refundCredits(user.id, cost)
+    throw err
   }
 }

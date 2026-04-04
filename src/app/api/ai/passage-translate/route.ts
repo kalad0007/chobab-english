@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getUserFromCookie } from '@/lib/supabase/server'
+import { deductCredits, refundCredits, getCreditCostFromDB } from '@/lib/plan-guard'
 
 export async function POST(req: NextRequest) {
   const user = await getUserFromCookie()
@@ -12,6 +13,13 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) return NextResponse.json({ error: 'API key missing' }, { status: 500 })
 
+  const cost = await getCreditCostFromDB('passage_translation', 1)
+  const { allowed, remaining } = await deductCredits(user.id, cost, '지문 번역/해설')
+  if (!allowed) {
+    return NextResponse.json({ error: '크레딧이 부족합니다', remaining }, { status: 403 })
+  }
+
+  try {
   const client = new Anthropic({ apiKey })
 
   const msg = await client.messages.create({
@@ -55,4 +63,8 @@ IMPORTANT: Return ONLY raw JSON with no markdown, no backticks, no code fences. 
     text_ko = raw.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim()
   }
   return NextResponse.json({ text_ko, explanation, vocab })
+  } catch (err) {
+    await refundCredits(user.id, cost)
+    throw err
+  }
 }

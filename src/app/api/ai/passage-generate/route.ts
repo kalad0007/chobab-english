@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getUserFromCookie } from '@/lib/supabase/server'
+import { deductCredits, refundCredits, getCreditCostFromDB } from '@/lib/plan-guard'
 
 export async function POST(req: NextRequest) {
   const user = await getUserFromCookie()
@@ -12,23 +13,30 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) return NextResponse.json({ error: 'API key missing' }, { status: 500 })
 
-  const client = new Anthropic({ apiKey })
-
-  function bandToCefr(d: number) {
-    if (d >= 5.0) return 'C1-C2 (TOEFL 100-120, very advanced academic)'
-    if (d >= 4.0) return 'B2 (TOEFL 80-100, upper-intermediate academic)'
-    if (d >= 3.0) return 'B1-B2 (TOEFL 60-80, intermediate academic)'
-    return 'A2-B1 (TOEFL 45-60, lower-intermediate)'
+  const cost = await getCreditCostFromDB('academic_passage', 1)
+  const { allowed, remaining } = await deductCredits(user.id, cost, '지문 생성')
+  if (!allowed) {
+    return NextResponse.json({ error: '크레딧이 부족합니다', remaining }, { status: 403 })
   }
 
-  const cefr = bandToCefr(difficulty)
+  try {
+    const client = new Anthropic({ apiKey })
 
-  const msg = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 2048,
-    messages: [{
-      role: 'user',
-      content: `Write a TOEFL-style academic reading passage about "${topicLabel ?? topic}".
+    function bandToCefr(d: number) {
+      if (d >= 5.0) return 'C1-C2 (TOEFL 100-120, very advanced academic)'
+      if (d >= 4.0) return 'B2 (TOEFL 80-100, upper-intermediate academic)'
+      if (d >= 3.0) return 'B1-B2 (TOEFL 60-80, intermediate academic)'
+      return 'A2-B1 (TOEFL 45-60, lower-intermediate)'
+    }
+
+    const cefr = bandToCefr(difficulty)
+
+    const msg = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2048,
+      messages: [{
+        role: 'user',
+        content: `Write a TOEFL-style academic reading passage about "${topicLabel ?? topic}".
 
 Requirements:
 - Exactly ${paraCount} paragraphs
@@ -49,18 +57,22 @@ Return ONLY valid JSON (no markdown, no code blocks):
     "Fourth paragraph text..."
   ]
 }`,
-    }],
-  })
+      }],
+    })
 
-  const raw = (msg.content[0] as { type: string; text: string }).text?.trim()
-  try {
-    const parsed = JSON.parse(raw)
-    return NextResponse.json(parsed)
-  } catch {
-    const match = raw.match(/\{[\s\S]*\}/)
-    if (match) {
-      try { return NextResponse.json(JSON.parse(match[0])) } catch { /* fall */ }
+    const raw = (msg.content[0] as { type: string; text: string }).text?.trim()
+    try {
+      const parsed = JSON.parse(raw)
+      return NextResponse.json(parsed)
+    } catch {
+      const match = raw.match(/\{[\s\S]*\}/)
+      if (match) {
+        try { return NextResponse.json(JSON.parse(match[0])) } catch { /* fall */ }
+      }
+      return NextResponse.json({ error: 'AI 응답 파싱 실패' }, { status: 500 })
     }
-    return NextResponse.json({ error: 'AI 응답 파싱 실패' }, { status: 500 })
+  } catch (err) {
+    await refundCredits(user.id, cost)
+    throw err
   }
 }

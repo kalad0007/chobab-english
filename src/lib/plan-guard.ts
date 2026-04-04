@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import type { CreditLogType } from '@/types/database'
 
 export type PlanTier = 'free' | 'standard' | 'pro' | 'premium'
 
@@ -34,6 +35,10 @@ export const CREDIT_COST: Record<string, number> = {
   vocab_per_word: 2,
   // 지문 번역/해설
   passage_translation: 5,
+  // 스피킹 평가
+  speaking_eval: 5,
+  // TTS 음성 합성
+  tts: 1,
 }
 
 export function hasPlanAccess(current: PlanTier, required: PlanTier): boolean {
@@ -42,6 +47,19 @@ export function hasPlanAccess(current: PlanTier, required: PlanTier): boolean {
 
 export function getCreditCost(subtype: string, count: number = 1): number {
   const unitCost = CREDIT_COST[subtype] ?? 10
+  return unitCost * count
+}
+
+/** DB credit_costs 테이블에서 단가 조회 (없으면 하드코딩 기본값 사용) */
+export async function getCreditCostFromDB(subtype: string, count: number = 1): Promise<number> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('credit_costs')
+    .select('cost')
+    .eq('id', subtype)
+    .single()
+
+  const unitCost = data?.cost ?? CREDIT_COST[subtype] ?? 10
   return unitCost * count
 }
 
@@ -83,7 +101,8 @@ export async function getTeacherPlan(userId: string) {
 /** 크레딧 차감 시도. 잔액 부족 시 allowed: false */
 export async function deductCredits(
   userId: string,
-  cost: number
+  cost: number,
+  description?: string
 ): Promise<{ allowed: boolean; remaining: number; plan: PlanTier }> {
   const { plan, credits } = await getTeacherPlan(userId)
 
@@ -96,11 +115,51 @@ export async function deductCredits(
     .update({ credits: credits - cost })
     .eq('id', userId)
 
+  // 크레딧 사용 로그
+  await supabase.from('credit_logs').insert({
+    user_id: userId,
+    amount: -cost,
+    type: 'usage',
+    description: description ?? null,
+    related_user_id: null,
+  })
+
   return {
     allowed: true,
     remaining: credits - cost,
     plan,
   }
+}
+
+/** 크레딧 로그 기록
+ *  - supabase를 넘기면 해당 클라이언트 사용 (admin client 포함)
+ *  - 넘기지 않으면 일반 createClient() 사용
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function insertCreditLog({
+  userId,
+  amount,
+  type,
+  description,
+  relatedUserId,
+  supabase: supabaseArg,
+}: {
+  userId: string
+  amount: number
+  type: CreditLogType
+  description?: string
+  relatedUserId?: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase?: any
+}) {
+  const supabase = supabaseArg ?? (await createClient())
+  await supabase.from('credit_logs').insert({
+    user_id: userId,
+    amount,
+    type,
+    description: description ?? null,
+    related_user_id: relatedUserId ?? null,
+  })
 }
 
 /** 크레딧 환불 (AI 생성 실패 시) */

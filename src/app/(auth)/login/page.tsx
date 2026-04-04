@@ -93,7 +93,7 @@ export default function LoginPage() {
     }
 
     router.refresh()
-    if (profile?.role === 'teacher') {
+    if (['teacher', 'admin', 'superadmin'].includes(profile?.role ?? '')) {
       router.push('/teacher/dashboard')
     } else {
       router.push('/student/dashboard')

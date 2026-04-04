@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { Copy, Check } from 'lucide-react'
 import { updateAdminPlan, toggleAdminApproval, addAdminCredits } from './actions'
 
 const PLAN_TIERS = ['free', 'standard', 'pro', 'premium'] as const
@@ -21,6 +22,28 @@ interface Admin {
   credits: number
   approved: boolean | null
   created_at: string
+  invite_code: string | null
+}
+
+function CopyButton({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false)
+
+  function handleCopy() {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
+
+  return (
+    <button
+      onClick={handleCopy}
+      title="복사"
+      className="ml-1 p-0.5 rounded hover:bg-gray-200 transition text-gray-400 hover:text-gray-700"
+    >
+      {copied ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+    </button>
+  )
 }
 
 export default function AdminsClient({ admins: initial }: { admins: Admin[] }) {
@@ -40,9 +63,13 @@ export default function AdminsClient({ admins: initial }: { admins: Admin[] }) {
   function handleApprovalToggle(adminId: string, currentApproved: boolean | null) {
     startTransition(async () => {
       const newApproved = !currentApproved
-      await toggleAdminApproval(adminId, newApproved)
+      const result = await toggleAdminApproval(adminId, newApproved)
       setAdmins((prev) =>
-        prev.map((a) => (a.id === adminId ? { ...a, approved: newApproved } : a))
+        prev.map((a) =>
+          a.id === adminId
+            ? { ...a, approved: newApproved, invite_code: result.invite_code ?? a.invite_code }
+            : a
+        )
       )
     })
   }
@@ -76,6 +103,7 @@ export default function AdminsClient({ admins: initial }: { admins: Admin[] }) {
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 w-32">플랜</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 w-24">크레딧</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 w-40">크레딧 충전</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 w-28">초대코드</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 w-24">승인</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 w-28">가입일</th>
               </tr>
@@ -125,6 +153,16 @@ export default function AdminsClient({ admins: initial }: { admins: Admin[] }) {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center">
+                    {admin.invite_code ? (
+                      <span className="inline-flex items-center gap-0.5 font-mono text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg">
+                        {admin.invite_code}
+                        <CopyButton code={admin.invite_code} />
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-300">-</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center">
                     <button
                       disabled={isPending}
                       onClick={() => handleApprovalToggle(admin.id, admin.approved)}
@@ -144,7 +182,7 @@ export default function AdminsClient({ admins: initial }: { admins: Admin[] }) {
               ))}
               {admins.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-gray-400 text-sm">
+                  <td colSpan={8} className="px-4 py-12 text-center text-gray-400 text-sm">
                     등록된 관리자가 없습니다.
                   </td>
                 </tr>

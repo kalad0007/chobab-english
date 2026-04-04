@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { getUserFromCookie } from '@/lib/supabase/server'
+import { deductCredits, refundCredits, getCreditCostFromDB } from '@/lib/plan-guard'
 
 // 단일화자 4가지 음성
 const VOICE_YW = 'en-US-Neural2-F'  // Young Woman  (밝고 젊은 여성)
@@ -45,6 +46,9 @@ async function synthesize(text: string, voiceName: string, apiKey: string): Prom
 
 // Google Cloud Text-to-Speech Neural2 → Supabase Storage
 export async function POST(req: NextRequest) {
+  let deductedUserId: string | null = null
+  let deductedCost = 0
+
   try {
   const user = await getUserFromCookie()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -54,6 +58,14 @@ export async function POST(req: NextRequest) {
 
   const apiKey = process.env.GOOGLE_TTS_API_KEY
   if (!apiKey) return NextResponse.json({ error: 'Google TTS API key not configured' }, { status: 500 })
+
+  const cost = await getCreditCostFromDB('tts', 1)
+  const { allowed, remaining } = await deductCredits(user.id, cost, 'TTS 음성 합성')
+  if (!allowed) {
+    return NextResponse.json({ error: '크레딧이 부족합니다', remaining }, { status: 403 })
+  }
+  deductedUserId = user.id
+  deductedCost = cost
 
   let audioBuffer: Buffer
 
@@ -142,6 +154,9 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ audioUrl })
   } catch (err) {
     console.error('TTS route error:', err)
+    if (deductedUserId && deductedCost > 0) {
+      try { await refundCredits(deductedUserId, deductedCost) } catch { /* 환불 실패 무시 */ }
+    }
     return NextResponse.json({ error: 'TTS 처리 중 오류가 발생했습니다.' }, { status: 500 })
   }
 }

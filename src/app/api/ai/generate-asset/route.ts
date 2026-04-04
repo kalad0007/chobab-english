@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { getUserFromCookie } from '@/lib/supabase/server'
+import { deductCredits, refundCredits, getCreditCostFromDB } from '@/lib/plan-guard'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
@@ -43,9 +44,17 @@ export async function POST(req: NextRequest) {
   const anthropicKey = getAnthropicKey()
   if (!anthropicKey) return NextResponse.json({ error: 'AI API key not configured' }, { status: 500 })
 
+  const costKey = subtype ?? 'listen_and_repeat'
+  const cost = await getCreditCostFromDB(costKey, 1)
+  const { allowed, remaining } = await deductCredits(user.id, cost, '리스닝 에셋 생성')
+  if (!allowed) {
+    return NextResponse.json({ error: '크레딧이 부족합니다', remaining }, { status: 403 })
+  }
+
   const ai = new Anthropic({ apiKey: anthropicKey })
   const isDialogue = ['conversation', 'choose_response'].includes(subtype)
 
+  try {
   // ── 1. Generate script ───────────────────────────────────
   const scriptPrompt = isDialogue
     ? `Create a short TOEFL Listening dialogue about: "${keywords}".
@@ -151,4 +160,8 @@ Generate 2 multiple-choice questions (4 options each). Return JSON array only:
       difficulty, audio_script: script, audio_url: audioUrl,
     })),
   })
+  } catch (err) {
+    await refundCredits(user.id, cost)
+    throw err
+  }
 }

@@ -729,7 +729,11 @@ export default function SmartBuilderPage() {
                 onChange={e => setTargetBand(Number(e.target.value))}
                 className="w-full accent-blue-600" />
               <div className="flex justify-between text-[10px] text-gray-400 mt-0.5 px-0.5">
-                <span>L1 · 1.0</span><span>MAX · 6.0</span>
+                <span>{DIFFICULTY_LEVELS[0].level} · {DIFFICULTY_LEVELS[0].name}</span>
+                <span>{DIFFICULTY_LEVELS[DIFFICULTY_LEVELS.length - 1].level} · {DIFFICULTY_LEVELS[DIFFICULTY_LEVELS.length - 1].name}</span>
+              </div>
+              <div className="text-[10px] text-gray-500 mt-1 text-center">
+                {getDiffInfo(targetBand).name} ({getDiffInfo(targetBand).cefr})
               </div>
             </div>
             <div>
@@ -743,7 +747,11 @@ export default function SmartBuilderPage() {
                 onChange={e => setMaxBand(Number(e.target.value))}
                 className="w-full accent-orange-500" />
               <div className="flex justify-between text-[10px] text-gray-400 mt-0.5 px-0.5">
-                <span>T+0 · {targetBand}</span><span>MAX · 6.0</span>
+                <span>T+0 · {getDiffInfo(targetBand).name}</span>
+                <span>{DIFFICULTY_LEVELS[DIFFICULTY_LEVELS.length - 1].level} · {DIFFICULTY_LEVELS[DIFFICULTY_LEVELS.length - 1].name}</span>
+              </div>
+              <div className="text-[10px] text-gray-500 mt-1 text-center">
+                {getDiffInfo(maxBand).name} ({getDiffInfo(maxBand).cefr})
               </div>
             </div>
             <div className="flex items-center gap-1 text-[10px] text-gray-400">

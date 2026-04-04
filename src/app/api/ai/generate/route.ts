@@ -48,7 +48,8 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
 
   const subtypePrompts: Record<string, string> = {
     complete_the_words: `TOEFL "Complete the Words" (단락형 빈칸) 문제를 ${Math.max(n, qpp)}개 생성하세요.
-- ${wc1}단어의 학술 단락, 두번째 문장부터 특정 단어의 앞 2-4글자를 보여주고 나머지를 언더스코어로 마스킹 (예: te___, bel____, sur_____)
+- 반드시 정확히 ${wc1}단어의 학술 단락을 작성하세요. ${wc1}단어를 초과하면 안 됩니다.
+- 두번째 문장부터 특정 단어의 앞 2-4글자를 보여주고 나머지를 언더스코어로 마스킹 (예: te___, bel____, sur_____)
 - 빈칸 8-12개 골고루 배치
 - content 필드에 빈칸이 포함된 단락 전체를 넣으세요
 - answer 필드에는 빈칸에 들어갈 완성된 단어들을 쉼표로 구분하여 순서대로 나열하세요 (예: "tends,believe,surface,...")
@@ -56,6 +57,8 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
 - difficulty 값은 반드시 ${difficulty}를 사용하세요
 - question_subtype은 반드시 "complete_the_words"로 설정하세요
 - category는 반드시 "reading"으로 설정하세요
+
+IMPORTANT: The passage body must be strictly within ${wc1} words. Do NOT exceed ${wc1} words under any circumstances.
 
 반드시 다음 JSON 형식으로만 응답 (마크다운 코드블록 없이 순수 JSON):
 {"questions":[{"content":"단락 텍스트 (te___ blanks 포함)","passage":null,"options":null,"answer":"tends,believe,surface","explanation":"각 빈칸 해설","category":"reading","difficulty":${difficulty},"question_subtype":"complete_the_words","audio_script":null,"speaking_prompt":null}]}`,
@@ -77,7 +80,8 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
 - 격식체 이메일 ${n}개를 생성하고, 각 이메일마다 ${qpp}개의 독해 문제를 만드세요
 - 총 ${n * qpp}개의 문제 객체를 questions 배열에 포함하세요
 - 같은 이메일에 대한 ${qpp}개 문제는 동일한 passage 값을 사용하세요
-- passage 필드에 이메일 전체를 실제 줄바꿈(\\n)을 사용하여 넣으세요 (이메일 본문 ${wc3}단어)
+- passage 필드에 이메일 전체를 실제 줄바꿈(\\n)을 사용하여 넣으세요
+- 이메일 본문(Dear ... ~ Best regards 사이)은 반드시 정확히 ${wc3}단어 이내로 작성하세요. 인사말(Dear ...,)과 서명(Best regards, / [발신자])은 단어 수에 포함하지 않습니다. 본문만 ${wc3}단어를 초과하면 안 됩니다.
 - 이메일 형식: "From: name@email.com\\nTo: name@email.com\\nDate: [날짜]\\nSubject: [제목]\\n\\nDear [이름],\\n\\n[본문 단락]\\n\\n[본문 단락2]\\n\\nBest regards,\\n[발신자]"
 - 반드시 Dear ...와 본문 사이, 단락과 단락 사이, 본문과 서명 사이를 빈 줄(\\n\\n)로 구분하세요
 - 각 이메일에 대해 다양한 질문 유형: 이메일 목적, 특정 정보, 어조/태도, 추론 등
@@ -88,6 +92,8 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
 - question_subtype은 반드시 "daily_life_email"로 설정하세요
 - category는 반드시 "reading"으로 설정하세요
 
+IMPORTANT: The email body (excluding greeting and signature) must be strictly within ${wc3} words. Do NOT exceed ${wc3} words.
+
 반드시 다음 JSON 형식으로만 응답 (마크다운 코드블록 없이 순수 JSON):
 {"questions":[{"content":"What is the main purpose of the email?","passage":"From: john@email.com\\nTo: manager@company.com\\nDate: March 15, 2025\\nSubject: Request for Meeting\\n\\nDear Manager,\\n\\n[이메일 본문 150-200단어]\\n\\nBest regards,\\nJohn","options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"2","explanation":"해설...","category":"reading","difficulty":${difficulty},"question_subtype":"daily_life_email","audio_script":null,"speaking_prompt":null},{"content":"두 번째 질문 (특정 정보/추론/어조 등)...","passage":"[same email passage]","options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"3","explanation":"해설...","category":"reading","difficulty":${difficulty},"question_subtype":"daily_life_email","audio_script":null,"speaking_prompt":null}]}`,
 
@@ -95,7 +101,7 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
 - 스마트폰 그룹 채팅 ${n}개를 생성하고, 각 채팅마다 ${qpp}개의 독해 문제를 만드세요
 - 총 ${n * qpp}개의 문제 객체를 questions 배열에 포함하세요
 - 같은 채팅에 대한 ${qpp}개 문제는 동일한 passage 값을 사용하세요
-- 스마트폰 그룹 채팅 형식 (3-4명, ${mc4}개 메시지)
+- 스마트폰 그룹 채팅 형식 (3-4명, 반드시 정확히 ${mc4}개 메시지, ${mc4}개를 초과하면 안 됩니다)
 - 반드시 "[HH:MM AM/PM] 이름: 메시지" 형식 사용
 - passage 필드에 채팅 전체를 실제 줄바꿈(\\n)으로 구분하여 넣으세요
 - 각 채팅에 대해 다양한 질문 유형: 특정 화자의 의도, 다음 행동, 채팅의 목적, 세부 정보 등
@@ -113,7 +119,7 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
 - 공식 공지문 ${n}개를 생성하고, 각 공지마다 ${qpp}개의 독해 문제를 만드세요
 - 총 ${n * qpp}개의 문제 객체를 questions 배열에 포함하세요
 - 같은 공지문에 대한 ${qpp}개 문제는 동일한 passage 값을 사용하세요
-- 공지문 형식: 제목, 날짜, 기관명, 본문 (${wc3}단어). 규정·정책·안내 내용
+- 공지문 형식: 제목, 날짜, 기관명, 본문 (반드시 정확히 ${wc3}단어 이내). 규정·정책·안내 내용
 - passage 필드에 공지문 전체를 실제 줄바꿈(\\n)으로 넣으세요
 - 각 공지에 대해 다양한 질문 유형: 공지 목적, 특정 규정/조건, 대상자, 추론 등
 - options는 반드시 4개를 포함해야 합니다
@@ -123,6 +129,8 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
 - question_subtype은 반드시 "daily_life_notice"로 설정하세요
 - category는 반드시 "reading"으로 설정하세요
 
+IMPORTANT: The notice body must be strictly within ${wc3} words. Do NOT exceed ${wc3} words.
+
 반드시 다음 JSON 형식으로만 응답 (마크다운 코드블록 없이 순수 JSON):
 {"questions":[{"content":"What is the main purpose of this notice?","passage":"NOTICE\\nDate: March 10, 2025\\nFrom: Building Management\\n\\n[공지문 본문 ${wc3}단어]","options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"2","explanation":"해설...","category":"reading","difficulty":${difficulty},"question_subtype":"daily_life_notice","audio_script":null,"speaking_prompt":null}]}`,
 
@@ -130,7 +138,7 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
 - 가이드/매뉴얼 ${n}개를 생성하고, 각 가이드마다 ${qpp}개의 독해 문제를 만드세요
 - 총 ${n * qpp}개의 문제 객체를 questions 배열에 포함하세요
 - 같은 가이드에 대한 ${qpp}개 문제는 동일한 passage 값을 사용하세요
-- 가이드 형식: 제목, 단계별 안내 또는 섹션 구조, 본문 (${wc3}단어). How-to, 사용 설명서, 절차 안내
+- 가이드 형식: 제목, 단계별 안내 또는 섹션 구조, 본문 (반드시 정확히 ${wc3}단어 이내). How-to, 사용 설명서, 절차 안내
 - passage 필드에 가이드 전체를 실제 줄바꿈(\\n)으로 넣으세요
 - 각 가이드에 대해 다양한 질문 유형: 특정 단계/조건, 목적, 주의사항, 추론 등
 - options는 반드시 4개를 포함해야 합니다
@@ -140,6 +148,8 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
 - question_subtype은 반드시 "daily_life_guide"로 설정하세요
 - category는 반드시 "reading"으로 설정하세요
 
+IMPORTANT: The guide body must be strictly within ${wc3} words. Do NOT exceed ${wc3} words.
+
 반드시 다음 JSON 형식으로만 응답 (마크다운 코드블록 없이 순수 JSON):
 {"questions":[{"content":"According to the guide, what should you do first?","passage":"How to Register for Online Banking\\n\\nStep 1: [단계 내용]\\nStep 2: [단계 내용]\\n[가이드 본문 ${wc3}단어 계속]","options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"3","explanation":"해설...","category":"reading","difficulty":${difficulty},"question_subtype":"daily_life_guide","audio_script":null,"speaking_prompt":null}]}`,
 
@@ -147,7 +157,7 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
 - 짧은 기사 ${n}개를 생성하고, 각 기사마다 ${qpp}개의 독해 문제를 만드세요
 - 총 ${n * qpp}개의 문제 객체를 questions 배열에 포함하세요
 - 같은 기사에 대한 ${qpp}개 문제는 동일한 passage 값을 사용하세요
-- 기사 형식: 헤드라인, 부제목(옵션), 날짜, 본문 (${wc3}단어). 뉴스·잡지 스타일
+- 기사 형식: 헤드라인, 부제목(옵션), 날짜, 본문 (반드시 정확히 ${wc3}단어 이내). 뉴스·잡지 스타일
 - passage 필드에 기사 전체를 실제 줄바꿈(\\n)으로 넣으세요
 - 각 기사에 대해 다양한 질문 유형: 기사 주제, 특정 사실, 어조, 추론, 어휘 등
 - options는 반드시 4개를 포함해야 합니다
@@ -157,6 +167,8 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
 - question_subtype은 반드시 "daily_life_article"로 설정하세요
 - category는 반드시 "reading"으로 설정하세요
 
+IMPORTANT: The article body must be strictly within ${wc3} words. Do NOT exceed ${wc3} words.
+
 반드시 다음 JSON 형식으로만 응답 (마크다운 코드블록 없이 순수 JSON):
 {"questions":[{"content":"What is the article mainly about?","passage":"City Council Plans Major Transportation Overhaul\\nMarch 10, 2025\\n\\n[기사 본문 ${wc3}단어]","options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"1","explanation":"해설...","category":"reading","difficulty":${difficulty},"question_subtype":"daily_life_article","audio_script":null,"speaking_prompt":null}]}`,
 
@@ -164,7 +176,7 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
 - 대학 교내 공지문 ${n}개를 생성하고, 각 공지마다 ${qpp}개의 독해 문제를 만드세요
 - 총 ${n * qpp}개의 문제 객체를 questions 배열에 포함하세요
 - 같은 공지문에 대한 ${qpp}개 문제는 동일한 passage 값을 사용하세요
-- 캠퍼스 공지 형식: 학교/부서명, 제목, 날짜, 본문 (${wc3}단어). 수강신청·행사·도서관·장학금·기숙사 등 대학 생활 주제
+- 캠퍼스 공지 형식: 학교/부서명, 제목, 날짜, 본문 (반드시 정확히 ${wc3}단어 이내). 수강신청·행사·도서관·장학금·기숙사 등 대학 생활 주제
 - passage 필드에 공지문 전체를 실제 줄바꿈(\\n)으로 넣으세요
 - 각 공지에 대해 다양한 질문 유형: 공지 목적, 마감일/날짜, 대상 학생, 필요 조건, 추론 등
 - options는 반드시 4개를 포함해야 합니다
@@ -173,6 +185,8 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
 - difficulty 값은 반드시 ${difficulty}를 사용하세요
 - question_subtype은 반드시 "daily_life_campus_notice"로 설정하세요
 - category는 반드시 "reading"으로 설정하세요
+
+IMPORTANT: The campus notice body must be strictly within ${wc3} words. Do NOT exceed ${wc3} words.
 
 반드시 다음 JSON 형식으로만 응답 (마크다운 코드블록 없이 순수 JSON):
 {"questions":[{"content":"What is the main purpose of this notice?","passage":"University of California\\nOffice of Academic Affairs\\n\\nImportant Notice Regarding Spring Registration\\nDate: March 10, 2025\\n\\n[공지문 본문 ${wc3}단어]","options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"2","explanation":"해설...","category":"reading","difficulty":${difficulty},"question_subtype":"daily_life_campus_notice","audio_script":null,"speaking_prompt":null}]}`,
@@ -194,7 +208,7 @@ function buildPrompt(category: string, subtype: string, difficulty: number, coun
     conversation: `Role: You are an expert TOEFL iBT listening test developer.
 Task: Create ${n} campus conversation listening sets (${n} × ${qpp} questions = exactly ${n * qpp} question objects).
 Constraints:
-- Each dialogue script is exactly ${wc7} words (two people, campus daily life)
+- Each dialogue script must be exactly ${wc7} words (two people, campus daily life). Do NOT exceed ${wc7} words.
 - Scripts use "A:" (female voice) and "B:" (male voice) labels, one turn per line
 - Each set shares the same audio_script across its ${qpp} questions
 - IMPORTANT: Only the FIRST question in each set includes the full audio_script. All other questions in the same set must use exactly "__SAME__" as the audio_script value (the system will fill it in automatically).
@@ -209,7 +223,7 @@ Respond with pure JSON only (no markdown):
     academic_talk: `Role: You are an expert TOEFL iBT listening test developer.
 Task: Create ${n} academic lecture listening sets (${n} × ${qpp} questions = exactly ${n * qpp} question objects).
 Constraints:
-- Each lecture script is exactly ${wc8} words (professor's monologue on an academic topic)
+- Each lecture script must be exactly ${wc8} words (professor's monologue on an academic topic). Do NOT exceed ${wc8} words.
 - Scripts are written in natural spoken English with "Today we're going to talk about..." style opening
 - Each set shares the same audio_script across its ${qpp} questions
 - IMPORTANT: Only the FIRST question in each set includes the full audio_script. All other questions in the same set must use exactly "__SAME__" as the audio_script value (the system will fill it in automatically).
@@ -224,7 +238,7 @@ Respond with pure JSON only (no markdown):
     campus_announcement: `Role: You are an expert TOEFL iBT listening test developer.
 Task: Create ${n} campus announcement listening sets (${n} × ${qpp} questions = exactly ${n * qpp} question objects).
 Constraints:
-- Each announcement script is exactly ${wc8} words (campus official, staff, or student making a campus-life announcement — e.g. events, facilities, policies, deadlines)
+- Each announcement script must be exactly ${wc8} words (campus official, staff, or student making a campus-life announcement — e.g. events, facilities, policies, deadlines). Do NOT exceed ${wc8} words.
 - Scripts are written in natural spoken English as a single speaker monologue
 - Each set shares the same audio_script across its ${qpp} questions
 - IMPORTANT: Only the FIRST question in each set includes the full audio_script. All other questions in the same set must use exactly "__SAME__" as the audio_script value (the system will fill it in automatically).
@@ -333,7 +347,7 @@ Respond with pure JSON only (no markdown):
     academic_passage: `TOEFL "Read an Academic Passage" 문제 세트 ${n}개를 생성하세요.
 - 자연과학/역사/사회과학 학술 지문 ${n}개를 생성하고, 각 지문마다 ${qpp}개의 문제를 만드세요
 - 총 ${n * qpp}개의 문제 객체를 questions 배열에 포함하세요
-- 각 지문은 ${wc5}단어로 작성하세요
+- 각 지문은 반드시 정확히 ${wc5}단어로 작성하세요. ${wc5}단어를 초과하면 안 됩니다.
 - 각 지문에 대한 ${qpp}개 문제 중 첫 번째 문제의 passage 필드에만 지문 전체를 넣으세요
 - 같은 지문의 나머지 문제들은 passage 필드에 "__SAME__" 라고만 입력하세요 (API가 자동으로 채웁니다)
 - 각 지문에 대해 다양한 질문 유형: 사실확인(factual), 추론(inference), 어휘(vocabulary), 목적(purpose), 문장삽입(insert) 등
@@ -343,6 +357,8 @@ Respond with pure JSON only (no markdown):
 - difficulty 값은 반드시 ${difficulty}를 사용하세요
 - 모든 항목의 question_subtype은 반드시 "academic_passage"로 설정하세요
 - 모든 항목의 category는 반드시 "reading"으로 설정하세요
+
+IMPORTANT: Each academic passage must be strictly within ${wc5} words. Do NOT exceed ${wc5} words.
 
 반드시 다음 JSON 형식으로만 응답 (마크다운 코드블록 없이 순수 JSON):
 {"questions":[{"content":"According to the passage, which of the following is true?","passage":"[200-300 word academic passage here — only in the FIRST question of each set]","options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"2","explanation":"해설...","category":"reading","difficulty":${difficulty},"question_subtype":"academic_passage","audio_script":null,"speaking_prompt":null},{"content":"두 번째 질문 (inference/vocabulary/etc.)...","passage":"__SAME__","options":[{"num":1,"text":"..."},{"num":2,"text":"..."},{"num":3,"text":"..."},{"num":4,"text":"..."}],"answer":"3","explanation":"해설...","category":"reading","difficulty":${difficulty},"question_subtype":"academic_passage","audio_script":null,"speaking_prompt":null}]}`,
@@ -403,9 +419,10 @@ export async function POST(req: NextRequest) {
 
   const { category, subtype, difficulty, count, topic, questionsPerPassage, wordCount, passageContext, acadDiscWords } = await req.json()
 
-  // 크레딧 차감
-  const creditCost = getCreditCost(subtype ?? category, count ?? 1)
-  const planCheck = await deductCredits(session.user.id, creditCost)
+  // 크레딧 차감: 총 생성 문제 수 = count(세트 수) × questionsPerPassage(세트당 문제 수)
+  const totalQuestions = (count ?? 1) * (questionsPerPassage ?? 1)
+  const creditCost = getCreditCost(subtype ?? category, totalQuestions)
+  const planCheck = await deductCredits(session.user.id, creditCost, 'AI 문제 생성')
   if (!planCheck.allowed) {
     return NextResponse.json({
       error: 'insufficient_credits',
